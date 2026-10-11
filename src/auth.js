@@ -10,19 +10,26 @@ export async function loadState(site) {
 }
 export const saveState = async (site, context) => kvSet("session:" + site, await context.storageState());
 
-const needsLogin = async (page) =>
+const needsLogin = async (page, loggedOutText) =>
   /login|signin|sign-in|auth|connect/i.test(new URL(page.url()).pathname + new URL(page.url()).search) ||
-  (await page.locator('input[type="password"]:visible').count()) > 0;
+  (await page.locator('input[type="password"]:visible').count()) > 0 ||
+  (loggedOutText ? (await page.getByText(loggedOutText).count()) > 0 : false);
 
-export async function ensureLogin(page, context, { site, label, home, probe }) {
-  await page.goto(probe, { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(2500);
+export async function ensureLogin(page, context, { site, label, home, probe, preflight, loggedOutText }) {
+  await page.goto(probe, { waitUntil: "load", timeout: 45000 });
+  await page.waitForTimeout(3000);
+  if (preflight) await preflight(page);
   await captchaCheck(page, label);
-  if (!(await needsLogin(page))) return "session";
+  if (!(await needsLogin(page, loggedOutText))) return "session";
 
   const user = process.env[site.toUpperCase() + "_USER"], pass = process.env[site.toUpperCase() + "_PASS"];
   if (!user || !pass) throw err("login", `${label}: signed out and no ${site.toUpperCase()}_USER / ${site.toUpperCase()}_PASS set in Railway variables.`);
 
+  if ((await page.locator('input[type="password"]:visible').count()) === 0) {
+    // a "sign in" button on the current page (e.g. the modal xe.gr shows)
+    await page.getByRole("button", { name: /^\s*Σύνδεση\s*$|^\s*Είσοδος\s*$/ }).first().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(2500);
+  }
   if ((await page.locator('input[type="password"]:visible').count()) === 0) {
     await page.goto(home, { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: /Σύνδεση|Είσοδος|Log ?in|Sign ?in/i }).first().click({ timeout: 8000 }).catch(() =>
@@ -37,9 +44,10 @@ export async function ensureLogin(page, context, { site, label, home, probe }) {
   await pw.press("Enter");
   await page.waitForTimeout(5000);
   await captchaCheck(page, label);
-  await page.goto(probe, { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(2500);
-  if (await needsLogin(page)) throw err("login", `${label}: login did not work (wrong password, a login code was requested, or the form changed).`);
+  await page.goto(probe, { waitUntil: "load", timeout: 45000 });
+  await page.waitForTimeout(3000);
+  if (preflight) await preflight(page);
+  if (await needsLogin(page, loggedOutText)) throw err("login", `${label}: login did not work (wrong password, a login code was requested, or the form changed).`);
   await saveState(site, context);
   return "login";
 }

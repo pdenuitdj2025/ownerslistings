@@ -5,7 +5,7 @@ import { ensureLogin, loadState, saveState } from "./auth.js";
 import { scrapeIndomio } from "./scrapers/indomio.js";
 import { scrapeSpiti24 } from "./scrapers/spiti24.js";
 import { scrapePlot } from "./scrapers/plot.js";
-import { scrapeXe } from "./scrapers/xe.js";
+import { scrapeXe, dismissConsent } from "./scrapers/xe.js";
 import { scrapeSpitogatos } from "./scrapers/spitogatos.js";
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -14,7 +14,7 @@ const SITES = [
   { key: "indomio", label: "Indomio", run: scrapeIndomio },
   { key: "spiti24", label: "Spiti24", run: scrapeSpiti24 },
   { key: "plot", label: "Plot", run: scrapePlot },
-  { key: "xe", label: "xe.gr", run: scrapeXe, login: { home: "https://www.xe.gr/", probe: "https://www.xe.gr/property/results?item_type=residence&transaction_name=buy&publication_origins%5B%5D=false&country=GR&geo_place_ids%5B%5D=ChIJUwsYu2cPnxQRkIC54iy9AAE&sorting=publication_date_desc" } },
+  { key: "xe", label: "xe.gr", run: scrapeXe, login: { home: "https://www.xe.gr/", preflight: dismissConsent, loggedOutText: /Συνδέσου για να τις δεις/, probe: "https://www.xe.gr/property/results?item_type=residence&transaction_name=buy&publication_origins%5B%5D=false&country=GR&geo_place_ids%5B%5D=ChIJUwsYu2cPnxQRkIC54iy9AAE&sorting=publication_date_desc" } },
   { key: "spitogatos", label: "Spitogatos", run: scrapeSpitogatos, login: { home: "https://www.spitogatos.gr/", probe: "https://www.spitogatos.gr/pwliseis-katoikies/athina-kentro/prwti_dimosieusi_24wres/order_datemodified_desc" } },
 ];
 
