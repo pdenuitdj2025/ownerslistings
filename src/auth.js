@@ -37,6 +37,11 @@ export async function ensureLogin(page, context, { site, label, home, probe, pre
     await page.waitForTimeout(2000);
   }
   await captchaCheck(page, label);
+  if ((await page.locator('input[type="password"]:visible').count()) === 0) {
+    // identity-provider page (xe.gr): choose the e-mail option, not Google/Apple/etc.
+    await page.getByText(/^\s*Σύνδεση με email\s*$/i).first().click({ timeout: 6000, force: true }).catch(() => {});
+    await page.waitForTimeout(2500);
+  }
   const pw = page.locator('input[type="password"]:visible').first();
   const email = page.locator('input[type="email"]:visible, input[name*="mail" i]:visible, input[name*="user" i]:visible, input[autocomplete="username"]:visible, input[type="text"]:visible').first();
   await email.fill(user, { timeout: 8000 });
