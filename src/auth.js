@@ -27,7 +27,7 @@ export async function ensureLogin(page, context, { site, label, home, probe, pre
 
   if ((await page.locator('input[type="password"]:visible').count()) === 0) {
     // a "sign in" button on the current page (e.g. the modal xe.gr shows)
-    await page.getByRole("button", { name: /^\s*Σύνδεση\s*$|^\s*Είσοδος\s*$/ }).first().click({ timeout: 5000 }).catch(() => {});
+    await page.getByText(/^\s*(Σύνδεση|Είσοδος)\s*$/).first().click({ timeout: 6000, force: true }).catch(() => {});
     await page.waitForTimeout(2500);
   }
   if ((await page.locator('input[type="password"]:visible').count()) === 0) {
