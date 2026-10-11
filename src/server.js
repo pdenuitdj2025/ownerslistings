@@ -2,6 +2,7 @@ import express from "express";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { init, pool, kvGet, kvSet, toApi } from "./db.js";
+import { mergeAds } from "./merge.js";
 import { runAll, isRunning, debugPage } from "./runner.js";
 
 const PASSWORD = process.env.TEAM_PASSWORD;
@@ -52,6 +53,19 @@ app.get("/api/meta", async (_q, res) => res.json({ run: await kvGet("run"), site
 app.post("/api/run", (_q, res) => { if (!isRunning()) runAll().catch((e) => console.error(e)); res.json({ started: !isRunning() }); });
 
 app.get("/api/debug", async (req, res) => { try { res.json(await debugPage(String(req.query.site || "xe"), String(req.query.url), req.query.click ? String(req.query.click) : undefined)); } catch (e) { res.status(500).json({ error: String(e) }); } });
+
+// Ads read elsewhere (e.g. Indomio / Plot, which block server IPs) are posted here and merged like any other source.
+app.post("/api/ingest", async (req, res) => {
+  const ads = (req.body.ads || []).filter((a) => a && a.id && a.url && a.source);
+  const { created, merged } = await mergeAds(ads);
+  const sites = (await kvGet("sites")) || {};
+  for (const src of new Set(ads.map((a) => a.source)))
+    sites[src] = { status: "ok", at: new Date().toISOString(), scraped: ads.filter((a) => a.source === src).length, via: "computer" };
+  await kvSet("sites", sites);
+  const run = (await kvGet("run")) || {};
+  await kvSet("run", { ...run, lastCheck: new Date().toISOString(), lastNew: created });
+  res.json({ received: ads.length, created, merged });
+});
 
 // One-time import of the existing list (keeps status + notes). Body: { listings: [...] }
 app.post("/api/import", async (req, res) => {
