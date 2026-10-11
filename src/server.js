@@ -12,11 +12,28 @@ const app = express();
 app.use(express.json({ limit: "10mb" }));
 app.get("/healthz", (_q, r) => r.send("ok"));
 
-// One shared password for the team (any username).
+// One shared password for the team: login form + signed cookie (API clients may also send Basic auth).
+import crypto from "node:crypto";
+const sign = (v) => crypto.createHmac("sha256", PASSWORD).update(v).digest("hex");
+const TOKEN = sign("owner-listings-session");
+const eq = (a, b) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+const cookieOf = (req, name) => (req.headers.cookie || "").split(/;\s*/).map((c) => c.split("=")).find(([k]) => k === name)?.[1] || "";
+const LOGIN = (msg = "") => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign in</title>
+<style>body{font-family:system-ui,sans-serif;background:#f5f6f4;display:grid;place-items:center;min-height:100vh;margin:0}form{background:#fff;padding:28px;border-radius:12px;box-shadow:0 2px 14px #0001;width:min(340px,90vw)}
+h1{font-size:18px;margin:0 0 14px}input,button{width:100%;padding:11px;font-size:16px;margin-top:10px;box-sizing:border-box;border-radius:8px;border:1px solid #ccd}button{background:#1f5f8b;color:#fff;border:0;cursor:pointer}p{color:#b3261e;margin:8px 0 0}</style>
+<form method="post" action="/login"><h1>Attica owner listings</h1><input type="password" name="password" placeholder="Team password" autofocus required><button>Sign in</button>${msg ? `<p>${msg}</p>` : ""}</form>`;
+app.use(express.urlencoded({ extended: false }));
+app.get("/login", (_q, r) => r.send(LOGIN()));
+app.post("/login", (req, res) => {
+  if (!eq(String(req.body.password || ""), PASSWORD)) return res.status(401).send(LOGIN("Wrong password"));
+  res.set("Set-Cookie", `auth=${TOKEN}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 90}`).redirect("/");
+});
 app.use((req, res, next) => {
-  const [u, p] = Buffer.from((req.headers.authorization || "").replace(/^Basic /, ""), "base64").toString().split(/:(.*)/s);
-  if (p === PASSWORD) return next();
-  res.set("WWW-Authenticate", 'Basic realm="Sabbianco owner listings"').status(401).send("Password required");
+  if (eq(cookieOf(req, "auth"), TOKEN)) return next();
+  const [, p] = Buffer.from((req.headers.authorization || "").replace(/^Basic /, ""), "base64").toString().split(/:(.*)/s);
+  if (p && eq(p, PASSWORD)) return next();
+  if (req.path.startsWith("/api/")) return res.status(401).json({ error: "auth" });
+  res.redirect("/login");
 });
 
 app.get("/api/listings", async (_q, res) => {
