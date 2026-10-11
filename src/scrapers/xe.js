@@ -2,11 +2,15 @@ import { guardCaptcha } from "./indomio.js";
 
 // Cookie banner: choose the most privacy-preserving option (reject non-essential).
 export async function dismissConsent(page) {
-  const clicked = await page.evaluate(() => {
-    const el = [...document.querySelectorAll("button, [role=button], a, div, span")].find((e) => e.children.length === 0 && /^\s*ΔΙΑΦΩΝΩ\s*$/.test(e.textContent));
-    if (!el) return false; (el.closest("button, [role=button], a") || el).click(); return true;
-  }).catch(() => false);
-  if (clicked) { await page.waitForTimeout(2500); return true; }
+  const btn = page.getByText("ΔΙΑΦΩΝΩ", { exact: true }).first();
+  if (await btn.waitFor({ state: "visible", timeout: 12000 }).then(() => true).catch(() => false)) {
+    await btn.click({ timeout: 5000, force: true }).catch(() => {});
+    await page.waitForTimeout(2500);
+    if ((await page.getByText("ΔΙΑΦΩΝΩ", { exact: true }).count()) === 0) return true;
+    await btn.dispatchEvent("click").catch(() => {});
+    await page.waitForTimeout(2000);
+    return true;
+  }
   for (const name of [/ΔΙΑΦΩΝΩ|Απόρριψη όλων|Απόρριψη|Reject all|Μόνο τα απαραίτητα|Μόνο απαραίτητα|Αρνούμαι|Disagree/i, /Διαχείριση|Ρυθμίσεις|Settings|Options/i]) {
     const b = page.getByRole("button", { name }).first();
     if (await b.isVisible({ timeout: 2500 }).catch(() => false)) {
