@@ -2,6 +2,11 @@ import { guardCaptcha } from "./indomio.js";
 
 // Cookie banner: choose the most privacy-preserving option (reject non-essential).
 export async function dismissConsent(page) {
+  const clicked = await page.evaluate(() => {
+    const el = [...document.querySelectorAll("button, [role=button], a, div, span")].find((e) => e.children.length === 0 && /^\s*ΔΙΑΦΩΝΩ\s*$/.test(e.textContent));
+    if (!el) return false; (el.closest("button, [role=button], a") || el).click(); return true;
+  }).catch(() => false);
+  if (clicked) { await page.waitForTimeout(2500); return true; }
   for (const name of [/ΔΙΑΦΩΝΩ|Απόρριψη όλων|Απόρριψη|Reject all|Μόνο τα απαραίτητα|Μόνο απαραίτητα|Αρνούμαι|Disagree/i, /Διαχείριση|Ρυθμίσεις|Settings|Options/i]) {
     const b = page.getByRole("button", { name }).first();
     if (await b.isVisible({ timeout: 2500 }).catch(() => false)) {
@@ -25,6 +30,7 @@ export async function scrapeXe(page) {
     await guardCaptcha(page, "xe.gr");
     await dismissConsent(page);
     await page.waitForSelector(".common-ad", { timeout: 20000 }).catch(() => {});
+    console.log("[xe] page", p, "common-ad:", await page.locator(".common-ad").count(), "| consent still shown:", await page.getByText("ΔΙΑΦΩΝΩ").count());
     for (let i = 0; i < 12; i++) { await page.mouse.wheel(0, 1500); await page.waitForTimeout(350); }
     const ads = await page.evaluate(() => [...document.querySelectorAll(".common-ad")].map((c) => {
       const a = c.querySelector('a[data-testid="property-ad-url"]') || c.querySelector('a[href*="/property/"]');
