@@ -47,7 +47,7 @@ export async function runAll() {
       } catch (e) {
         console.error(`[${s.label}] ${e.message}`);
         let diag = {};
-        try { diag = { url: page.url(), title: (await page.title()).slice(0, 120), body: (await page.locator("body").innerText({ timeout: 3000 })).replace(/\s+/g, " ").slice(0, 300) }; } catch { /* page gone */ }
+        try { diag = { url: page.url(), title: (await page.title()).slice(0, 120), body: (await page.locator("body").innerText({ timeout: 3000 })).replace(/\s+/g, " ").slice(0, 200), buttons: (await page.getByRole("button").allInnerTexts()).map((t) => t.trim()).filter(Boolean).slice(0, 12) }; } catch { /* page gone */ }
         sites[s.key] = { status: e.code || "error", message: e.message.slice(0, 300), at: new Date().toISOString(), ...diag };
       } finally {
         await context?.close().catch(() => {});

@@ -1,4 +1,21 @@
 import { guardCaptcha } from "./indomio.js";
+
+// Cookie banner: choose the most privacy-preserving option (reject non-essential).
+export async function dismissConsent(page) {
+  for (const name of [/Απόρριψη όλων|Απόρριψη|Reject all|Μόνο τα απαραίτητα|Μόνο απαραίτητα|Αρνούμαι|Disagree/i, /Διαχείριση|Ρυθμίσεις|Settings|Options/i]) {
+    const b = page.getByRole("button", { name }).first();
+    if (await b.isVisible({ timeout: 2500 }).catch(() => false)) {
+      await b.click({ timeout: 4000 }).catch(() => {});
+      await page.waitForTimeout(1200);
+      // if we opened a settings dialog, look for a confirm/reject-all control inside it
+      const save = page.getByRole("button", { name: /Απόρριψη όλων|Reject all|Αποθήκευση|Save|Confirm|Επιβεβαίωση/i }).first();
+      if (await save.isVisible({ timeout: 1500 }).catch(() => false)) await save.click({ timeout: 4000 }).catch(() => {});
+      await page.waitForTimeout(800);
+      return true;
+    }
+  }
+  return false;
+}
 // Needs the paid login. publication_origins[]=false is xe.gr's "Ιδιώτες" filter.
 const URL = "https://www.xe.gr/property/results?item_type=residence&transaction_name=buy&publication_origins%5B%5D=false&country=GR&geo_place_ids%5B%5D=ChIJUwsYu2cPnxQRkIC54iy9AAE&sorting=publication_date_desc";
 export async function scrapeXe(page) {
@@ -6,6 +23,7 @@ export async function scrapeXe(page) {
   for (let p = 1; p <= 4; p++) {
     await page.goto(URL + "&page=" + p, { waitUntil: "domcontentloaded" });
     await guardCaptcha(page, "xe.gr");
+    await dismissConsent(page);
     await page.waitForSelector(".common-ad", { timeout: 20000 }).catch(() => {});
     for (let i = 0; i < 12; i++) { await page.mouse.wheel(0, 1500); await page.waitForTimeout(350); }
     const ads = await page.evaluate(() => [...document.querySelectorAll(".common-ad")].map((c) => {
