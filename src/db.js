@@ -1,0 +1,37 @@
+import pg from "pg";
+
+export const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL && /railway\.internal/.test(process.env.DATABASE_URL) ? false : (process.env.PGSSL === "1" ? { rejectUnauthorized: false } : false),
+});
+
+export async function init() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS listings (
+      id text PRIMARY KEY,
+      source text NOT NULL,
+      url text NOT NULL,
+      type text, sqm integer, price integer, floor text, beds integer, year integer,
+      location text, multi boolean DEFAULT false, posted text,
+      status text NOT NULL DEFAULT 'new',
+      note text NOT NULL DEFAULT '',
+      first_seen timestamptz NOT NULL DEFAULT now(),
+      also_on jsonb NOT NULL DEFAULT '[]'
+    );
+    CREATE TABLE IF NOT EXISTS kv (k text PRIMARY KEY, v jsonb NOT NULL);
+  `);
+}
+
+export async function kvGet(k) {
+  const r = await pool.query("SELECT v FROM kv WHERE k=$1", [k]);
+  return r.rows[0]?.v ?? null;
+}
+export async function kvSet(k, v) {
+  await pool.query("INSERT INTO kv(k,v) VALUES($1,$2) ON CONFLICT (k) DO UPDATE SET v=EXCLUDED.v", [k, JSON.stringify(v)]);
+}
+
+export const toApi = (r) => ({
+  id: r.id, source: r.source, url: r.url, type: r.type, sqm: r.sqm, price: r.price, floor: r.floor,
+  beds: r.beds, year: r.year, location: r.location, multi: r.multi, posted: r.posted,
+  status: r.status, note: r.note, firstSeen: r.first_seen, alsoOn: r.also_on?.length ? r.also_on : undefined,
+});

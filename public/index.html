@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Attica Owner Listings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Commissioner:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap">
+<style>
+/* Layout: one working column — status bar, filter rail, then a dense list of listing rows (photo · facts · price · status) */
+:root{
+  --bg:#f5f6f4; --surface:#ffffff; --fg:#1d2321; --muted:#5f6b67; --line:#dde2df;
+  --accent:#1f5f8b; --accent-soft:#e3eef6;
+  --new:#1f7a4d; --new-soft:#e2f3ea; --done:#6b5a1f; --done-soft:#f4eed8; --skip:#8a8f8d; --skip-soft:#eceeed;
+  --f-display:"Fraunces",Georgia,serif; --f-body:"Commissioner",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141917; --surface:#1c2220; --fg:#e7ecea; --muted:#9aa6a2; --line:#2c3431;
+  --accent:#6fb0dc; --accent-soft:#1d3241;
+  --new:#5cc792; --new-soft:#173327; --done:#d7bd6a; --done-soft:#332c16; --skip:#7d8582; --skip-soft:#242a28; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141917; --surface:#1c2220; --fg:#e7ecea; --muted:#9aa6a2; --line:#2c3431;
+  --accent:#6fb0dc; --accent-soft:#1d3241;
+  --new:#5cc792; --new-soft:#173327; --done:#d7bd6a; --done-soft:#332c16; --skip:#7d8582; --skip-soft:#242a28; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.45;font-variant-numeric:tabular-nums}
+.wrap{max-width:1100px;margin:0 auto;padding-inline:16px;padding-block:20px 48px;display:grid;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{font-family:var(--f-display);font-weight:600;font-size:1.7rem;margin:0;text-wrap:balance;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:.9rem;margin:4px 0 0}
+.counts{display:flex;gap:8px;flex-wrap:wrap}
+.count{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:.85rem;color:var(--muted)}
+.count b{color:var(--fg);font-size:1rem;margin-right:4px}
+.filters{display:grid;grid-template-columns:2fr 1.3fr 1fr 1fr 1fr 1fr 1fr;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px}
+.filters label{display:grid;gap:3px;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);min-width:0}
+input,select{font:inherit;font-size:.92rem;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%;min-width:0;text-transform:none;letter-spacing:0}
+input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tab{font:inherit;font-size:.85rem;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:5px 12px;cursor:pointer}
+.tab[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.tabs .spacer{flex:1}
+.check{display:flex;gap:6px;align-items:center;font-size:.85rem;color:var(--muted)}
+.check input{width:auto}
+.list{display:grid;gap:8px}
+.row{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px;align-items:start}
+.row.is-new{border-left:3px solid var(--new)}
+.thumb{width:64px;height:64px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-content:center;text-align:center;line-height:1.05}
+.thumb b{font-size:1.15rem}.thumb span{font-size:.7rem}
+.facts{min-width:0;display:grid;gap:3px}
+.loc{font-weight:600;font-size:1rem}
+.loc a{color:inherit;text-decoration:none}
+.loc a:hover{color:var(--accent);text-decoration:underline}
+.spec{color:var(--muted);font-size:.88rem;display:flex;flex-wrap:wrap;gap:4px 12px}
+.meta{font-size:.8rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.pill{font-size:.72rem;font-weight:600;letter-spacing:.03em;padding:2px 7px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.pill.site{background:transparent;color:var(--muted);border:1px solid var(--line)}
+.also{font-weight:600;color:var(--fg)}
+.also a{color:var(--accent);text-decoration:none;font-weight:500}
+.also a:hover{text-decoration:underline}
+.pill.multi{background:var(--skip-soft);color:var(--muted)}
+.side{display:grid;gap:6px;justify-items:end;text-align:right}
+.price{font-weight:700;font-size:1.1rem;white-space:nowrap}
+.ppm{font-size:.8rem;color:var(--muted);white-space:nowrap}
+.status{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.st{font:inherit;font-size:.75rem;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:6px;padding:3px 8px;cursor:pointer}
+.st[aria-pressed="true"][data-s="new"]{background:var(--new-soft);color:var(--new);border-color:var(--new)}
+.st[aria-pressed="true"][data-s="contacted"]{background:var(--done-soft);color:var(--done);border-color:var(--done)}
+.st[aria-pressed="true"][data-s="skip"]{background:var(--skip-soft);color:var(--skip);border-color:var(--skip)}
+.open{font-size:.82rem;font-weight:600;color:var(--accent);text-decoration:none;border:1px solid var(--accent);border-radius:6px;padding:4px 10px;white-space:nowrap}
+.open:hover{background:var(--accent-soft)}
+.note{font:inherit;font-size:.82rem;width:220px;max-width:100%;padding:4px 7px}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:28px;text-align:center;color:var(--muted)}
+.more{justify-self:center;font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:8px 16px;cursor:pointer}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:.88rem}
+@media (max-width:820px){.filters{grid-template-columns:1fr 1fr}.filters .wide{grid-column:1/-1}}
+@media (max-width:560px){
+  .row{grid-template-columns:56px minmax(0,1fr)}
+  .thumb{width:56px;height:56px}
+  .side{grid-column:1/-1;justify-items:start;text-align:left;grid-template-columns:auto auto;align-items:center;gap:6px 12px}
+  .status{justify-content:flex-start}
+  .note{width:100%;grid-column:1/-1}
+}
+</style>
+</head><body>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Attica owner listings</h1>
+      <p class="sub" id="sub">Homes for sale posted by private owners on xe.gr, Spitogatos, Indomio, Spiti24 and Plot · one row per home</p>
+    </div>
+    <div class="counts" id="counts"></div>
+  </header>
+
+  <section class="filters" aria-label="Filters">
+    <label class="wide" for="q">Area or neighbourhood
+      <input id="q" type="search" placeholder="e.g. Γλυφάδα, Κυψέλη, Πειραιάς" autocomplete="off">
+    </label>
+    <label class="wide" for="muni">Municipality
+      <select id="muni"><option value="">All of Attica</option></select>
+    </label>
+    <label for="type">Type
+      <select id="type"><option value="">Any</option></select>
+    </label>
+    <label for="pmin">Min price €
+      <input id="pmin" type="number" inputmode="numeric" min="0" step="10000" placeholder="0">
+    </label>
+    <label for="pmax">Max price €
+      <input id="pmax" type="number" inputmode="numeric" min="0" step="10000" placeholder="any">
+    </label>
+    <label for="src">Site
+      <select id="src"><option value="">All sites</option><option value="xe">xe.gr</option><option value="spitogatos">Spitogatos</option><option value="indomio">Indomio</option><option value="spiti24">Spiti24</option><option value="plot">Plot</option></select>
+    </label>
+    <label for="sort">Sort
+      <select id="sort">
+        <option value="seen">Newest first</option>
+        <option value="price_asc">Price ↑</option>
+        <option value="price_desc">Price ↓</option>
+        <option value="ppm_asc">€/m² ↑</option>
+      </select>
+    </label>
+  </section>
+
+  <div class="tabs" role="group" aria-label="Status">
+    <button class="tab" data-tab="new" aria-pressed="true">To review</button>
+    <button class="tab" data-tab="contacted" aria-pressed="false">Contacted</button>
+    <button class="tab" data-tab="skip" aria-pressed="false">Not interested</button>
+    <button class="tab" data-tab="all" aria-pressed="false">All</button>
+    <span class="spacer"></span>
+    <label class="check" for="solo"><input id="solo" type="checkbox" checked> Owner-only (hide grouped ads with agents)</label>
+  </div>
+
+  <div class="list" id="list">
+    <div class="empty" id="empty">Loading listings… New private-owner ads appear here after each check.</div>
+  </div>
+  <button class="more" id="more" hidden>Show more</button>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const els = { list:$("#list"), empty:$("#empty"), more:$("#more"), counts:$("#counts"), sub:$("#sub"),
+  q:$("#q"), muni:$("#muni"), type:$("#type"), pmin:$("#pmin"), pmax:$("#pmax"), src:$("#src"), sort:$("#sort"), solo:$("#solo"), toast:$("#toast") };
+const SITE = { xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
+const srcOf = x => SITE[x.source] ? x.source : "xe";
+const sitesOf = x => [SITE[srcOf(x)], ...(x.alsoOn || []).map(a => a.site)];
+let rows = [], tab = "new", shown = 60, canWrite = true;
+const PAGE = 60;
+const fmt = n => n == null ? "" : n.toLocaleString("el-GR");
+const muniOf = loc => (loc || "").split("(")[0].trim();
+const norm = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+function prefs(){ try{ const p = JSON.parse(localStorage.getItem("owner-listings-filters")||"{}");
+  for (const k of ["q","muni","type","pmin","pmax","src","sort"]) if (p[k]!=null) els[k].value = p[k];
+  if (p.solo!=null) els.solo.checked = p.solo; if (p.tab) setTab(p.tab, true); }catch(e){} }
+function savePrefs(){ try{ localStorage.setItem("owner-listings-filters", JSON.stringify({
+  q:els.q.value, muni:els.muni.value, type:els.type.value, pmin:els.pmin.value, pmax:els.pmax.value, src:els.src.value, sort:els.sort.value, solo:els.solo.checked, tab})); }catch(e){} }
+
+function toast(msg){ els.toast.textContent = msg; els.toast.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(()=>els.toast.hidden = true, 2200); }
+
+function setTab(t, quiet){ tab = t; document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.tab === t))); shown = PAGE; if(!quiet){ savePrefs(); render(); } }
+
+function fillSelect(sel, values, keepFirst){
+  const cur = sel.value; const first = sel.options[0].outerHTML;
+  sel.innerHTML = first + values.map(v => `<option>${v.replace(/</g,"&lt;")}</option>`).join("");
+  if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+}
+
+function filtered(){
+  const q = norm(els.q.value.trim()), muni = els.muni.value, type = els.type.value;
+  const pmin = +els.pmin.value || 0, pmax = +els.pmax.value || Infinity;
+  let r = rows.filter(x =>
+    (tab === "all" || (x.status || "new") === tab) &&
+    (!els.solo.checked || !x.multi) &&
+    (!q || norm(x.location).includes(q)) &&
+    (!muni || muniOf(x.location) === muni) &&
+    (!type || x.type === type) &&
+    (!els.src.value || sitesOf(x).includes(SITE[els.src.value])) &&
+    (x.price == null || (x.price >= pmin && x.price <= pmax)));
+  const s = els.sort.value;
+  const ppm = x => x.price && x.sqm ? x.price / x.sqm : Infinity;
+  r.sort(s === "price_asc" ? (a,b)=>(a.price||0)-(b.price||0)
+       : s === "price_desc" ? (a,b)=>(b.price||0)-(a.price||0)
+       : s === "ppm_asc" ? (a,b)=>ppm(a)-ppm(b)
+       : (a,b)=> (b.firstSeen||"").localeCompare(a.firstSeen||""));
+  return r;
+}
+
+function ago(iso){ if(!iso) return ""; const h = (Date.now() - Date.parse(iso)) / 36e5;
+  if (h < 1) return "found <1h ago"; if (h < 24) return `found ${Math.floor(h)}h ago`; const d = Math.floor(h/24); return `found ${d}d ago`; }
+
+function render(){
+  const all = rows.filter(x => !els.solo.checked || !x.multi);
+  const c = s => all.filter(x => (x.status||"new") === s).length;
+  const fresh = all.filter(x => (x.status||"new")==="new" && x.firstSeen && Date.now()-Date.parse(x.firstSeen) < 864e5).length;
+  els.counts.innerHTML = `<span class="count"><b>${fresh}</b>new today</span><span class="count"><b>${c("new")}</b>to review</span><span class="count"><b>${c("contacted")}</b>contacted</span>`;
+  const r = filtered();
+  els.list.querySelectorAll(".row").forEach(n => n.remove());
+  if (!rows.length) { els.empty.hidden = false; els.more.hidden = true; return; }
+  els.empty.hidden = r.length > 0;
+  if (!r.length) els.empty.textContent = "No listings match these filters. Try clearing the area or price.";
+  const frag = document.createDocumentFragment();
+  for (const x of r.slice(0, shown)) frag.appendChild(rowEl(x));
+  els.list.appendChild(frag);
+  els.more.hidden = r.length <= shown;
+  els.more.textContent = `Show more (${r.length - shown} left)`;
+}
+
+function rowEl(x){
+  const st = x.status || "new";
+  const d = document.createElement("article");
+  d.className = "row" + (st === "new" && x.firstSeen && Date.now()-Date.parse(x.firstSeen) < 864e5 ? " is-new" : "");
+  const img = `<div class="thumb" aria-hidden="true"><b>${x.sqm ?? "–"}</b><span>m²</span></div>`;
+  const ppm = x.price && x.sqm ? Math.round(x.price / x.sqm) : null;
+  d.innerHTML = `${img}
+    <div class="facts">
+      <div class="loc"><a href="${x.url}" target="_blank" rel="noopener"></a></div>
+      <div class="spec"></div>
+      <div class="meta"></div>
+    </div>
+    <div class="side">
+      <div><div class="price">${fmt(x.price)} €</div>${ppm ? `<div class="ppm">${fmt(ppm)} €/m²</div>` : ""}</div>
+      <div class="status">
+        <button class="st" data-s="new" aria-pressed="${st==="new"}">To review</button>
+        <button class="st" data-s="contacted" aria-pressed="${st==="contacted"}">Contacted</button>
+        <button class="st" data-s="skip" aria-pressed="${st==="skip"}">Skip</button>
+      </div>
+      <a class="open" href="${x.url}" target="_blank" rel="noopener">Open ad on ${SITE[srcOf(x)]} ↗</a>
+      <input class="note" id="note-${x.id}" placeholder="Note (phone, call result…)" ${canWrite ? "" : "disabled"}>
+    </div>`;
+  d.querySelector(".loc a").textContent = x.location || "Attica";
+  const spec = [x.type && x.sqm ? `${x.type} ${x.sqm} m²` : x.type, x.beds ? `${x.beds} bed` : "", x.floor ? `floor ${x.floor}` : "", x.year ? `built ${x.year}` : ""].filter(Boolean);
+  spec.forEach(t => { const s = document.createElement("span"); s.textContent = t; d.querySelector(".spec").appendChild(s); });
+  const meta = d.querySelector(".meta");
+  meta.insertAdjacentHTML("beforeend", `<span class="pill site">${SITE[srcOf(x)]}</span>`);
+  if (x.alsoOn && x.alsoOn.length) {
+    const also = document.createElement("span"); also.className = "also"; also.append("Also on ");
+    x.alsoOn.forEach((a, i) => { if (i) also.append(", "); const l = document.createElement("a"); l.href = a.url; l.target = "_blank"; l.rel = "noopener"; l.textContent = a.site + " ↗"; also.appendChild(l); });
+    meta.appendChild(also);
+  }
+  meta.insertAdjacentHTML("beforeend", x.multi ? `<span class="pill multi">Grouped · owner + others</span>` : `<span class="pill">Owner ad</span>`);
+  const m = document.createElement("span"); m.textContent = [x.posted ? `posted ${x.posted.toLowerCase()}` : "", ago(x.firstSeen)].filter(Boolean).join(" · "); meta.appendChild(m);
+  const note = d.querySelector(".note"); note.value = x.note || "";
+  note.addEventListener("change", () => save(x.id, { note: note.value.trim() }, "Note saved"));
+  d.querySelectorAll(".st").forEach(b => b.addEventListener("click", () => {
+    if (b.getAttribute("aria-pressed") === "true") return;
+    save(x.id, { status: b.dataset.s }, b.dataset.s === "contacted" ? "Marked contacted" : b.dataset.s === "skip" ? "Marked not interested" : "Moved back to review");
+  }));
+  if (!canWrite) d.querySelectorAll(".st").forEach(b => b.disabled = true);
+  return d;
+}
+
+async function save(id, patch, msg){
+  try {
+    const r = await fetch("/api/listings/" + encodeURIComponent(id), { method:"PATCH", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(patch) });
+    if (!r.ok) throw new Error(r.status);
+    const x = rows.find(v => v.id === id); if (x) Object.assign(x, patch);
+    toast(msg); if (patch.status) render();
+  } catch (e) { toast("Couldn't save. Check your connection and try again."); }
+}
+
+function boot(){
+  prefs();
+  document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
+  ["q","muni","type","pmin","pmax","src","sort","solo"].forEach(k => els[k].addEventListener("input", () => { shown = PAGE; savePrefs(); render(); }));
+  els.more.addEventListener("click", () => { shown += PAGE; render(); });
+}
+boot();
+
+
+function applyRows(list){
+  rows = list;
+  fillSelect(els.muni, [...new Set(rows.map(r => muniOf(r.location)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"el")));
+  fillSelect(els.type, [...new Set(rows.map(r => r.type).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"el")));
+  if (!rows.length) els.empty.textContent = "No listings yet. The first daily check fills this list with private-owner homes for sale across Attica.";
+  render();
+}
+async function load(){
+  try {
+    const a = document.activeElement;
+    if (a && a.classList && a.classList.contains("note")) return;   // don't redraw while someone is typing a note
+    const [l, m] = await Promise.all([fetch("/api/listings").then(r => r.json()), fetch("/api/meta").then(r => r.json())]);
+    applyRows(l);
+    const run = m.run || {};
+    const warn = Object.entries(m.sites || {}).filter(([, s]) => s.status && s.status !== "ok").map(([k, s]) => `${k}: ${s.message || s.status}`);
+    if (run.lastCheck) {
+      const t = new Date(run.lastCheck).toLocaleString("en-GB", { weekday:"short", day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit", timeZone:"Europe/Athens" });
+      els.sub.textContent = `Private-owner homes on xe.gr, Spitogatos, Indomio, Spiti24 and Plot · one row per home · last check ${t}, ${run.lastNew ?? 0} new` + (warn.length ? ` · ⚠ ${warn.join(" · ")}` : "");
+    }
+  } catch (e) { if (!rows.length) els.empty.textContent = "The list couldn't load. Reload the page to try again."; }
+}
+load(); setInterval(load, 60000);
+</script>
+</body></html>
