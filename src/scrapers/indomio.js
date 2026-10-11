@@ -1,6 +1,7 @@
 // Indomio: server-rendered pages carry the ads in __NEXT_DATA__. Owner ads have advertiser.supervisor.label === "ιδιώτης".
 export async function scrapeIndomio(page) {
-  await page.goto("https://www.indomio.gr/pwlhsh-katoikies/kentro-athinas-perifereia/?criterio=dataModifica&ordine=desc", { waitUntil: "domcontentloaded" });
+  await page.goto("https://www.indomio.gr/pwlhsh-katoikies/kentro-athinas-perifereia/?criterio=dataModifica&ordine=desc", { waitUntil: "load", timeout: 45000 });
+  await page.waitForTimeout(3000);
   await guardCaptcha(page, "Indomio");
   return page.evaluate(async () => {
     const out = [];

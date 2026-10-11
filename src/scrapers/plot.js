@@ -1,6 +1,7 @@
 import { guardCaptcha } from "./indomio.js";
 export async function scrapePlot(page) {
-  await page.goto("https://www.plot.gr/search/?category=20007&location=46", { waitUntil: "domcontentloaded" });
+  await page.goto("https://www.plot.gr/search/?category=20007&location=46", { waitUntil: "load", timeout: 45000 });
+  await page.waitForTimeout(3000);
   await guardCaptcha(page, "Plot");
   return page.evaluate(async () => {
     const out = [];

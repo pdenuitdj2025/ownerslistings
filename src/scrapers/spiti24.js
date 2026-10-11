@@ -1,6 +1,7 @@
 import { guardCaptcha } from "./indomio.js";
 export async function scrapeSpiti24(page) {
-  await page.goto("https://www.spiti24.gr/pwliseis/katoikies/attiki-nomos/apo-idiotes?sortBy=datemodified%7Cdesc", { waitUntil: "domcontentloaded" });
+  await page.goto("https://www.spiti24.gr/pwliseis/katoikies/attiki-nomos/apo-idiotes?sortBy=datemodified%7Cdesc", { waitUntil: "load", timeout: 45000 });
+  await page.waitForTimeout(3000);
   await guardCaptcha(page, "Spiti24");
   return page.evaluate(async () => {
     const out = [];

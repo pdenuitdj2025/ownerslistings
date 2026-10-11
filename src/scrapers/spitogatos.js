@@ -1,7 +1,8 @@
 import { guardCaptcha } from "./indomio.js";
 // Needs the paid login: ads with no agency link (/mesites/) are private owners.
 export async function scrapeSpitogatos(page) {
-  await page.goto("https://www.spitogatos.gr/pwliseis-katoikies/athina-kentro/prwti_dimosieusi_24wres/order_datemodified_desc", { waitUntil: "domcontentloaded" });
+  await page.goto("https://www.spitogatos.gr/pwliseis-katoikies/athina-kentro/prwti_dimosieusi_24wres/order_datemodified_desc", { waitUntil: "load", timeout: 45000 });
+  await page.waitForTimeout(3000);
   await guardCaptcha(page, "Spitogatos");
   return page.evaluate(async () => {
     const out = [];

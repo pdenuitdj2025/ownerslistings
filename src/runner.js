@@ -30,11 +30,11 @@ export async function runAll() {
   const browser = await chromium.launch({ headless: true, args: ["--no-sandbox", "--disable-blink-features=AutomationControlled"] });
   try {
     for (const s of SITES) {
-      let context;
+      let context, page;
       try {
         context = await browser.newContext({ userAgent: UA, locale: "el-GR", timezoneId: "Europe/Athens", viewport: { width: 1366, height: 900 }, storageState: s.login ? await loadState(s.key) : undefined });
         await context.addInitScript(() => Object.defineProperty(navigator, "webdriver", { get: () => undefined }));
-        const page = await context.newPage();
+        page = await context.newPage();
         page.setDefaultTimeout(30000);
         if (s.login) await ensureLogin(page, context, { site: s.key, label: s.label, ...s.login });
         const ads = await s.run(page);
@@ -46,7 +46,9 @@ export async function runAll() {
         console.log(`[${s.label}] scraped ${ads.length}, new ${created}, merged ${merged}`);
       } catch (e) {
         console.error(`[${s.label}] ${e.message}`);
-        sites[s.key] = { status: e.code || "error", message: e.message.slice(0, 300), at: new Date().toISOString() };
+        let diag = {};
+        try { diag = { url: page.url(), title: (await page.title()).slice(0, 120), body: (await page.locator("body").innerText({ timeout: 3000 })).replace(/\s+/g, " ").slice(0, 300) }; } catch { /* page gone */ }
+        sites[s.key] = { status: e.code || "error", message: e.message.slice(0, 300), at: new Date().toISOString(), ...diag };
       } finally {
         await context?.close().catch(() => {});
       }
