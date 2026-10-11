@@ -25,23 +25,23 @@ export async function ensureLogin(page, context, { site, label, home, probe, pre
   const user = process.env[site.toUpperCase() + "_USER"], pass = process.env[site.toUpperCase() + "_PASS"];
   if (!user || !pass) throw err("login", `${label}: signed out and no ${site.toUpperCase()}_USER / ${site.toUpperCase()}_PASS set in Railway variables.`);
 
-  if ((await page.locator('input[type="password"]:visible').count()) === 0) {
+  const hasPw = async () => (await page.locator('input[type="password"]:visible').count()) > 0;
+  const emailOption = () => page.getByText(/^\s*Σύνδεση με email\s*$/i).first().click({ timeout: 5000, force: true }).catch(() => {});
+  if (!(await hasPw())) {
     // a "sign in" button on the current page (e.g. the modal xe.gr shows)
     await page.getByText(/^\s*(Σύνδεση|Είσοδος)\s*$/).first().click({ timeout: 6000, force: true }).catch(() => {});
-    await page.waitForTimeout(2500);
+    await page.waitForLoadState("load", { timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(4000);
+    if (!(await hasPw())) { await emailOption(); await page.waitForTimeout(3000); }
   }
-  if ((await page.locator('input[type="password"]:visible').count()) === 0) {
-    await page.goto(home, { waitUntil: "domcontentloaded" });
+  if (!(await hasPw())) {
+    await page.goto(home, { waitUntil: "load", timeout: 45000 });
     await page.getByRole("button", { name: /Σύνδεση|Είσοδος|Log ?in|Sign ?in/i }).first().click({ timeout: 8000 }).catch(() =>
       page.getByRole("link", { name: /Σύνδεση|Είσοδος|Log ?in|Sign ?in/i }).first().click({ timeout: 8000 }));
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(4000);
+    if (!(await hasPw())) { await emailOption(); await page.waitForTimeout(3000); }
   }
   await captchaCheck(page, label);
-  if ((await page.locator('input[type="password"]:visible').count()) === 0) {
-    // identity-provider page (xe.gr): choose the e-mail option, not Google/Apple/etc.
-    await page.getByText(/^\s*Σύνδεση με email\s*$/i).first().click({ timeout: 6000, force: true }).catch(() => {});
-    await page.waitForTimeout(2500);
-  }
   const pw = page.locator('input[type="password"]:visible').first();
   const email = page.locator('input[type="email"]:visible, input[name*="mail" i]:visible, input[name*="user" i]:visible, input[autocomplete="username"]:visible, input[type="text"]:visible').first();
   await email.fill(user, { timeout: 8000 });
