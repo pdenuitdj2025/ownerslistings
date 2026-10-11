@@ -279,7 +279,9 @@ async function load(){
     const [l, m] = await Promise.all([fetch("/api/listings").then(r => r.json()), fetch("/api/meta").then(r => r.json())]);
     applyRows(l);
     const run = m.run || {};
-    const warn = Object.entries(m.sites || {}).filter(([, s]) => s.status && s.status !== "ok").map(([k, s]) => `${k}: ${s.message || s.status}`);
+    const NAME = { xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
+    const WHY = { login: "needs sign-in", captcha: "blocked by a bot check", empty: "no ads read", error: "check failed" };
+    const warn = Object.entries(m.sites || {}).filter(([, s]) => s.status && s.status !== "ok").map(([k, s]) => `${NAME[k] || k} ${WHY[s.status] || "check failed"}`);
     if (run.lastCheck) {
       const t = new Date(run.lastCheck).toLocaleString("en-GB", { weekday:"short", day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit", timeZone:"Europe/Athens" });
       els.sub.textContent = `Private-owner homes on xe.gr, Spitogatos, Indomio, Spiti24 and Plot · one row per home · last check ${t}, ${run.lastNew ?? 0} new` + (warn.length ? ` · ⚠ ${warn.join(" · ")}` : "");
