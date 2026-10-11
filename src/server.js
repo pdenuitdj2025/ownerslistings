@@ -2,7 +2,7 @@ import express from "express";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { init, pool, kvGet, kvSet, toApi } from "./db.js";
-import { runAll, isRunning } from "./runner.js";
+import { runAll, isRunning, debugPage } from "./runner.js";
 
 const PASSWORD = process.env.TEAM_PASSWORD;
 if (!PASSWORD) { console.error("Set TEAM_PASSWORD in Railway variables (the shared password for your team)."); process.exit(1); }
@@ -50,6 +50,8 @@ app.patch("/api/listings/:id", async (req, res) => {
 });
 app.get("/api/meta", async (_q, res) => res.json({ run: await kvGet("run"), sites: (await kvGet("sites")) || {}, running: isRunning() }));
 app.post("/api/run", (_q, res) => { if (!isRunning()) runAll().catch((e) => console.error(e)); res.json({ started: !isRunning() }); });
+
+app.get("/api/debug", async (req, res) => { try { res.json(await debugPage(String(req.query.site || "xe"), String(req.query.url))); } catch (e) { res.status(500).json({ error: String(e) }); } });
 
 // One-time import of the existing list (keeps status + notes). Body: { listings: [...] }
 app.post("/api/import", async (req, res) => {

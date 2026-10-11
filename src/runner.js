@@ -61,3 +61,21 @@ export async function runAll() {
   await kvSet("run", { lastCheck: new Date().toISOString(), lastNew: totalNew, lastMerged: totalMerged, started });
   return { totalNew, totalMerged };
 }
+
+// Debug helper (team-password protected): opens a URL with the saved session of a site and reports what is on screen.
+export async function debugPage(site, url) {
+  const s = SITES.find((x) => x.key === site) || SITES[0];
+  const browser = await chromium.launch({ headless: true, args: ["--no-sandbox", "--disable-blink-features=AutomationControlled"] });
+  try {
+    const context = await browser.newContext({ userAgent: UA, locale: "el-GR", timezoneId: "Europe/Athens", viewport: { width: 1280, height: 1000 }, storageState: s.login ? await loadState(s.key) : undefined });
+    await context.addInitScript(() => Object.defineProperty(navigator, "webdriver", { get: () => undefined }));
+    const page = await context.newPage();
+    await page.goto(url, { waitUntil: "load", timeout: 45000 });
+    await page.waitForTimeout(6000);
+    const { dismissConsent } = await import("./scrapers/xe.js");
+    if (site === "xe") await dismissConsent(page);
+    await page.waitForTimeout(3000);
+    const shot = (await page.screenshot({ type: "jpeg", quality: 55 })).toString("base64");
+    return { url: page.url(), title: await page.title(), text: (await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 1500), cookies: (await context.cookies()).map((c) => c.name).slice(0, 40), shot };
+  } finally { await browser.close(); }
+}
