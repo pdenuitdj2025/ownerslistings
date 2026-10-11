@@ -27,8 +27,9 @@ export async function mergeAds(ads) {
   const urls = new Set(existing.flatMap((r) => [r.url, ...r.alsoOn.map((a) => a.url)]));
   let created = 0, merged = 0;
   const createdList = [];
-  for (const ad of ads) {
-    if (!ad.sqm || !ad.price || ad.price < 10000) continue;
+  for (const ad of ads) { try {
+    if (!ad.sqm || !ad.price || ad.price < 10000 || ad.price > 200_000_000 || ad.sqm > 100000) continue;   // typos / mis-parsed cards
+    if (ad.beds > 100) ad.beds = null; if (ad.year && (ad.year < 1800 || ad.year > 2100)) ad.year = null;
     if (ids.has(ad.id) || urls.has(ad.url)) continue;
     const twin = existing.find((e) => sameHome(e, ad));
     if (twin) {
@@ -49,6 +50,6 @@ export async function mergeAds(ads) {
     );
     existing.push({ ...ad, alsoOn: [] }); ids.add(ad.id); urls.add(ad.url); created++;
     createdList.push(ad);
-  }
+  } catch (e) { console.error("skipped ad", ad?.id, String(e.message).slice(0, 120)); } }
   return { created, merged, createdList };
 }
