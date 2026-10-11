@@ -2,7 +2,7 @@ import { guardCaptcha } from "./indomio.js";
 
 // Cookie banner: choose the most privacy-preserving option (reject non-essential).
 export async function dismissConsent(page) {
-  for (const name of [/Απόρριψη όλων|Απόρριψη|Reject all|Μόνο τα απαραίτητα|Μόνο απαραίτητα|Αρνούμαι|Disagree/i, /Διαχείριση|Ρυθμίσεις|Settings|Options/i]) {
+  for (const name of [/ΔΙΑΦΩΝΩ|Απόρριψη όλων|Απόρριψη|Reject all|Μόνο τα απαραίτητα|Μόνο απαραίτητα|Αρνούμαι|Disagree/i, /Διαχείριση|Ρυθμίσεις|Settings|Options/i]) {
     const b = page.getByRole("button", { name }).first();
     if (await b.isVisible({ timeout: 2500 }).catch(() => false)) {
       await b.click({ timeout: 4000 }).catch(() => {});
