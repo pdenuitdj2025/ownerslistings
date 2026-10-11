@@ -51,7 +51,7 @@ app.patch("/api/listings/:id", async (req, res) => {
 app.get("/api/meta", async (_q, res) => res.json({ run: await kvGet("run"), sites: (await kvGet("sites")) || {}, running: isRunning() }));
 app.post("/api/run", (_q, res) => { if (!isRunning()) runAll().catch((e) => console.error(e)); res.json({ started: !isRunning() }); });
 
-app.get("/api/debug", async (req, res) => { try { res.json(await debugPage(String(req.query.site || "xe"), String(req.query.url))); } catch (e) { res.status(500).json({ error: String(e) }); } });
+app.get("/api/debug", async (req, res) => { try { res.json(await debugPage(String(req.query.site || "xe"), String(req.query.url), req.query.click ? String(req.query.click) : undefined)); } catch (e) { res.status(500).json({ error: String(e) }); } });
 
 // One-time import of the existing list (keeps status + notes). Body: { listings: [...] }
 app.post("/api/import", async (req, res) => {
