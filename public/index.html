@@ -84,7 +84,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
   <header>
     <div>
       <h1>Attica owner listings</h1>
-      <p class="sub" id="sub">Homes for sale posted by private owners on xe.gr, Spitogatos, Indomio, Spiti24 and Plot · one row per home</p>
+      <p class="sub" id="sub">Homes for sale posted by private owners on xe.gr, Spitogatos and Spiti24 · one row per home</p>
     </div>
     <div class="counts" id="counts"></div>
   </header>
@@ -284,7 +284,7 @@ async function load(){
     const warn = Object.entries(m.sites || {}).filter(([, s]) => s.status && s.status !== "ok").map(([k, s]) => `${NAME[k] || k} ${WHY[s.status] || "check failed"}`);
     if (run.lastCheck) {
       const t = new Date(run.lastCheck).toLocaleString("en-GB", { weekday:"short", day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit", timeZone:"Europe/Athens" });
-      els.sub.textContent = `Private-owner homes on xe.gr, Spitogatos, Indomio, Spiti24 and Plot · one row per home · last check ${t}, ${run.lastNew ?? 0} new`;
+      els.sub.textContent = `Private-owner homes on xe.gr, Spitogatos and Spiti24 · one row per home · last check ${t}, ${run.lastNew ?? 0} new`;
       els.sub.title = warn.join(" · ");   // details only on hover, not shown in the header
     }
   } catch (e) { if (!rows.length) els.empty.textContent = "The list couldn't load. Reload the page to try again."; }
