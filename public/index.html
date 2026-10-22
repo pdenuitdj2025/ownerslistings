@@ -105,6 +105,18 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
     <label for="pmax">Max price €
       <input id="pmax" type="number" inputmode="numeric" min="0" step="10000" placeholder="any">
     </label>
+    <label for="smin">Min m²
+      <input id="smin" type="number" inputmode="numeric" min="0" step="5" placeholder="0">
+    </label>
+    <label for="smax">Max m²
+      <input id="smax" type="number" inputmode="numeric" min="0" step="5" placeholder="any">
+    </label>
+    <label for="fmin" title="0 = ground floor, -1 = basement">Min floor
+      <input id="fmin" type="number" inputmode="numeric" min="-1" max="20" step="1" placeholder="any">
+    </label>
+    <label for="fmax" title="0 = ground floor, -1 = basement">Max floor
+      <input id="fmax" type="number" inputmode="numeric" min="-1" max="20" step="1" placeholder="any">
+    </label>
     <label for="src">Site
       <select id="src"><option value="">All sites</option><option value="xe">xe.gr</option><option value="spitogatos">Spitogatos</option><option value="indomio">Indomio</option><option value="spiti24">Spiti24</option><option value="plot">Plot</option></select>
     </label>
@@ -137,7 +149,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 <script>
 const $ = s => document.querySelector(s);
 const els = { list:$("#list"), empty:$("#empty"), more:$("#more"), counts:$("#counts"), sub:$("#sub"),
-  q:$("#q"), muni:$("#muni"), type:$("#type"), pmin:$("#pmin"), pmax:$("#pmax"), src:$("#src"), sort:$("#sort"), solo:$("#solo"), toast:$("#toast") };
+  q:$("#q"), muni:$("#muni"), type:$("#type"), pmin:$("#pmin"), pmax:$("#pmax"), smin:$("#smin"), smax:$("#smax"), fmin:$("#fmin"), fmax:$("#fmax"), src:$("#src"), sort:$("#sort"), solo:$("#solo"), toast:$("#toast") };
 const SITE = { xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
 const srcOf = x => SITE[x.source] ? x.source : "xe";
 const sitesOf = x => [SITE[srcOf(x)], ...(x.alsoOn || []).map(a => a.site)];
@@ -148,10 +160,10 @@ const muniOf = loc => (loc || "").split("(")[0].trim();
 const norm = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 function prefs(){ try{ const p = JSON.parse(localStorage.getItem("owner-listings-filters")||"{}");
-  for (const k of ["q","muni","type","pmin","pmax","src","sort"]) if (p[k]!=null) els[k].value = p[k];
+  for (const k of ["q","muni","type","pmin","pmax","smin","smax","fmin","fmax","src","sort"]) if (p[k]!=null) els[k].value = p[k];
   if (p.solo!=null) els.solo.checked = p.solo; if (p.tab) setTab(p.tab, true); }catch(e){} }
 function savePrefs(){ try{ localStorage.setItem("owner-listings-filters", JSON.stringify({
-  q:els.q.value, muni:els.muni.value, type:els.type.value, pmin:els.pmin.value, pmax:els.pmax.value, src:els.src.value, sort:els.sort.value, solo:els.solo.checked, tab})); }catch(e){} }
+  q:els.q.value, muni:els.muni.value, type:els.type.value, pmin:els.pmin.value, pmax:els.pmax.value, smin:els.smin.value, smax:els.smax.value, fmin:els.fmin.value, fmax:els.fmax.value, src:els.src.value, sort:els.sort.value, solo:els.solo.checked, tab})); }catch(e){} }
 
 function toast(msg){ els.toast.textContent = msg; els.toast.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(()=>els.toast.hidden = true, 2200); }
 
@@ -163,9 +175,20 @@ function fillSelect(sel, values, keepFirst){
   if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
 }
 
+// Greek floor labels -> numbers (0 ground, -1 basement, -0.5 semi-basement); a multi-floor ad lists several
+function floorsOf(f){ const out = []; for (const t of String(f||"").split(",")) { const s = t.trim(); let m;
+  if ((m = s.match(/^(\d+)ος/))) out.push(+m[1]);
+  else if (/^(Ισόγ|ΙΣ)/.test(s)) out.push(0);
+  else if (/^(Υπόγ|ΥΠ)/.test(s)) out.push(-1);
+  else if (/^(Ημιυπ|ΗΜ)/.test(s)) out.push(-0.5); }
+  return out; }
+
 function filtered(){
   const q = norm(els.q.value.trim()), muni = els.muni.value, type = els.type.value;
   const pmin = +els.pmin.value || 0, pmax = +els.pmax.value || Infinity;
+  const smin = +els.smin.value || 0, smax = +els.smax.value || Infinity;
+  const fOn = els.fmin.value !== "" || els.fmax.value !== "";
+  const fmin = els.fmin.value === "" ? -Infinity : +els.fmin.value, fmax = els.fmax.value === "" ? Infinity : +els.fmax.value;
   let r = rows.filter(x =>
     (tab === "all" || (x.status || "new") === tab) &&
     (!els.solo.checked || !x.multi) &&
@@ -173,7 +196,9 @@ function filtered(){
     (!muni || muniOf(x.location) === muni) &&
     (!type || x.type === type) &&
     (!els.src.value || sitesOf(x).includes(SITE[els.src.value])) &&
-    (x.price == null || (x.price >= pmin && x.price <= pmax)));
+    (x.price == null || (x.price >= pmin && x.price <= pmax)) &&
+    (x.sqm == null || (x.sqm >= smin && x.sqm <= smax)) &&
+    (!fOn || floorsOf(x.floor).some(n => n >= fmin && n <= fmax)));
   const s = els.sort.value;
   const ppm = x => x.price && x.sqm ? x.price / x.sqm : Infinity;
   r.sort(s === "price_asc" ? (a,b)=>(a.price||0)-(b.price||0)
@@ -259,7 +284,7 @@ async function save(id, patch, msg){
 function boot(){
   prefs();
   document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
-  ["q","muni","type","pmin","pmax","src","sort","solo"].forEach(k => els[k].addEventListener("input", () => { shown = PAGE; savePrefs(); render(); }));
+  ["q","muni","type","pmin","pmax","smin","smax","fmin","fmax","src","sort","solo"].forEach(k => els[k].addEventListener("input", () => { shown = PAGE; savePrefs(); render(); }));
   els.more.addEventListener("click", () => { shown += PAGE; render(); });
 }
 boot();
