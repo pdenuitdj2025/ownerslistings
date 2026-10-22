@@ -29,7 +29,7 @@ export async function dismissConsent(page) {
 const URL = "https://www.xe.gr/property/results?item_type=residence&transaction_name=buy&publication_origins%5B%5D=false&country=GR&geo_place_ids%5B%5D=ChIJUwsYu2cPnxQRkIC54iy9AAE&sorting=publication_date_desc";
 export async function scrapeXe(page) {
   const out = [];
-  for (let p = 1; p <= 4; p++) {
+  for (let p = 1; p <= 5; p++) {
     await page.goto(URL + "&page=" + p, { waitUntil: "domcontentloaded" });
     await guardCaptcha(page, "xe.gr");
     await dismissConsent(page);

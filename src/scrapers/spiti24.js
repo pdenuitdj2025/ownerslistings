@@ -7,7 +7,7 @@ export async function scrapeSpiti24(page) {
     const out = [];
     const ATH = ["Κυψέλη", "Αμπελόκηποι - Πεντάγωνο", "Λεωφόρος Πατησίων - Λεωφόρος Αχαρνών", "Ιλίσια", "Κολωνός - Κολοκυνθούς", "Παγκράτι", "Πετράλωνα", "Πολύγωνο - Τουρκοβούνια", "Νέος Κόσμος", "Μετς - Καλλιμάρμαρο", "Κουκάκι - Μακρυγιάννη", "Εξάρχεια - Νεάπολη", "Γκύζη - Πεδίον Άρεως", "Κολωνάκι - Λυκαβηττός", "Πατήσια", "Άνω Πατήσια", "Σεπόλια - Σκουζέ", "Γκάζι - Μεταξουργείο - Βοτανικός", "Κέντρο"];
     const PIR = ["Κέντρο - Λιμάνι", "Καστέλλα - Πασαλιμάνι", "Καλλίπολη – Φρεαττύδα", "Πειραϊκή - Χατζηκυριάκειο"];
-    for (let p = 1; p <= 3; p++) {
+    for (let p = 1; p <= 5; p++) {
       const h = await (await fetch("/pwliseis/katoikies/attiki-nomos/apo-idiotes?sortBy=datemodified%7Cdesc" + (p > 1 ? "&page=" + p : ""))).text();
       const d = new DOMParser().parseFromString(h, "text/html");
       for (const r of d.querySelectorAll(".property[id^=result-row]")) {
