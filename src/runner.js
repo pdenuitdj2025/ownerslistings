@@ -43,10 +43,10 @@ export async function runAll() {
         const ads = await s.run(page);
         if (s.login) await saveState(s.key, context);
         if (!ads.length) throw Object.assign(new Error(`${s.label}: the page loaded but 0 ads were read (layout may have changed).`), { code: "empty" });
-        const { created, merged } = await mergeAds(ads);
+        const { created, merged, dropped } = await mergeAds(ads);
         totalNew += created; totalMerged += merged;
-        sites[s.key] = { status: "ok", at: new Date().toISOString(), scraped: ads.length, created, merged };
-        console.log(`[${s.label}] scraped ${ads.length}, new ${created}, merged ${merged}`);
+        sites[s.key] = { status: "ok", at: new Date().toISOString(), scraped: ads.length, created, merged, dropped };
+        console.log(`[${s.label}] scraped ${ads.length}, new ${created}, merged ${merged}, price drops ${dropped}`);
       } catch (e) {
         console.error(`[${s.label}] ${e.message}`);
         let diag = {};

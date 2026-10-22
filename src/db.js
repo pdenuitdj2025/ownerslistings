@@ -18,6 +18,7 @@ export async function init() {
       first_seen timestamptz NOT NULL DEFAULT now(),
       also_on jsonb NOT NULL DEFAULT '[]'
     );
+    ALTER TABLE listings ADD COLUMN IF NOT EXISTS prev_price integer;
     CREATE TABLE IF NOT EXISTS kv (k text PRIMARY KEY, v jsonb NOT NULL);
   `);
 }
@@ -33,5 +34,5 @@ export async function kvSet(k, v) {
 export const toApi = (r) => ({
   id: r.id, source: r.source, url: r.url, type: r.type, sqm: r.sqm, price: r.price, floor: r.floor,
   beds: r.beds, year: r.year, location: r.location, multi: r.multi, posted: r.posted,
-  status: r.status, note: r.note, firstSeen: r.first_seen, alsoOn: r.also_on?.length ? r.also_on : undefined,
+  prevPrice: r.prev_price || undefined, status: r.status, note: r.note, firstSeen: r.first_seen, alsoOn: r.also_on?.length ? r.also_on : undefined,
 });

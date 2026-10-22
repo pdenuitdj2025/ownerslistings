@@ -118,7 +118,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
       <select id="fmax"><option value="">Any</option><option value="-1">Basement</option><option value="-0.5">Semi-basement</option><option value="0">Ground floor</option><option value="1">1st floor</option><option value="2">2nd floor</option><option value="3">3rd floor</option><option value="4">4th floor</option><option value="5">5th floor</option><option value="6">6th floor</option><option value="7">7th floor</option><option value="8">8th floor</option><option value="9">9th floor</option><option value="10">10th floor</option></select>
     </label>
     <label for="src">Site
-      <select id="src"><option value="">All sites</option><option value="xe">xe.gr</option><option value="spitogatos">Spitogatos</option><option value="indomio">Indomio</option><option value="spiti24">Spiti24</option><option value="plot">Plot</option></select>
+      <select id="src"><option value="">All sites</option><option value="xe">xe.gr</option><option value="spitogatos">Spitogatos</option><option value="spiti24">Spiti24</option></select>
     </label>
     <label for="sort">Sort
       <select id="sort">
@@ -241,7 +241,7 @@ function rowEl(x){
       <div class="meta"></div>
     </div>
     <div class="side">
-      <div><div class="price">${fmt(x.price)} €</div>${ppm ? `<div class="ppm">${fmt(ppm)} €/m²</div>` : ""}</div>
+      <div><div class="price">${fmt(x.price)} €</div>${x.prevPrice ? `<div class="ppm" style="color:#2f7d4f;font-weight:600">↓ from ${fmt(x.prevPrice)} €</div>` : ""}${ppm ? `<div class="ppm">${fmt(ppm)} €/m²</div>` : ""}</div>
       <div class="status">
         <button class="st" data-s="new" aria-pressed="${st==="new"}">To review</button>
         <button class="st" data-s="contacted" aria-pressed="${st==="contacted"}">Contacted</button>

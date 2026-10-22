@@ -25,12 +25,20 @@ export async function mergeAds(ads) {
   const existing = rows.map((r) => ({ ...r, firstSeen: r.first_seen, alsoOn: r.also_on || [] }));
   const ids = new Set(existing.map((r) => r.id));
   const urls = new Set(existing.flatMap((r) => [r.url, ...r.alsoOn.map((a) => a.url)]));
-  let created = 0, merged = 0;
+  let created = 0, merged = 0, dropped = 0;
   const createdList = [];
   for (const ad of ads) { try {
     if (!ad.sqm || !ad.price || ad.price < 10000 || ad.price > 200_000_000 || ad.sqm > 100000) continue;   // typos / mis-parsed cards
     if (ad.beds > 100) ad.beds = null; if (ad.year && (ad.year < 1800 || ad.year > 2100)) ad.year = null;
-    if (ids.has(ad.id) || urls.has(ad.url)) continue;
+    if (ids.has(ad.id)) {   // already listed: only react to a price drop (>1 %), and put a skipped home back in the review list
+      const e = existing.find((x) => x.id === ad.id);
+      if (e && e.price && ad.price < e.price * 0.99) {
+        await pool.query(`UPDATE listings SET prev_price=$2, price=$3, status=CASE WHEN status='skip' THEN 'new' ELSE status END WHERE id=$1`, [e.id, e.price, ad.price]);
+        e.price = ad.price; dropped++;
+      }
+      continue;
+    }
+    if (urls.has(ad.url)) continue;
     const twin = existing.find((e) => sameHome(e, ad));
     if (twin) {
       const also = [...twin.alsoOn, { site: SITE_LABEL[ad.source], url: ad.url }];
@@ -51,5 +59,5 @@ export async function mergeAds(ads) {
     existing.push({ ...ad, alsoOn: [] }); ids.add(ad.id); urls.add(ad.url); created++;
     createdList.push(ad);
   } catch (e) { console.error("skipped ad", ad?.id, String(e.message).slice(0, 120)); } }
-  return { created, merged, createdList };
+  return { created, merged, dropped, createdList };
 }
