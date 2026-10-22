@@ -111,11 +111,11 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
     <label for="smax">Max m²
       <input id="smax" type="number" inputmode="numeric" min="0" step="5" placeholder="any">
     </label>
-    <label for="fmin" title="0 = ground floor, -1 = basement">Min floor
-      <input id="fmin" type="number" inputmode="numeric" min="-1" max="20" step="1" placeholder="any">
+    <label for="fmin">From floor
+      <select id="fmin"><option value="">Any</option><option value="-1">Basement</option><option value="-0.5">Semi-basement</option><option value="0">Ground floor</option><option value="1">1st floor</option><option value="2">2nd floor</option><option value="3">3rd floor</option><option value="4">4th floor</option><option value="5">5th floor</option><option value="6">6th floor</option><option value="7">7th floor</option><option value="8">8th floor</option><option value="9">9th floor</option><option value="10">10th floor</option></select>
     </label>
-    <label for="fmax" title="0 = ground floor, -1 = basement">Max floor
-      <input id="fmax" type="number" inputmode="numeric" min="-1" max="20" step="1" placeholder="any">
+    <label for="fmax">To floor
+      <select id="fmax"><option value="">Any</option><option value="-1">Basement</option><option value="-0.5">Semi-basement</option><option value="0">Ground floor</option><option value="1">1st floor</option><option value="2">2nd floor</option><option value="3">3rd floor</option><option value="4">4th floor</option><option value="5">5th floor</option><option value="6">6th floor</option><option value="7">7th floor</option><option value="8">8th floor</option><option value="9">9th floor</option><option value="10">10th floor</option></select>
     </label>
     <label for="src">Site
       <select id="src"><option value="">All sites</option><option value="xe">xe.gr</option><option value="spitogatos">Spitogatos</option><option value="indomio">Indomio</option><option value="spiti24">Spiti24</option><option value="plot">Plot</option></select>
