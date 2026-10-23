@@ -113,6 +113,19 @@ setInterval(async () => {
   console.log("scheduled run", k);
   runAll({ verify: due === RUN_HOURS[0] }).catch((e) => console.error(e));
 }, 5 * 60 * 1000);
+// Phones + details for ads that don't have them yet: starts by itself whenever nothing else is running (after every run, after a deploy).
+setInterval(async () => {
+  try {
+    if (isRunning()) return;
+    const last = await kvGet("lastPhonePass");
+    if (last && Date.now() - Date.parse(last) < 10 * 60 * 1000) return;
+    const { rows } = await pool.query(`SELECT count(*)::int AS n FROM listings WHERE source <> 'xe' AND gone_at IS NULL AND img IS NOT FALSE AND ((phone IS NULL AND phone_checked IS NULL) OR details_checked IS NULL)`);
+    if (!rows[0].n) return;
+    await kvSet("lastPhonePass", new Date().toISOString());
+    console.log("phone/details pass, pending", rows[0].n);
+    runAll({ phones: true }).catch((e) => console.error(e));
+  } catch (e) { console.error(e); }
+}, 2 * 60 * 1000);
 // Weekly Spitogatos sweep: Sunday from 04:00 Athens time. An unfinished sweep (restart, block) is resumed on the next tick.
 setInterval(async () => {
   try {

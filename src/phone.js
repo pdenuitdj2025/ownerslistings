@@ -44,13 +44,15 @@ export async function revealPhone(page) {
 }
 
 // Fill in numbers for listed ads that have none yet. Gentle: small pauses, capped per run.
-export async function phoneSite(page, key, { limit = 60 } = {}) {
+export async function phoneSite(page, key, { limit = 60, maxMs = 0 } = {}) {
+  const t0 = Date.now();
   if (key === "xe") return { checked: 0, found: 0 };
   const { rows } = await pool.query(
     `SELECT id, url, phone FROM listings WHERE source=$1 AND gone_at IS NULL AND img IS NOT FALSE AND ((phone IS NULL AND phone_checked IS NULL) OR details_checked IS NULL)
       ORDER BY first_seen DESC LIMIT $2`, [key, limit]);
   let found = 0, checked = 0, misses = 0;
   for (const r of rows) {
+    if (maxMs && Date.now() - t0 > maxMs) break;   // long backfills are done in slices so the scheduled runs are never blocked for long
     try {
       const resp = await page.goto(r.url, { waitUntil: "domcontentloaded", timeout: 30000 });
       if (!resp || resp.status() !== 200) { checked++; await pool.query("UPDATE listings SET phone_checked=now(), details_checked=now() WHERE id=$1", [r.id]); continue; }

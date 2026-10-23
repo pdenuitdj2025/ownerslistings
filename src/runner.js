@@ -43,7 +43,7 @@ export async function runAll({ verify = true, enrich = false, phones = false } =
         page.setDefaultTimeout(30000);
         if (s.login) await ensureLogin(page, context, { site: s.key, label: s.label, ...s.login });
         if (phones) {   // phone backfill only
-          const e = await phoneSite(page, s.key, { limit: 2000 });
+          const e = await phoneSite(page, s.key, { limit: 2000, maxMs: 25 * 60 * 1000 });
           if (s.login) await saveState(s.key, context);
           sites[s.key] = { ...(sites[s.key] || {}), phones: { ...e, at: new Date().toISOString() } };
           await kvSet("sites", sites);
