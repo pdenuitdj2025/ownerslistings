@@ -18,7 +18,7 @@ export async function revealPhone(page) {
       const c = page.locator(css).first();
       if (await c.isVisible().catch(() => false)) { await c.click({ timeout: 3000 }).catch(() => {}); await page.waitForTimeout(1000); break; }
     }
-    for (const re of [/^\s*(Δεν συμφωνώ|Απόρριψη όλων|Απόρριψη|Reject all|Disagree)\s*$/i, /^\s*(Συμφωνώ|Αποδοχή όλων|Αποδοχή|Accept|Agree)\s*$/i]) {   // a cookie banner can cover the button; decline first
+    for (const re of [/^\s*(ΔΙΑΦΩΝΩ|Διαφωνώ|Δεν συμφωνώ|Απόρριψη όλων|Απόρριψη|Reject all|Disagree)\s*$/i, /^\s*(ΣΥΜΦΩΝΩ|Συμφωνώ|Αποδοχή όλων|Αποδοχή|Accept|Agree)\s*$/i]) {   // a cookie banner can cover the button; decline first
       const c = page.locator(".qc-cmp2-summary-buttons button, .qc-cmp2-footer button, button").filter({ hasText: re }).first();
       if (await c.isVisible().catch(() => false)) { await c.click({ timeout: 3000 }).catch(() => {}); await page.waitForTimeout(800); break; }
     }
