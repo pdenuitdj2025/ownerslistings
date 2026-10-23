@@ -51,6 +51,7 @@ app.patch("/api/listings/:id", async (req, res) => {
 });
 app.get("/api/meta", async (_q, res) => res.json({ run: await kvGet("run"), sites: (await kvGet("sites")) || {}, sweep: await kvGet("sweep"), running: isRunning() }));
 app.get("/api/hidden", async (_q, res) => { const { rows } = await pool.query("SELECT id, source, url, price, sqm, location, checked_at FROM listings WHERE img = false ORDER BY checked_at DESC LIMIT 400"); res.json(rows); });
+app.post("/api/enrich", (_q, res) => { const started = !isRunning(); if (started) runAll({ enrich: true }).catch((e) => console.error(e)); res.json({ started }); });
 app.post("/api/sweep", (_q, res) => { const started = !isRunning(); if (started) runSweep().catch((e) => console.error(e)); res.json({ started }); });
 app.post("/api/run", async (_q, res) => {
   const started = !isRunning();

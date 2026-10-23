@@ -7,9 +7,14 @@ const LIMIT = { spiti24: 200, spitogatos: 200, xe: 150 };
 const PHOTO = { spiti24: /spitogatos\.gr\/\d{5,}_/, spitogatos: /spitogatos\.gr\/\d{5,}_/, xe: /blob\.cdn\.xe\.gr/ };   // what a real ad photo URL looks like (og:image)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export async function verifySite(page, key) {
-  const { rows } = await pool.query(
-    `SELECT id, url FROM listings
+export async function verifySite(page, key, { mode } = {}) {
+  const photos = mode === "photos";   // backfill: every listed ad that has no photo link yet, all statuses, no daily cap
+  const { rows } = photos
+    ? await pool.query(
+        `SELECT id, url, (also_on IS NULL OR also_on='[]'::jsonb) AS solo FROM listings
+          WHERE source=$1 AND gone_at IS NULL AND img IS NOT FALSE AND photo IS NULL ORDER BY first_seen DESC LIMIT 2000`, [key])
+    : await pool.query(
+    `SELECT id, url, true AS solo FROM listings
       WHERE source=$1 AND gone_at IS NULL AND status IN ('new','contacted')
         AND (also_on IS NULL OR also_on='[]'::jsonb)
         AND first_seen < now() - interval '1 day'
@@ -48,6 +53,7 @@ export async function verifySite(page, key) {
       else if (v.status === 200) verdict = "alive";
     }
     if (verdict === "unknown") { unknown++; if (++unknownRun >= 5) break; } else unknownRun = 0;
+    if (verdict === "gone" && !r.solo) verdict = "unknown";   // it may still be live on the other site
     if (verdict === "gone") gone.push(r.id);
     else if (verdict === "alive") {
       alive.push(r.id);

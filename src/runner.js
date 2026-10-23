@@ -25,7 +25,7 @@ const SITES = [
 let running = false;
 export const isRunning = () => running;
 
-export async function runAll({ verify = true } = {}) {
+export async function runAll({ verify = true, enrich = false } = {}) {
   if (running) return { skipped: true };
   running = true;
   const started = new Date().toISOString();
@@ -41,6 +41,14 @@ export async function runAll({ verify = true } = {}) {
         page = await context.newPage();
         page.setDefaultTimeout(30000);
         if (s.login) await ensureLogin(page, context, { site: s.key, label: s.label, ...s.login });
+        if (enrich) {   // backfill only: open listed ads that have no photo link yet; no scraping of the lists
+          const e = await verifySite(page, s.key, { mode: "photos" });
+          if (s.login) await saveState(s.key, context);
+          sites[s.key] = { ...(sites[s.key] || {}), enriched: { ...e, at: new Date().toISOString() } };
+          console.log(`[${s.label}] enrich: ${JSON.stringify(e)}`);
+          await kvSet("sites", sites);
+          continue;
+        }
         const ads = await s.run(page);
         if (s.login) await saveState(s.key, context);
         if (!ads.length) throw Object.assign(new Error(`${s.label}: the page loaded but 0 ads were read (layout may have changed).`), { code: "empty" });
@@ -63,7 +71,7 @@ export async function runAll({ verify = true } = {}) {
     await browser.close().catch(() => {});
     running = false;
   }
-  await kvSet("run", { lastCheck: new Date().toISOString(), lastNew: totalNew, lastMerged: totalMerged, started });
+  if (!enrich) await kvSet("run", { lastCheck: new Date().toISOString(), lastNew: totalNew, lastMerged: totalMerged, started });
   return { totalNew, totalMerged };
 }
 
