@@ -68,7 +68,7 @@ export async function runAll({ verify = true } = {}) {
 }
 
 // Debug helper (team-password protected): opens a URL with the saved session of a site and reports what is on screen.
-export async function debugPage(site, url, click, sel, find) {
+export async function debugPage(site, url, click, sel, find, dump) {
   const s = SITES.find((x) => x.key === site) || SITES[0];
   const browser = await chromium.launch({ headless: true, args: ["--no-sandbox", "--disable-blink-features=AutomationControlled"] });
   try {
@@ -83,6 +83,6 @@ export async function debugPage(site, url, click, sel, find) {
     if (click) { for (const c of String(click).split("|")) { await page.getByText(c, { exact: true }).first().click({ timeout: 6000, force: true }).catch((e) => console.log("debug click failed", String(e).slice(0, 100))); await page.waitForTimeout(3000); } }
     const inputs = await page.locator("input:visible").evaluateAll((els) => els.map((e) => `${e.type}|${e.name}|${e.placeholder}|${e.autocomplete}`));
     const shot = (await page.screenshot({ type: "jpeg", quality: 55 })).toString("base64");
-    return { url: page.url(), title: await page.title(), text: (await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 1500), inputs, frames: page.frames().map((f) => f.url().slice(0, 100)), html: sel ? await page.locator(String(sel)).first().evaluate((e) => e.outerHTML.replace(/\s+/g, " ").slice(0, 4000)).catch(() => "no match") : undefined, found: find ? [...(await page.locator("body").innerText()).replace(/\s+/g, " ").matchAll(new RegExp(String(find), "gi"))].slice(0, 12).map((m) => m.input.slice(Math.max(0, m.index - 70), m.index + 110)) : undefined, agencyLinks: await page.locator('a[href*="/mesites/"]').evaluateAll((els) => els.map((e) => e.getAttribute("href")).slice(0, 5)).catch(() => []), cookies: (await context.cookies()).map((c) => c.name).slice(0, 40), shot };
+    return { url: page.url(), title: await page.title(), text: (await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 1500), inputs, frames: page.frames().map((f) => f.url().slice(0, 100)), dump: dump ? await page.locator(String(dump)).first().innerText({ timeout: 4000 }).then((t) => t.replace(/\s+/g, " ").slice(0, 6000)).catch(() => "no match") : undefined, html: sel ? await page.locator(String(sel)).first().evaluate((e) => e.outerHTML.replace(/\s+/g, " ").slice(0, 4000)).catch(() => "no match") : undefined, found: find ? [...(await page.locator("body").innerText()).replace(/\s+/g, " ").matchAll(new RegExp(String(find), "gi"))].slice(0, 12).map((m) => m.input.slice(Math.max(0, m.index - 70), m.index + 110)) : undefined, agencyLinks: await page.locator('a[href*="/mesites/"]').evaluateAll((els) => els.map((e) => e.getAttribute("href")).slice(0, 5)).catch(() => []), cookies: (await context.cookies()).map((c) => c.name).slice(0, 40), shot };
   } finally { await browser.close(); }
 }
