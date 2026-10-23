@@ -39,23 +39,24 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 .check{display:flex;gap:6px;align-items:center;font-size:.85rem;color:var(--muted)}
 .check input{width:auto}
 .list{display:grid;gap:8px}
-.row{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,420px) 290px;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;align-items:stretch}
+.row{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,420px) 290px;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;align-items:start}
 .row.is-new{border-left:3px solid var(--new)}
 .thumb{width:100%;height:340px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-content:center;text-align:center;line-height:1.05}
 .thumb b{font-size:1.6rem}.thumb span{font-size:.7rem}
 .thumb.has-photo{width:100%;height:340px;padding:0;overflow:hidden;position:relative;background:#ddd}
 .thumb.has-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .thumb.has-photo .sq{position:absolute;left:8px;bottom:8px;background:#000a;color:#fff;font-size:.85rem;padding:2px 8px;border-radius:5px}
-.facts{min-width:0;display:flex;flex-direction:column;gap:4px}
+.facts{min-width:0;display:flex;flex-direction:column;gap:3px;height:340px;overflow:hidden}
 .loc{font-weight:600;font-size:1rem}
 .loc a{color:inherit;text-decoration:none}
 .loc a:hover{color:var(--accent);text-decoration:underline}
 .spec{color:var(--muted);font-size:.88rem;display:flex;flex-wrap:wrap;gap:4px 12px}
-.det{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;align-content:space-between;grid-auto-rows:1fr}
-.tile{border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0}
-.tile.wide{grid-column:1/-1}
-.tile span{font-size:.72rem;color:var(--muted)}
-.tile b{font-size:.92rem;font-weight:600;overflow-wrap:anywhere}
+.det{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;grid-auto-rows:1fr;overflow:hidden}
+.tile{border:1px solid var(--line);border-radius:8px;padding:4px 9px;display:flex;flex-direction:column;justify-content:center;gap:0;min-width:0;overflow:hidden}
+.tile.wide{grid-column:span 2}
+.tile.full{grid-column:1/-1}
+.tile span{font-size:.68rem;color:var(--muted);white-space:nowrap}
+.tile b{font-size:.86rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .meta{font-size:.8rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
 .pill{font-size:.72rem;font-weight:600;letter-spacing:.03em;padding:2px 7px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
 .pill.site{background:transparent;color:var(--muted);border:1px solid var(--line)}
@@ -63,9 +64,9 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 .also a{color:var(--accent);text-decoration:none;font-weight:500}
 .also a:hover{text-decoration:underline}
 .pill.multi{background:var(--skip-soft);color:var(--muted)}
-.side{display:flex;flex-direction:column;gap:8px;text-align:right;justify-content:space-between}
+.side{display:flex;flex-direction:column;gap:8px;text-align:right;justify-content:space-between;height:340px;overflow:hidden}
 .side>*{width:100%}
-.price{font-weight:700;font-size:1.5rem;white-space:nowrap}
+.price{font-weight:700;font-size:1.4rem;white-space:nowrap}
 .ppm{font-size:.8rem;color:var(--muted);white-space:nowrap}
 .status{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
 .st{font:inherit;font-size:.78rem;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:8px;padding:9px 4px;cursor:pointer}
@@ -75,7 +76,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 .open{font-size:.85rem;font-weight:600;color:var(--accent);text-decoration:none;border:1px solid var(--accent);border-radius:8px;padding:10px;text-align:center;white-space:nowrap}
 .tel{font-size:1.15rem;font-weight:700;color:#fff;background:var(--accent);text-decoration:none;border-radius:8px;padding:11px;text-align:center;white-space:nowrap}
 .open:hover{background:var(--accent-soft)}
-.note{font:inherit;font-size:.85rem;width:100%;padding:9px 10px;box-sizing:border-box;flex:1;min-height:60px}
+.note{font:inherit;font-size:.85rem;width:100%;padding:9px 10px;box-sizing:border-box;flex:1;min-height:40px}
 .empty{background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:28px;text-align:center;color:var(--muted)}
 .more{justify-self:center;font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:8px 16px;cursor:pointer}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:.88rem}
@@ -86,6 +87,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
   .thumb.has-photo img{position:absolute;inset:0}
   .side{text-align:left}
   .det{grid-auto-rows:auto}
+  .facts,.side{height:auto;overflow:visible}
 }
 </style>
 </head><body>
@@ -279,10 +281,10 @@ function rowEl(x){
   const dt = x.details, det = d.querySelector(".det");
   if (dt) {
     const MAIN = ["Όροφος","Έτος κατασκευής","Θέρμανση","Σύστημα θέρμανσης","Ενεργειακή κλάση","Μπάνια","Κατάσταση","Κατασκευή","Πάρκινγκ","Εμβαδόν οικοπέδου"];
-    const tile = (k, v, wide) => { if (!v) return; const e = document.createElement("div"); e.className = "tile" + (wide ? " wide" : ""); const a = document.createElement("span"); a.textContent = k; const b = document.createElement("b"); b.textContent = v; e.append(a, b); det.appendChild(e); };
-    tile("Διεύθυνση", dt.address, true);
-    tile("Δημοσίευση", dt.published); tile("Τελευταία ενημέρωση", dt.updated);
-    (dt.facts || []).filter(([k]) => MAIN.includes(k)).forEach(([k, v]) => tile(k === "Σύστημα θέρμανσης" ? "Θέρμανση" : k, v, v.length > 22));
+    const tile = (k, v, wide) => { if (!v) return; const e = document.createElement("div"); e.className = "tile" + (wide === "full" ? " full" : wide ? " wide" : ""); const a = document.createElement("span"); a.textContent = k; const b = document.createElement("b"); b.textContent = v; e.append(a, b); det.appendChild(e); };
+    tile("Διεύθυνση", dt.address, "full");
+    tile("Δημοσίευση", dt.published); tile("Ενημέρωση", dt.updated);
+    (dt.facts || []).filter(([k]) => MAIN.includes(k)).forEach(([k, v]) => tile(k === "Σύστημα θέρμανσης" ? "Θέρμανση" : k, v, v.length > 14));
   }
   const note = d.querySelector(".note"); note.value = x.note || "";
   note.addEventListener("change", () => save(x.id, { note: note.value.trim() }, "Η σημείωση αποθηκεύτηκε"));
