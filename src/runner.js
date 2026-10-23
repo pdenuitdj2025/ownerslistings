@@ -80,7 +80,7 @@ export async function debugPage(site, url, click, sel, find) {
     const { dismissConsent } = await import("./scrapers/xe.js");
     if (site === "xe") await dismissConsent(page);
     await page.waitForTimeout(3000);
-    if (click) { await page.getByText(click, { exact: true }).first().click({ timeout: 6000, force: true }).catch((e) => console.log("debug click failed", String(e).slice(0, 100))); await page.waitForTimeout(4000); }
+    if (click) { for (const c of String(click).split("|")) { await page.getByText(c, { exact: true }).first().click({ timeout: 6000, force: true }).catch((e) => console.log("debug click failed", String(e).slice(0, 100))); await page.waitForTimeout(3000); } }
     const inputs = await page.locator("input:visible").evaluateAll((els) => els.map((e) => `${e.type}|${e.name}|${e.placeholder}|${e.autocomplete}`));
     const shot = (await page.screenshot({ type: "jpeg", quality: 55 })).toString("base64");
     return { url: page.url(), title: await page.title(), text: (await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 1500), inputs, frames: page.frames().map((f) => f.url().slice(0, 100)), html: sel ? await page.locator(String(sel)).first().evaluate((e) => e.outerHTML.replace(/\s+/g, " ").slice(0, 4000)).catch(() => "no match") : undefined, found: find ? [...(await page.locator("body").innerText()).replace(/\s+/g, " ").matchAll(new RegExp(String(find), "gi"))].slice(0, 12).map((m) => m.input.slice(Math.max(0, m.index - 70), m.index + 110)) : undefined, agencyLinks: await page.locator('a[href*="/mesites/"]').evaluateAll((els) => els.map((e) => e.getAttribute("href")).slice(0, 5)).catch(() => []), cookies: (await context.cookies()).map((c) => c.name).slice(0, 40), shot };
