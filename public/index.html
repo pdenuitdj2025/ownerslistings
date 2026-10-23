@@ -76,7 +76,12 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 .open{font-size:.85rem;font-weight:600;color:var(--accent);text-decoration:none;border:1px solid var(--accent);border-radius:8px;padding:10px;text-align:center;white-space:nowrap}
 .tel{font-size:1.15rem;font-weight:700;color:#fff;background:var(--accent);text-decoration:none;border-radius:8px;padding:11px;text-align:center;white-space:nowrap}
 .open:hover{background:var(--accent-soft)}
-.note{font:inherit;font-size:.85rem;width:100%;padding:9px 10px;box-sizing:border-box;flex:1;min-height:40px}
+.note{font:inherit;font-size:.85rem;width:100%;padding:8px 10px;box-sizing:border-box;height:38px}
+.agent{flex:1;display:grid;align-content:center;gap:4px;text-align:left;border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-height:0;overflow:hidden}
+.ag{display:flex;justify-content:space-between;gap:8px;font-size:.78rem}
+.ag span{color:var(--muted)}
+.ag b{font-weight:600;text-align:right}
+.ag.good b{color:#2f9e63}.ag.bad b{color:#d6604d}
 .empty{background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:28px;text-align:center;color:var(--muted)}
 .more{justify-self:center;font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:8px 16px;cursor:pointer}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:.88rem}
@@ -223,6 +228,16 @@ function filtered(){
 function ago(iso){ if(!iso) return ""; const h = (Date.now() - Date.parse(iso)) / 36e5;
   if (h < 1) return "βρέθηκε πριν <1 ώρα"; if (h < 24) return `βρέθηκε πριν ${Math.floor(h)} ω.`; const d = Math.floor(h/24); return `βρέθηκε πριν ${d} ημ.`; }
 
+const areaOf = x => String(x.location || "").split("(")[0].trim();
+let medCache = null;
+function medians(){
+  if (medCache && medCache.n === rows.length) return medCache.m;
+  const g = {}; rows.forEach(x => { if (x.price && x.sqm && x.sqm > 15) (g[areaOf(x)] ||= []).push(x.price / x.sqm); });
+  const m = {}; Object.entries(g).forEach(([k, a]) => { if (a.length >= 5) { a.sort((p, q) => p - q); m[k] = a[a.length >> 1]; } });
+  medCache = { n: rows.length, m }; return m;
+}
+const parseDate = t => { const m = String(t || "").match(/(\d\d)\/(\d\d)\/(\d{4})/); return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null; };
+const daysAgo = d => d ? Math.max(0, Math.floor((Date.now() - d.getTime()) / 864e5)) : null;
 function render(){
   const all = rows.filter(x => (!els.solo.checked || !x.multi));
   const c = s => all.filter(x => (x.status||"new") === s).length;
@@ -264,6 +279,7 @@ function rowEl(x){
       </div>
       ${x.phone ? `<a class="tel" href="tel:+30${x.phone.replace(/^30/,"")}">📞 ${x.phone.replace(/^30/,"")}</a>` : ""}
       <a class="open" href="${x.url}" target="_blank" rel="noopener">Άνοιγμα αγγελίας στο ${SITE[srcOf(x)]} ↗</a>
+      <div class="agent"></div>
       <input class="note" id="note-${x.id}" placeholder="Σημείωση (τηλέφωνο, αποτέλεσμα κλήσης…)" ${canWrite ? "" : "disabled"}>
     </div>`;
   d.querySelector(".loc a").textContent = x.location || "Αττική";
@@ -286,6 +302,14 @@ function rowEl(x){
     tile("Δημοσίευση", dt.published); tile("Ενημέρωση", dt.updated);
     (dt.facts || []).filter(([k]) => MAIN.includes(k)).forEach(([k, v]) => tile(k === "Σύστημα θέρμανσης" ? "Θέρμανση" : k, v, v.length > 14));
   }
+  const ag = d.querySelector(".agent");
+  const line = (k, v, cls) => { const e = document.createElement("div"); e.className = "ag" + (cls ? " " + cls : ""); const a = document.createElement("span"); a.textContent = k; const b = document.createElement("b"); b.textContent = v; e.append(a, b); ag.appendChild(e); };
+  const med = medians()[areaOf(x)];
+  if (ppm && med) { const dlt = Math.round((ppm / med - 1) * 100); line("€/τ.μ. vs περιοχή", (dlt > 0 ? "+" : "") + dlt + "% (μέσος " + fmt(Math.round(med)) + ")", dlt <= -10 ? "good" : dlt >= 10 ? "bad" : ""); }
+  const pub = parseDate(x.details?.published), upd = parseDate(x.details?.updated);
+  if (pub) line("Στην αγορά", daysAgo(pub) + " ημέρες");
+  if (upd) line("Τελευταία ενημέρωση", daysAgo(upd) === 0 ? "σήμερα" : "πριν " + daysAgo(upd) + " ημ.");
+  if (x.price) line("Προμήθεια 2%", fmt(Math.round(x.price * 0.02)) + " € (+ΦΠΑ)");
   const note = d.querySelector(".note"); note.value = x.note || "";
   note.addEventListener("change", () => save(x.id, { note: note.value.trim() }, "Η σημείωση αποθηκεύτηκε"));
   d.querySelectorAll(".st").forEach(b => b.addEventListener("click", () => {
