@@ -1,6 +1,6 @@
 // Pulls extra facts from an ad page that is already open (Spiti24 / Spitogatos): dates, address, description, characteristics.
 const clean = (s) => String(s || "").replace(/[ \t]+/g, " ").trim();
-const LABELS = new Set(["Περιοχή", "Διεύθυνση", "Ζώνη", "Έτος κατασκευής", "Θέρμανση", "Σύστημα θέρμανσης", "Ενεργειακή κλάση", "Όροφος", "Επίπεδα", "Πάρκινγκ", "Κουζίνες", "Καθιστικά", "Σαλόνια", "Μπάνια", "WC", "Κατάσταση", "Κατασκευή", "Χρήση", "Εμβαδόν οικοπέδου", "Μεσιτική αμοιβή", "Διαθέσιμο από", "Τιμή ανά τ.μ."]);
+const LABELS = new Set(["Περιοχή", "Διεύθυνση", "Ζώνη", "Έτος κατασκευής", "Θέρμανση", "Σύστημα θέρμανσης", "Ενεργειακή κλάση", "Όροφος", "Επίπεδα", "Πάρκινγκ", "Κουζίνες", "Καθιστικά", "Σαλόνια", "Μπάνια", "WC", "Κατάσταση", "Κατασκευή", "Χρήση", "Εμβαδόν οικοπέδου", "Μεσιτική αμοιβή", "Διαθέσιμο από", "Τιμή ανά τ.μ.", "Εμβαδόν", "Κωδικός Συστήματος", "Δημοσίευση αγγελίας", "Τελευταία ενημέρωση", "Κωδικός ακινήτου"]);
 const HEAD = new Set(["Εσωτερικό", "Εξωτερικά χαρακτηριστικά", "Περισσότερα στοιχεία", "Χαρακτηριστικά", "Λεπτομέρειες ακινήτου"]);
 const date = (t, re) => (t.match(re) || [])[1] || "";
 
@@ -22,7 +22,7 @@ export async function extractDetails(page, key) {
     dEnd = idx(/^Χαρακτηριστικά$/, dStart);
     fStart = dEnd + 1; fEnd = idx(/^Τοποθεσία$/, fStart);
   }
-  if (dStart > 0 && dEnd > dStart) out.desc = lines.slice(dStart, dEnd).filter((l) => !/^(Δημοσίευση αγγελίας|Τελευταία [Εε]νημέρωση|Κωδικός)/.test(l)).join(" ").slice(0, 700);
+  if (dStart > 0 && dEnd > dStart) out.desc = lines.slice(dStart, dEnd).filter((l) => !/^(Δημοσίευση αγγελίας|Τελευταία [Εε]νημέρωση|Κωδικός)/.test(l) && !/^[\d/]+$/.test(l)).join(" ").slice(0, 700);
   if (fStart > 0 && fEnd > fStart) {
     const blk = lines.slice(fStart, fEnd);
     for (let i = 0; i < blk.length; i++) {
@@ -31,10 +31,10 @@ export async function extractDetails(page, key) {
       if (LABELS.has(l) && blk[i + 1] !== undefined) { out.facts.push([l, blk[++i]]); continue; }
       const m = [...LABELS].find((x) => l.startsWith(x + " ") && l.length > x.length + 1);   // label and value on one line
       if (m) { out.facts.push([m, l.slice(m.length + 1)]); continue; }
-      if (l.length < 40) out.extras.push(l);
+      if (l.length < 40 && !/^[\d(]|%|Χρηματοδότησέ|^Τιμή/.test(l)) out.extras.push(l);
     }
     const a = out.facts.find(([k]) => k === "Διεύθυνση"); if (a) out.address = a[1];
-    out.facts = out.facts.filter(([k]) => !["Διεύθυνση", "Διαθέσιμο από", "Δημοσίευση αγγελίας", "Τελευταία ενημέρωση", "Τιμή ανά τ.μ."].includes(k));
+    out.facts = out.facts.filter(([k]) => !["Διεύθυνση", "Δημοσίευση αγγελίας", "Τελευταία ενημέρωση", "Τιμή ανά τ.μ.", "Εμβαδόν", "Κωδικός Συστήματος", "Κωδικός ακινήτου"].includes(k));
   }
   if (!out.address && fEnd > 0) { const t = lines[fEnd + 1]; if (t && key === "spitogatos") out.address = lines[fEnd + 2] || ""; }
   out.extras = [...new Set(out.extras)].slice(0, 30);
