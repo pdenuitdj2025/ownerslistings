@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Attica Owner Listings</title>
+<title>Αγγελίες ιδιωτών Αττικής</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Commissioner:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap">
 <style>
@@ -83,66 +83,66 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 <div class="wrap">
   <header>
     <div>
-      <h1>Attica owner listings</h1>
-      <p class="sub" id="sub">Homes for sale posted by private owners on xe.gr, Spitogatos and Spiti24 · one row per home</p>
+      <h1>Αγγελίες ιδιωτών Αττικής</h1>
+      <p class="sub" id="sub">Κατοικίες προς πώληση από ιδιώτες σε xe.gr, Spitogatos και Spiti24 · μία γραμμή ανά ακίνητο</p>
     </div>
     <div class="counts" id="counts"></div>
   </header>
 
-  <section class="filters" aria-label="Filters">
-    <label class="wide" for="q">Area or neighbourhood
-      <input id="q" type="search" placeholder="e.g. Γλυφάδα, Κυψέλη, Πειραιάς" autocomplete="off">
+  <section class="filters" aria-label="Φίλτρα">
+    <label class="wide" for="q">Περιοχή ή γειτονιά
+      <input id="q" type="search" placeholder="π.χ. Γλυφάδα, Κυψέλη, Πειραιάς" autocomplete="off">
     </label>
-    <label class="wide" for="muni">Municipality
-      <select id="muni"><option value="">All of Attica</option></select>
+    <label class="wide" for="muni">Δήμος
+      <select id="muni"><option value="">Όλη η Αττική</option></select>
     </label>
-    <label for="type">Type
-      <select id="type"><option value="">Any</option></select>
+    <label for="type">Τύπος
+      <select id="type"><option value="">Όλοι</option></select>
     </label>
-    <label for="pmin">Min price €
+    <label for="pmin">Ελάχ. τιμή €
       <input id="pmin" type="number" inputmode="numeric" min="0" step="10000" placeholder="0">
     </label>
-    <label for="pmax">Max price €
-      <input id="pmax" type="number" inputmode="numeric" min="0" step="10000" placeholder="any">
+    <label for="pmax">Μέγ. τιμή €
+      <input id="pmax" type="number" inputmode="numeric" min="0" step="10000" placeholder="χωρίς όριο">
     </label>
-    <label for="smin">Min m²
+    <label for="smin">Ελάχ. τ.μ.
       <input id="smin" type="number" inputmode="numeric" min="0" step="5" placeholder="0">
     </label>
-    <label for="smax">Max m²
-      <input id="smax" type="number" inputmode="numeric" min="0" step="5" placeholder="any">
+    <label for="smax">Μέγ. τ.μ.
+      <input id="smax" type="number" inputmode="numeric" min="0" step="5" placeholder="χωρίς όριο">
     </label>
-    <label for="fmin">From floor
-      <select id="fmin"><option value="">Any</option><option value="-1">Basement</option><option value="-0.5">Semi-basement</option><option value="0">Ground floor</option><option value="1">1st floor</option><option value="2">2nd floor</option><option value="3">3rd floor</option><option value="4">4th floor</option><option value="5">5th floor</option><option value="6">6th floor</option><option value="7">7th floor</option><option value="8">8th floor</option><option value="9">9th floor</option><option value="10">10th floor</option></select>
+    <label for="fmin">Από όροφο
+      <select id="fmin"><option value="">Οποιοσδήποτε</option><option value="-1">Υπόγειο</option><option value="-0.5">Ημιυπόγειο</option><option value="0">Ισόγειο</option><option value="1">1ος όροφος</option><option value="2">2ος όροφος</option><option value="3">3ος όροφος</option><option value="4">4ος όροφος</option><option value="5">5ος όροφος</option><option value="6">6ος όροφος</option><option value="7">7ος όροφος</option><option value="8">8ος όροφος</option><option value="9">9ος όροφος</option><option value="10">10ος όροφος</option></select>
     </label>
-    <label for="fmax">To floor
-      <select id="fmax"><option value="">Any</option><option value="-1">Basement</option><option value="-0.5">Semi-basement</option><option value="0">Ground floor</option><option value="1">1st floor</option><option value="2">2nd floor</option><option value="3">3rd floor</option><option value="4">4th floor</option><option value="5">5th floor</option><option value="6">6th floor</option><option value="7">7th floor</option><option value="8">8th floor</option><option value="9">9th floor</option><option value="10">10th floor</option></select>
+    <label for="fmax">Έως όροφο
+      <select id="fmax"><option value="">Οποιοσδήποτε</option><option value="-1">Υπόγειο</option><option value="-0.5">Ημιυπόγειο</option><option value="0">Ισόγειο</option><option value="1">1ος όροφος</option><option value="2">2ος όροφος</option><option value="3">3ος όροφος</option><option value="4">4ος όροφος</option><option value="5">5ος όροφος</option><option value="6">6ος όροφος</option><option value="7">7ος όροφος</option><option value="8">8ος όροφος</option><option value="9">9ος όροφος</option><option value="10">10ος όροφος</option></select>
     </label>
-    <label for="src">Site
-      <select id="src"><option value="">All sites</option><option value="xe">xe.gr</option><option value="spitogatos">Spitogatos</option><option value="spiti24">Spiti24</option></select>
+    <label for="src">Ιστότοπος
+      <select id="src"><option value="">Όλοι οι ιστότοποι</option><option value="xe">xe.gr</option><option value="spitogatos">Spitogatos</option><option value="spiti24">Spiti24</option></select>
     </label>
-    <label for="sort">Sort
+    <label for="sort">Ταξινόμηση
       <select id="sort">
-        <option value="seen">Newest first</option>
-        <option value="price_asc">Price ↑</option>
-        <option value="price_desc">Price ↓</option>
-        <option value="ppm_asc">€/m² ↑</option>
+        <option value="seen">Νεότερες πρώτα</option>
+        <option value="price_asc">Τιμή ↑</option>
+        <option value="price_desc">Τιμή ↓</option>
+        <option value="ppm_asc">€/τ.μ. ↑</option>
       </select>
     </label>
   </section>
 
-  <div class="tabs" role="group" aria-label="Status">
-    <button class="tab" data-tab="new" aria-pressed="true">To review</button>
-    <button class="tab" data-tab="contacted" aria-pressed="false">Contacted</button>
-    <button class="tab" data-tab="skip" aria-pressed="false">Not interested</button>
-    <button class="tab" data-tab="all" aria-pressed="false">All</button>
+  <div class="tabs" role="group" aria-label="Κατάσταση">
+    <button class="tab" data-tab="new" aria-pressed="true">Προς έλεγχο</button>
+    <button class="tab" data-tab="contacted" aria-pressed="false">Επικοινωνήσαμε</button>
+    <button class="tab" data-tab="skip" aria-pressed="false">Δεν ενδιαφέρει</button>
+    <button class="tab" data-tab="all" aria-pressed="false">Όλες</button>
     <span class="spacer"></span>
-    <label class="check" for="solo"><input id="solo" type="checkbox" checked> Owner-only (hide grouped ads with agents)</label>
+    <label class="check" for="solo"><input id="solo" type="checkbox" checked> Μόνο ιδιώτες (απόκρυψη ομαδοποιημένων αγγελιών με μεσίτες)</label>
   </div>
 
   <div class="list" id="list">
-    <div class="empty" id="empty">Loading listings… New private-owner ads appear here after each check.</div>
+    <div class="empty" id="empty">Φόρτωση αγγελιών… Οι νέες αγγελίες ιδιωτών εμφανίζονται εδώ μετά από κάθε έλεγχο.</div>
   </div>
-  <button class="more" id="more" hidden>Show more</button>
+  <button class="more" id="more" hidden>Περισσότερα</button>
 </div>
 <div class="toast" id="toast" hidden></div>
 
@@ -209,30 +209,30 @@ function filtered(){
 }
 
 function ago(iso){ if(!iso) return ""; const h = (Date.now() - Date.parse(iso)) / 36e5;
-  if (h < 1) return "found <1h ago"; if (h < 24) return `found ${Math.floor(h)}h ago`; const d = Math.floor(h/24); return `found ${d}d ago`; }
+  if (h < 1) return "βρέθηκε πριν <1 ώρα"; if (h < 24) return `βρέθηκε πριν ${Math.floor(h)} ω.`; const d = Math.floor(h/24); return `βρέθηκε πριν ${d} ημ.`; }
 
 function render(){
   const all = rows.filter(x => !els.solo.checked || !x.multi);
   const c = s => all.filter(x => (x.status||"new") === s).length;
   const fresh = all.filter(x => (x.status||"new")==="new" && x.firstSeen && Date.now()-Date.parse(x.firstSeen) < 864e5).length;
-  els.counts.innerHTML = `<span class="count"><b>${fresh}</b>new today</span><span class="count"><b>${c("new")}</b>to review</span><span class="count"><b>${c("contacted")}</b>contacted</span>`;
+  els.counts.innerHTML = `<span class="count"><b>${fresh}</b>νέες σήμερα</span><span class="count"><b>${c("new")}</b>προς έλεγχο</span><span class="count"><b>${c("contacted")}</b>επικοινωνήσαμε</span>`;
   const r = filtered();
   els.list.querySelectorAll(".row").forEach(n => n.remove());
   if (!rows.length) { els.empty.hidden = false; els.more.hidden = true; return; }
   els.empty.hidden = r.length > 0;
-  if (!r.length) els.empty.textContent = "No listings match these filters. Try clearing the area or price.";
+  if (!r.length) els.empty.textContent = "Καμία αγγελία δεν ταιριάζει με αυτά τα φίλτρα. Δοκίμασε να καθαρίσεις την περιοχή ή την τιμή.";
   const frag = document.createDocumentFragment();
   for (const x of r.slice(0, shown)) frag.appendChild(rowEl(x));
   els.list.appendChild(frag);
   els.more.hidden = r.length <= shown;
-  els.more.textContent = `Show more (${r.length - shown} left)`;
+  els.more.textContent = `Περισσότερα (απομένουν ${r.length - shown})`;
 }
 
 function rowEl(x){
   const st = x.status || "new";
   const d = document.createElement("article");
   d.className = "row" + (st === "new" && x.firstSeen && Date.now()-Date.parse(x.firstSeen) < 864e5 ? " is-new" : "");
-  const img = `<div class="thumb" aria-hidden="true"><b>${x.sqm ?? "–"}</b><span>m²</span></div>`;
+  const img = `<div class="thumb" aria-hidden="true"><b>${x.sqm ?? "–"}</b><span>τ.μ.</span></div>`;
   const ppm = x.price && x.sqm ? Math.round(x.price / x.sqm) : null;
   d.innerHTML = `${img}
     <div class="facts">
@@ -241,32 +241,32 @@ function rowEl(x){
       <div class="meta"></div>
     </div>
     <div class="side">
-      <div><div class="price">${fmt(x.price)} €</div>${x.prevPrice ? `<div class="ppm" style="color:#2f7d4f;font-weight:600">↓ from ${fmt(x.prevPrice)} €</div>` : ""}${ppm ? `<div class="ppm">${fmt(ppm)} €/m²</div>` : ""}</div>
+      <div><div class="price">${fmt(x.price)} €</div>${x.prevPrice ? `<div class="ppm" style="color:#2f7d4f;font-weight:600">↓ από ${fmt(x.prevPrice)} €</div>` : ""}${ppm ? `<div class="ppm">${fmt(ppm)} €/τ.μ.</div>` : ""}</div>
       <div class="status">
-        <button class="st" data-s="new" aria-pressed="${st==="new"}">To review</button>
-        <button class="st" data-s="contacted" aria-pressed="${st==="contacted"}">Contacted</button>
-        <button class="st" data-s="skip" aria-pressed="${st==="skip"}">Skip</button>
+        <button class="st" data-s="new" aria-pressed="${st==="new"}">Προς έλεγχο</button>
+        <button class="st" data-s="contacted" aria-pressed="${st==="contacted"}">Επικοινωνήσαμε</button>
+        <button class="st" data-s="skip" aria-pressed="${st==="skip"}">Παράλειψη</button>
       </div>
-      <a class="open" href="${x.url}" target="_blank" rel="noopener">Open ad on ${SITE[srcOf(x)]} ↗</a>
-      <input class="note" id="note-${x.id}" placeholder="Note (phone, call result…)" ${canWrite ? "" : "disabled"}>
+      <a class="open" href="${x.url}" target="_blank" rel="noopener">Άνοιγμα αγγελίας στο ${SITE[srcOf(x)]} ↗</a>
+      <input class="note" id="note-${x.id}" placeholder="Σημείωση (τηλέφωνο, αποτέλεσμα κλήσης…)" ${canWrite ? "" : "disabled"}>
     </div>`;
-  d.querySelector(".loc a").textContent = x.location || "Attica";
-  const spec = [x.type && x.sqm ? `${x.type} ${x.sqm} m²` : x.type, x.beds ? `${x.beds} bed` : "", x.floor ? `floor ${x.floor}` : "", x.year ? `built ${x.year}` : ""].filter(Boolean);
+  d.querySelector(".loc a").textContent = x.location || "Αττική";
+  const spec = [x.type && x.sqm ? `${x.type} ${x.sqm} τ.μ.` : x.type, x.beds ? `${x.beds} υ/δ` : "", x.floor ? `όροφος ${x.floor}` : "", x.year ? `έτος ${x.year}` : ""].filter(Boolean);
   spec.forEach(t => { const s = document.createElement("span"); s.textContent = t; d.querySelector(".spec").appendChild(s); });
   const meta = d.querySelector(".meta");
   meta.insertAdjacentHTML("beforeend", `<span class="pill site">${SITE[srcOf(x)]}</span>`);
   if (x.alsoOn && x.alsoOn.length) {
-    const also = document.createElement("span"); also.className = "also"; also.append("Also on ");
+    const also = document.createElement("span"); also.className = "also"; also.append("Και σε ");
     x.alsoOn.forEach((a, i) => { if (i) also.append(", "); const l = document.createElement("a"); l.href = a.url; l.target = "_blank"; l.rel = "noopener"; l.textContent = a.site + " ↗"; also.appendChild(l); });
     meta.appendChild(also);
   }
-  meta.insertAdjacentHTML("beforeend", x.multi ? `<span class="pill multi">Grouped · owner + others</span>` : `<span class="pill">Owner ad</span>`);
-  const m = document.createElement("span"); m.textContent = [x.posted ? `posted ${x.posted.toLowerCase()}` : "", ago(x.firstSeen)].filter(Boolean).join(" · "); meta.appendChild(m);
+  meta.insertAdjacentHTML("beforeend", x.multi ? `<span class="pill multi">Ομαδοποιημένη · ιδιώτης + άλλοι</span>` : `<span class="pill">Αγγελία ιδιώτη</span>`);
+  const m = document.createElement("span"); m.textContent = [x.posted ? `δημοσιεύτηκε ${x.posted.toLowerCase()}` : "", ago(x.firstSeen)].filter(Boolean).join(" · "); meta.appendChild(m);
   const note = d.querySelector(".note"); note.value = x.note || "";
-  note.addEventListener("change", () => save(x.id, { note: note.value.trim() }, "Note saved"));
+  note.addEventListener("change", () => save(x.id, { note: note.value.trim() }, "Η σημείωση αποθηκεύτηκε"));
   d.querySelectorAll(".st").forEach(b => b.addEventListener("click", () => {
     if (b.getAttribute("aria-pressed") === "true") return;
-    save(x.id, { status: b.dataset.s }, b.dataset.s === "contacted" ? "Marked contacted" : b.dataset.s === "skip" ? "Marked not interested" : "Moved back to review");
+    save(x.id, { status: b.dataset.s }, b.dataset.s === "contacted" ? "Σημειώθηκε: επικοινωνήσαμε" : b.dataset.s === "skip" ? "Σημειώθηκε: δεν ενδιαφέρει" : "Επέστρεψε στον έλεγχο");
   }));
   if (!canWrite) d.querySelectorAll(".st").forEach(b => b.disabled = true);
   return d;
@@ -278,7 +278,7 @@ async function save(id, patch, msg){
     if (!r.ok) throw new Error(r.status);
     const x = rows.find(v => v.id === id); if (x) Object.assign(x, patch);
     toast(msg); if (patch.status) render();
-  } catch (e) { toast("Couldn't save. Check your connection and try again."); }
+  } catch (e) { toast("Δεν αποθηκεύτηκε. Έλεγξε τη σύνδεσή σου και ξαναδοκίμασε."); }
 }
 
 function boot(){
@@ -294,7 +294,7 @@ function applyRows(list){
   rows = list;
   fillSelect(els.muni, [...new Set(rows.map(r => muniOf(r.location)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"el")));
   fillSelect(els.type, [...new Set(rows.map(r => r.type).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"el")));
-  if (!rows.length) els.empty.textContent = "No listings yet. The first daily check fills this list with private-owner homes for sale across Attica.";
+  if (!rows.length) els.empty.textContent = "Δεν υπάρχουν αγγελίες ακόμα. Ο πρώτος ημερήσιος έλεγχος θα γεμίσει τη λίστα με κατοικίες ιδιωτών προς πώληση στην Αττική.";
   render();
 }
 async function load(){
@@ -305,14 +305,14 @@ async function load(){
     applyRows(l);
     const run = m.run || {};
     const NAME = { xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
-    const WHY = { login: "needs sign-in", captcha: "blocked by a bot check", empty: "no ads read", error: "check failed" };
-    const warn = Object.entries(m.sites || {}).filter(([, s]) => s.status && s.status !== "ok").map(([k, s]) => `${NAME[k] || k} ${WHY[s.status] || "check failed"}`);
+    const WHY = { login: "απαιτεί σύνδεση", captcha: "μπλοκαρίστηκε από έλεγχο ρομπότ", empty: "δεν διαβάστηκαν αγγελίες", error: "ο έλεγχος απέτυχε" };
+    const warn = Object.entries(m.sites || {}).filter(([, s]) => s.status && s.status !== "ok").map(([k, s]) => `${NAME[k] || k} ${WHY[s.status] || "ο έλεγχος απέτυχε"}`);
     if (run.lastCheck) {
-      const t = new Date(run.lastCheck).toLocaleString("en-GB", { weekday:"short", day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit", timeZone:"Europe/Athens" });
-      els.sub.textContent = `Private-owner homes on xe.gr, Spitogatos and Spiti24 · one row per home · last check ${t}, ${run.lastNew ?? 0} new`;
+      const t = new Date(run.lastCheck).toLocaleString("el-GR", { weekday:"short", day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit", timeZone:"Europe/Athens" });
+      els.sub.textContent = `Κατοικίες ιδιωτών σε xe.gr, Spitogatos και Spiti24 · μία γραμμή ανά ακίνητο · τελευταίος έλεγχος ${t}, ${run.lastNew ?? 0} νέες`;
       els.sub.title = warn.join(" · ");   // details only on hover, not shown in the header
     }
-  } catch (e) { if (!rows.length) els.empty.textContent = "The list couldn't load. Reload the page to try again."; }
+  } catch (e) { if (!rows.length) els.empty.textContent = "Η λίστα δεν φορτώθηκε. Ξαναφόρτωσε τη σελίδα."; }
 }
 load(); setInterval(load, 60000);
 </script>

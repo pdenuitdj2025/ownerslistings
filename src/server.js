@@ -22,11 +22,11 @@ const cookieOf = (req, name) => (req.headers.cookie || "").split(/;\s*/).map((c)
 const LOGIN = (msg = "") => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign in</title>
 <style>body{font-family:system-ui,sans-serif;background:#f5f6f4;display:grid;place-items:center;min-height:100vh;margin:0}form{background:#fff;padding:28px;border-radius:12px;box-shadow:0 2px 14px #0001;width:min(340px,90vw)}
 h1{font-size:18px;margin:0 0 14px}input,button{width:100%;padding:11px;font-size:16px;margin-top:10px;box-sizing:border-box;border-radius:8px;border:1px solid #ccd}button{background:#1f5f8b;color:#fff;border:0;cursor:pointer}p{color:#b3261e;margin:8px 0 0}</style>
-<form method="post" action="/login"><h1>Attica owner listings</h1><input type="password" name="password" placeholder="Team password" autofocus required><button>Sign in</button>${msg ? `<p>${msg}</p>` : ""}</form>`;
+<form method="post" action="/login"><h1>Αγγελίες ιδιωτών Αττικής</h1><input type="password" name="password" placeholder="Κωδικός ομάδας" autofocus required><button>Σύνδεση</button>${msg ? `<p>${msg}</p>` : ""}</form>`;
 app.use(express.urlencoded({ extended: false }));
 app.get("/login", (_q, r) => r.send(LOGIN()));
 app.post("/login", (req, res) => {
-  if (!eq(String(req.body.password || ""), PASSWORD)) return res.status(401).send(LOGIN("Wrong password"));
+  if (!eq(String(req.body.password || ""), PASSWORD)) return res.status(401).send(LOGIN("Λάθος κωδικός"));
   res.set("Set-Cookie", `auth=${TOKEN}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 90}`).redirect("/");
 });
 app.use((req, res, next) => {
