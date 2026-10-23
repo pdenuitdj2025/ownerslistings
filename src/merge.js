@@ -30,8 +30,13 @@ export async function mergeAds(ads) {
   for (const ad of ads) { try {
     if (!ad.sqm || !ad.price || ad.price < 10000 || ad.price > 200_000_000 || ad.sqm > 100000) continue;   // typos / mis-parsed cards
     if (ad.beds > 100) ad.beds = null; if (ad.year && (ad.year < 1800 || ad.year > 2100)) ad.year = null;
+    if (ad.img === false) {   // no photo: the team doesn't want these. If it was already listed, hide it.
+      await pool.query("UPDATE listings SET img=false WHERE id=$1", [ad.id]);
+      continue;
+    }
     if (ids.has(ad.id)) {   // already listed: only react to a price drop (>1 %), and put a skipped home back in the review list
       const e = existing.find((x) => x.id === ad.id);
+      if (e && ad.img === true && e.img !== true) await pool.query("UPDATE listings SET img=true WHERE id=$1", [e.id]);
       if (e && e.gone_at) { await pool.query("UPDATE listings SET gone_at=NULL, checked_at=now() WHERE id=$1", [e.id]); e.gone_at = null; }   // it is back on the market
       if (e && e.price && ad.price < e.price * 0.99) {
         await pool.query(`UPDATE listings SET prev_price=$2, price=$3, status=CASE WHEN status='skip' THEN 'new' ELSE status END WHERE id=$1`, [e.id, e.price, ad.price]);
@@ -53,9 +58,9 @@ export async function mergeAds(ads) {
       continue;
     }
     await pool.query(
-      `INSERT INTO listings(id,source,url,type,sqm,price,floor,beds,year,location,multi,posted)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT DO NOTHING`,
-      [ad.id, ad.source, ad.url, ad.type, ad.sqm, ad.price, ad.floor || "", ad.beds || null, ad.year || null, ad.location || "", !!ad.multi, ad.posted || ""]
+      `INSERT INTO listings(id,source,url,type,sqm,price,floor,beds,year,location,multi,posted,img)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT DO NOTHING`,
+      [ad.id, ad.source, ad.url, ad.type, ad.sqm, ad.price, ad.floor || "", ad.beds || null, ad.year || null, ad.location || "", !!ad.multi, ad.posted || "", ad.img === true ? true : null]
     );
     existing.push({ ...ad, alsoOn: [] }); ids.add(ad.id); urls.add(ad.url); created++;
     createdList.push(ad);

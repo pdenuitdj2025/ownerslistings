@@ -19,6 +19,7 @@ export async function init() {
       also_on jsonb NOT NULL DEFAULT '[]'
     );
     ALTER TABLE listings ADD COLUMN IF NOT EXISTS prev_price integer;
+    ALTER TABLE listings ADD COLUMN IF NOT EXISTS img boolean;
     ALTER TABLE listings ADD COLUMN IF NOT EXISTS gone_at timestamptz;
     ALTER TABLE listings ADD COLUMN IF NOT EXISTS checked_at timestamptz;
     CREATE TABLE IF NOT EXISTS kv (k text PRIMARY KEY, v jsonb NOT NULL);

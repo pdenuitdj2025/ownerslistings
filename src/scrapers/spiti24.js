@@ -7,10 +7,15 @@ export async function scrapeSpiti24(page) {
     const out = [];
     const ATH = ["Κυψέλη", "Αμπελόκηποι - Πεντάγωνο", "Λεωφόρος Πατησίων - Λεωφόρος Αχαρνών", "Ιλίσια", "Κολωνός - Κολοκυνθούς", "Παγκράτι", "Πετράλωνα", "Πολύγωνο - Τουρκοβούνια", "Νέος Κόσμος", "Μετς - Καλλιμάρμαρο", "Κουκάκι - Μακρυγιάννη", "Εξάρχεια - Νεάπολη", "Γκύζη - Πεδίον Άρεως", "Κολωνάκι - Λυκαβηττός", "Πατήσια", "Άνω Πατήσια", "Σεπόλια - Σκουζέ", "Γκάζι - Μεταξουργείο - Βοτανικός", "Κέντρο"];
     const PIR = ["Κέντρο - Λιμάνι", "Καστέλλα - Πασαλιμάνι", "Καλλίπολη – Φρεαττύδα", "Πειραϊκή - Χατζηκυριάκειο"];
-    for (let p = 1; p <= 5; p++) {
+    let prevFirst = "";
+    for (let p = 1; p <= 25; p++) {
       const h = await (await fetch("/pwliseis/katoikies/attiki-nomos/apo-idiotes?sortBy=datemodified%7Cdesc" + (p > 1 ? "&page=" + p : ""))).text();
       const d = new DOMParser().parseFromString(h, "text/html");
-      for (const r of d.querySelectorAll(".property[id^=result-row]")) {
+      const rowsOnPage = d.querySelectorAll(".property[id^=result-row]");
+      if (!rowsOnPage.length) break;
+      const firstId = rowsOnPage[0].id; if (firstId === prevFirst) break;   // the site repeated the last page
+      prevFirst = firstId;
+      for (const r of rowsOnPage) {
         if (!r.querySelector('[title="Αγγελία από ιδιώτη"]')) continue;
         const id = (r.dataset.targeturl || "").match(/(\d{6,})/)?.[1]; if (!id) continue;
         const P = [...r.querySelectorAll(".property__title__parts li")].map((l) => l.textContent.replace(/\s+/g, " ").trim());
@@ -23,6 +28,7 @@ export async function scrapeSpiti24(page) {
           type: t.replace(/\s*[\d.]+\s*m2.*$/, "").trim(), sqm: +((t.match(/([\d.]+)\s*m2/) || [])[1] || "").replace(/\./g, "") || null,
           price: +(r.querySelector(".property__price")?.textContent || "").replace(/\D/g, "") || null, floor: "",
           beds: +b?.textContent.trim() || null, year: null, location: ho.length ? `${mu} (${ho.join(", ")})` : mu, multi: false, posted: "",
+          img: /spitogatos\.gr\/\d{5,}_/.test(r.querySelector("img")?.getAttribute("data-src") || r.querySelector("img")?.getAttribute("src") || ""),
         });
       }
       await new Promise((r) => setTimeout(r, 1200));

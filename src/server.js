@@ -38,7 +38,7 @@ app.use((req, res, next) => {
 });
 
 app.get("/api/listings", async (_q, res) => {
-  const { rows } = await pool.query("SELECT * FROM listings ORDER BY first_seen DESC");
+  const { rows } = await pool.query("SELECT * FROM listings WHERE img IS NOT FALSE ORDER BY first_seen DESC");
   res.json(rows.map(toApi));
 });
 app.patch("/api/listings/:id", async (req, res) => {

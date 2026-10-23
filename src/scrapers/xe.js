@@ -29,7 +29,9 @@ export async function dismissConsent(page) {
 const URL = "https://www.xe.gr/property/results?item_type=residence&transaction_name=buy&publication_origins%5B%5D=false&country=GR&geo_place_ids%5B%5D=ChIJUwsYu2cPnxQRkIC54iy9AAE&sorting=publication_date_desc";
 export async function scrapeXe(page) {
   const out = [];
-  for (let p = 1; p <= 5; p++) {
+  const ageDays = (t) => /Σήμερα|λεπτ|ώρ/.test(t) ? 0 : /Χθες/.test(t) ? 1 : (t.match(/Πριν\s+(\d+)\s+(ημέρ|μέρ)/) ? +t.match(/Πριν\s+(\d+)/)[1] : /εβδομ|μήν|μην|έτ/.test(t) ? 99 : 0);
+  const days = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Athens" })).getHours() < 16 ? 2 : 1;
+  for (let p = 1; p <= 20; p++) {
     await page.goto(URL + "&page=" + p, { waitUntil: "domcontentloaded" });
     await guardCaptcha(page, "xe.gr");
     await dismissConsent(page);
@@ -53,10 +55,12 @@ export async function scrapeXe(page) {
         year: +(lines.find((l) => /^(19|20)\d\d$/.test(l)) || 0) || null,
         location: fi > 0 ? lines[fi - 1] : "", multi: /Πολλαπλές/.test(flag),
         posted: lines.find((l) => /^Πριν|Σήμερα|Χθες/.test(l)) || "",
+        img: !!c.querySelector('img[src*="blob.cdn.xe.gr"]'),
       };
     }).filter((x) => x.id && x.price));
     out.push(...ads);
     if (!ads.length) break;
+    const last = ads[ads.length - 1]; if (p >= 3 && ageDays(last.posted || "") > days) break;   // gone back far enough: older ads were handled by earlier runs
   }
   return out;
 }
