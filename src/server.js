@@ -56,7 +56,7 @@ app.post("/api/run", async (_q, res) => {
   res.json({ started });
 });
 
-app.get("/api/debug", async (req, res) => { try { res.json(await debugPage(String(req.query.site || "xe"), String(req.query.url), req.query.click ? String(req.query.click) : undefined)); } catch (e) { res.status(500).json({ error: String(e) }); } });
+app.get("/api/debug", async (req, res) => { try { res.json(await debugPage(String(req.query.site || "xe"), String(req.query.url), req.query.click ? String(req.query.click) : undefined, req.query.sel ? String(req.query.sel) : undefined, req.query.find ? String(req.query.find) : undefined)); } catch (e) { res.status(500).json({ error: String(e) }); } });
 
 // Ads read elsewhere (e.g. Indomio / Plot, which block server IPs) are posted here and merged like any other source.
 app.post("/api/ingest", async (req, res) => {
