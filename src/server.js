@@ -50,7 +50,11 @@ app.patch("/api/listings/:id", async (req, res) => {
   res.status(r.rowCount ? 200 : 404).json({ ok: !!r.rowCount });
 });
 app.get("/api/meta", async (_q, res) => res.json({ run: await kvGet("run"), sites: (await kvGet("sites")) || {}, running: isRunning() }));
-app.post("/api/run", (_q, res) => { if (!isRunning()) runAll().catch((e) => console.error(e)); res.json({ started: !isRunning() }); });
+app.post("/api/run", async (_q, res) => {
+  const started = !isRunning();
+  if (started) { await kvSet("lastScheduledSlot", dueSlot()).catch(() => {}); runAll().catch((e) => console.error(e)); }   // a manual run counts as the current slot
+  res.json({ started });
+});
 
 app.get("/api/debug", async (req, res) => { try { res.json(await debugPage(String(req.query.site || "xe"), String(req.query.url), req.query.click ? String(req.query.click) : undefined)); } catch (e) { res.status(500).json({ error: String(e) }); } });
 
@@ -88,6 +92,13 @@ app.listen(process.env.PORT || 3000, () => console.log("listening"));
 
 // Schedule: one run at each hour in RUN_HOURS (Athens time), 10:00 and 22:00 by default. The first run of the day also re-checks which listed ads are still online.
 const athensKey = () => new Date().toLocaleString("sv-SE", { timeZone: "Europe/Athens" });   // "YYYY-MM-DD HH:MM:SS"
+function dueSlot() {
+  const k = athensKey(), hour = +k.slice(11, 13);
+  const due = RUN_HOURS.filter((h) => h <= hour).pop();
+  return due === undefined ? null : `${k.slice(0, 10)} ${due}`;
+}
+// After a restart or deploy, don't "catch up" a slot if a run happened recently.
+(async () => { try { const r = await kvGet("run"); if (r?.lastCheck && Date.now() - Date.parse(r.lastCheck) < 12 * 36e5 && dueSlot()) await kvSet("lastScheduledSlot", dueSlot()); } catch {} })();
 setInterval(async () => {
   const k = athensKey(), day = k.slice(0, 10), hour = +k.slice(11, 13);
   const due = RUN_HOURS.filter((h) => h <= hour).pop();
