@@ -54,7 +54,7 @@ export async function verifySite(page, key) {
     return { checked, gone: 0, suspicious: true };
   }
   if (alive.length) await pool.query("UPDATE listings SET checked_at=now() WHERE id = ANY($1)", [alive]);
-  if (gone.length) await pool.query("UPDATE listings SET checked_at=now(), gone_at=now() WHERE id = ANY($1)", [gone]);
+  if (gone.length) await pool.query("DELETE FROM listings WHERE id = ANY($1)", [gone]);   // off the market: remove it from the list
   console.log(`[verify ${key}] checked ${checked}, gone ${gone.length}, unclear ${unknown}`);
   return { checked, gone: gone.length, unclear: unknown };
 }
