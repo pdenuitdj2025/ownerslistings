@@ -8,6 +8,7 @@ import { scrapeSpiti24 } from "./scrapers/spiti24.js";
 import { scrapeXe, dismissConsent } from "./scrapers/xe.js";
 import { scrapeSpitogatos, readPages, AREAS as SG_AREAS } from "./scrapers/spitogatos.js";
 import { verifySite } from "./verify.js";
+import { phoneSite, revealPhone } from "./phone.js";
 
 // Optional proxy (env PROXY_URL, e.g. http://user:pass@host:port) used ONLY for sites that block datacenter addresses.
 function proxyOpt() {
@@ -25,7 +26,7 @@ const SITES = [
 let running = false;
 export const isRunning = () => running;
 
-export async function runAll({ verify = true, enrich = false } = {}) {
+export async function runAll({ verify = true, enrich = false, phones = false } = {}) {
   if (running) return { skipped: true };
   running = true;
   const started = new Date().toISOString();
@@ -41,6 +42,13 @@ export async function runAll({ verify = true, enrich = false } = {}) {
         page = await context.newPage();
         page.setDefaultTimeout(30000);
         if (s.login) await ensureLogin(page, context, { site: s.key, label: s.label, ...s.login });
+        if (phones) {   // phone backfill only
+          const e = await phoneSite(page, s.key, { limit: 2000 });
+          if (s.login) await saveState(s.key, context);
+          sites[s.key] = { ...(sites[s.key] || {}), phones: { ...e, at: new Date().toISOString() } };
+          await kvSet("sites", sites);
+          continue;
+        }
         if (enrich) {   // backfill only: open listed ads that have no photo link yet; no scraping of the lists
           const e = await verifySite(page, s.key, { mode: "photos" });
           if (s.login) await saveState(s.key, context);
@@ -56,6 +64,7 @@ export async function runAll({ verify = true, enrich = false } = {}) {
         totalNew += created; totalMerged += merged;
         sites[s.key] = { status: "ok", at: new Date().toISOString(), scraped: ads.length, created, merged, dropped };
         if (verify) try { sites[s.key].verified = await verifySite(page, s.key); } catch (e) { console.error(`[${s.label}] verify failed: ${e.message}`); sites[s.key].verified = { error: e.message.slice(0, 120) }; }
+        try { sites[s.key].phones = { ...(await phoneSite(page, s.key, { limit: 40 })), at: new Date().toISOString() }; } catch (e) { console.error(`[${s.label}] phones failed: ${e.message}`); }
         console.log(`[${s.label}] scraped ${ads.length}, new ${created}, merged ${merged}, price drops ${dropped}`);
       } catch (e) {
         console.error(`[${s.label}] ${e.message}`);
@@ -110,7 +119,7 @@ export async function runSweep() {
 }
 
 // Debug helper (team-password protected): opens a URL with the saved session of a site and reports what is on screen.
-export async function debugPage(site, url, click, sel, find, dump) {
+export async function debugPage(site, url, click, sel, find, dump, phone) {
   const s = SITES.find((x) => x.key === site) || SITES[0];
   const browser = await chromium.launch({ headless: true, args: ["--no-sandbox", "--disable-blink-features=AutomationControlled"] });
   try {
@@ -122,6 +131,7 @@ export async function debugPage(site, url, click, sel, find, dump) {
     const { dismissConsent } = await import("./scrapers/xe.js");
     if (site === "xe") await dismissConsent(page);
     await page.waitForTimeout(3000);
+    if (phone) { const p = await revealPhone(page); return { phone: p ? p.replace(/\d(?=\d{3})/g, "#") : null, len: p ? p.length : 0 }; }
     if (click) { for (const c of String(click).split("|")) { await page.getByText(c.startsWith("~") ? c.slice(1) : c, { exact: !c.startsWith("~") }).first().click({ timeout: 6000, force: true }).catch((e) => console.log("debug click failed", String(e).slice(0, 100))); await page.waitForTimeout(3000); } }
     const inputs = await page.locator("input:visible").evaluateAll((els) => els.map((e) => `${e.type}|${e.name}|${e.placeholder}|${e.autocomplete}`));
     const shot = (await page.screenshot({ type: "jpeg", quality: 55 })).toString("base64");

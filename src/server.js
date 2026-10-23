@@ -51,6 +51,7 @@ app.patch("/api/listings/:id", async (req, res) => {
 });
 app.get("/api/meta", async (_q, res) => res.json({ run: await kvGet("run"), sites: (await kvGet("sites")) || {}, sweep: await kvGet("sweep"), running: isRunning() }));
 app.get("/api/hidden", async (_q, res) => { const { rows } = await pool.query("SELECT id, source, url, price, sqm, location, checked_at FROM listings WHERE img = false ORDER BY checked_at DESC LIMIT 400"); res.json(rows); });
+app.post("/api/phones", (_q, res) => { const started = !isRunning(); if (started) runAll({ phones: true }).catch((e) => console.error(e)); res.json({ started }); });
 app.post("/api/enrich", (_q, res) => { const started = !isRunning(); if (started) runAll({ enrich: true }).catch((e) => console.error(e)); res.json({ started }); });
 app.post("/api/sweep", (_q, res) => { const started = !isRunning(); if (started) runSweep().catch((e) => console.error(e)); res.json({ started }); });
 app.post("/api/run", async (_q, res) => {
@@ -59,7 +60,7 @@ app.post("/api/run", async (_q, res) => {
   res.json({ started });
 });
 
-app.get("/api/debug", async (req, res) => { try { res.json(await debugPage(String(req.query.site || "xe"), String(req.query.url), req.query.click ? String(req.query.click) : undefined, req.query.sel ? String(req.query.sel) : undefined, req.query.find ? String(req.query.find) : undefined, req.query.dump ? String(req.query.dump) : undefined)); } catch (e) { res.status(500).json({ error: String(e) }); } });
+app.get("/api/debug", async (req, res) => { try { res.json(await debugPage(String(req.query.site || "xe"), String(req.query.url), req.query.click ? String(req.query.click) : undefined, req.query.sel ? String(req.query.sel) : undefined, req.query.find ? String(req.query.find) : undefined, req.query.dump ? String(req.query.dump) : undefined, !!req.query.phone)); } catch (e) { res.status(500).json({ error: String(e) }); } });
 
 // Ads read elsewhere (e.g. Indomio / Plot, which block server IPs) are posted here and merged like any other source.
 app.post("/api/ingest", async (req, res) => {

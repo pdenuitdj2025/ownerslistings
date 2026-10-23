@@ -29,7 +29,7 @@ export async function verifySite(page, key, { mode } = {}) {
     if (alive.length) await pool.query("UPDATE listings SET checked_at=now() WHERE id = ANY($1)", [alive]);
     if (withPhoto.length) await pool.query("UPDATE listings SET img=true WHERE id = ANY($1)", [withPhoto]);
     for (const [id, url] of Object.entries(photoUrl)) await pool.query("UPDATE listings SET photo=$2 WHERE id=$1 AND photo IS NULL", [id, url]);
-    if (noPhoto.length) await pool.query("UPDATE listings SET img=false WHERE id = ANY($1)", [noPhoto]);   // hidden; shows again if a list later shows a photo
+    if (noPhoto.length) await pool.query("DELETE FROM listings WHERE id = ANY($1)", [noPhoto]);   // no photo: removed
     alive.length = 0; withPhoto.length = 0; noPhoto.length = 0; for (const k of Object.keys(photoUrl)) delete photoUrl[k];
   };
   let total = 0, totalNoPhoto = 0;

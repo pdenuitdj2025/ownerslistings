@@ -67,6 +67,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 .st[aria-pressed="true"][data-s="contacted"]{background:var(--done-soft);color:var(--done);border-color:var(--done)}
 .st[aria-pressed="true"][data-s="skip"]{background:var(--skip-soft);color:var(--skip);border-color:var(--skip)}
 .open{font-size:.82rem;font-weight:600;color:var(--accent);text-decoration:none;border:1px solid var(--accent);border-radius:6px;padding:4px 10px;white-space:nowrap}
+.tel{font-size:1rem;font-weight:700;color:var(--accent);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:4px 10px;white-space:nowrap}
 .open:hover{background:var(--accent-soft)}
 .note{font:inherit;font-size:.82rem;width:220px;max-width:100%;padding:4px 7px}
 .empty{background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:28px;text-align:center;color:var(--muted)}
@@ -252,6 +253,7 @@ function rowEl(x){
         <button class="st" data-s="contacted" aria-pressed="${st==="contacted"}">Επικοινωνήσαμε</button>
         <button class="st" data-s="skip" aria-pressed="${st==="skip"}">Παράλειψη</button>
       </div>
+      ${x.phone ? `<a class="tel" href="tel:+30${x.phone.replace(/^30/,"")}">📞 ${x.phone.replace(/^30/,"")}</a>` : ""}
       <a class="open" href="${x.url}" target="_blank" rel="noopener">Άνοιγμα αγγελίας στο ${SITE[srcOf(x)]} ↗</a>
       <input class="note" id="note-${x.id}" placeholder="Σημείωση (τηλέφωνο, αποτέλεσμα κλήσης…)" ${canWrite ? "" : "disabled"}>
     </div>`;

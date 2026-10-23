@@ -30,8 +30,8 @@ export async function mergeAds(ads) {
   for (const ad of ads) { try {
     if (!ad.sqm || !ad.price || ad.price < 10000 || ad.price > 200_000_000 || ad.sqm > 100000) continue;   // typos / mis-parsed cards
     if (ad.beds > 100) ad.beds = null; if (ad.year && (ad.year < 1800 || ad.year > 2100)) ad.year = null;
-    if (ad.img === false) {   // no photo: the team doesn't want these. If it was already listed, hide it.
-      await pool.query("UPDATE listings SET img=false WHERE id=$1", [ad.id]);
+    if (ad.img === false) {   // no photo: the team doesn't want these. If it was already listed, remove it.
+      await pool.query("DELETE FROM listings WHERE id=$1", [ad.id]);
       continue;
     }
     if (ids.has(ad.id)) {   // already listed: only react to a price drop (>1 %), and put a skipped home back in the review list
