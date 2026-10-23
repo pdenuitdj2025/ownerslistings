@@ -309,7 +309,6 @@ function rowEl(x){
   const pub = parseDate(x.details?.published), upd = parseDate(x.details?.updated);
   if (pub) line("Στην αγορά", daysAgo(pub) + " ημέρες");
   if (upd) line("Τελευταία ενημέρωση", daysAgo(upd) === 0 ? "σήμερα" : "πριν " + daysAgo(upd) + " ημ.");
-  if (x.price) line("Προμήθεια 2%", fmt(Math.round(x.price * 0.02)) + " € (+ΦΠΑ)");
   const note = d.querySelector(".note"); note.value = x.note || "";
   note.addEventListener("change", () => save(x.id, { note: note.value.trim() }, "Η σημείωση αποθηκεύτηκε"));
   d.querySelectorAll(".st").forEach(b => b.addEventListener("click", () => {
