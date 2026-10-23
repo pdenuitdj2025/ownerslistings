@@ -55,7 +55,7 @@ export async function scrapeXe(page) {
         year: +(lines.find((l) => /^(19|20)\d\d$/.test(l)) || 0) || null,
         location: fi > 0 ? lines[fi - 1] : "", multi: /Πολλαπλές/.test(flag),
         posted: lines.find((l) => /^Πριν|Σήμερα|Χθες/.test(l)) || "",
-        img: !!c.querySelector('img[src*="blob.cdn.xe.gr"]'),
+        img: !!c.querySelector('img[src*="blob.cdn.xe.gr"]'), photo: c.querySelector('img[src*="blob.cdn.xe.gr"]')?.getAttribute("src") || "",
       };
     }).filter((x) => x.id && x.price));
     out.push(...ads);

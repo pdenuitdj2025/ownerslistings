@@ -36,7 +36,7 @@ export async function readPages({ area, filter, from, to, delay, prevIds }) {
         type: t.split(",")[0].trim(), sqm: +((t.match(/([\d.]+)\s*τ\.μ\./) || [])[1] || "").replace(/\./g, "") || null,
         price: pr ? +pr : null, floor: (c.querySelector('[title="Όροφος"]')?.textContent || "").replace(/\s+/g, ""),
         beds: null, year: null, location: loc(c.querySelector("h3.tile__location")?.textContent.trim() || ""), multi: false,
-        posted: c.querySelector("time")?.textContent.trim() || "", img: /spitogatos\.gr\/\d{5,}_/.test(src),
+        posted: c.querySelector("time")?.textContent.trim() || "", img: /spitogatos\.gr\/\d{5,}_/.test(src), photo: /spitogatos\.gr\/\d{5,}_/.test(src) ? src : "",
       });
     }
     await new Promise((r) => setTimeout(r, delay + Math.random() * delay));

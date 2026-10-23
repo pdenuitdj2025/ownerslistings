@@ -18,7 +18,7 @@ export async function verifySite(page, key) {
   if (!rows.length) return { checked: 0, gone: 0 };
   if (new URL(page.url()).host !== HOST[key]) await page.goto("https://" + HOST[key] + "/", { waitUntil: "domcontentloaded", timeout: 30000 });
 
-  const alive = [], gone = [], withPhoto = [], noPhoto = [];
+  const alive = [], gone = [], withPhoto = [], noPhoto = [], photoUrl = {};
   let unknownRun = 0, unknown = 0;
   for (const r of rows) {
     let v;
@@ -51,7 +51,8 @@ export async function verifySite(page, key) {
     if (verdict === "gone") gone.push(r.id);
     else if (verdict === "alive") {
       alive.push(r.id);
-      if (v.page) (PHOTO[key].test(v.og || "") ? withPhoto : noPhoto).push(r.id);   // only judged when the ad page really loaded
+      if (v.page) (PHOTO[key].test(v.og || "") ? withPhoto : noPhoto).push(r.id);
+      if (PHOTO[key].test(v.og || "")) photoUrl[r.id] = v.og.replace(/^http:/, "https:");   // only judged when the ad page really loaded
     }
     await sleep(1200 + Math.random() * 1400);
   }
@@ -63,6 +64,7 @@ export async function verifySite(page, key) {
   }
   if (alive.length) await pool.query("UPDATE listings SET checked_at=now() WHERE id = ANY($1)", [alive]);
   if (withPhoto.length) await pool.query("UPDATE listings SET img=true WHERE id = ANY($1)", [withPhoto]);
+  for (const [id, url] of Object.entries(photoUrl)) await pool.query("UPDATE listings SET photo=$2 WHERE id=$1 AND photo IS NULL", [id, url]);
   if (noPhoto.length) await pool.query("UPDATE listings SET img=false WHERE id = ANY($1)", [noPhoto]);   // hidden from the list; shows again if a list later shows a photo
   if (gone.length) await pool.query("DELETE FROM listings WHERE id = ANY($1)", [gone]);   // off the market: remove it from the list
   console.log(`[verify ${key}] checked ${checked}, gone ${gone.length}, no photo ${noPhoto.length}, unclear ${unknown}`);

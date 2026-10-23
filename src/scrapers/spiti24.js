@@ -28,7 +28,7 @@ export async function scrapeSpiti24(page) {
           type: t.replace(/\s*[\d.]+\s*m2.*$/, "").trim(), sqm: +((t.match(/([\d.]+)\s*m2/) || [])[1] || "").replace(/\./g, "") || null,
           price: +(r.querySelector(".property__price")?.textContent || "").replace(/\D/g, "") || null, floor: "",
           beds: +b?.textContent.trim() || null, year: null, location: ho.length ? `${mu} (${ho.join(", ")})` : mu, multi: false, posted: "",
-          img: /spitogatos\.gr\/\d{5,}_/.test(r.querySelector("img")?.getAttribute("data-src") || r.querySelector("img")?.getAttribute("src") || ""),
+          img: /spitogatos\.gr\/\d{5,}_/.test(r.querySelector("img")?.getAttribute("data-src") || r.querySelector("img")?.getAttribute("src") || ""), photo: (r.querySelector("img")?.getAttribute("data-src") || r.querySelector("img")?.getAttribute("src") || "").replace(/^http:/, "https:"),
         });
       }
       await new Promise((r) => setTimeout(r, 1200));

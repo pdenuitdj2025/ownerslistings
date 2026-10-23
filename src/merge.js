@@ -36,6 +36,7 @@ export async function mergeAds(ads) {
     }
     if (ids.has(ad.id)) {   // already listed: only react to a price drop (>1 %), and put a skipped home back in the review list
       const e = existing.find((x) => x.id === ad.id);
+      if (e && ad.photo && !e.photo) { await pool.query("UPDATE listings SET photo=$2 WHERE id=$1", [e.id, ad.photo]); e.photo = ad.photo; }
       if (e && ad.img === true && e.img !== true) await pool.query("UPDATE listings SET img=true WHERE id=$1", [e.id]);
       if (e && e.gone_at) { await pool.query("UPDATE listings SET gone_at=NULL, checked_at=now() WHERE id=$1", [e.id]); e.gone_at = null; }   // it is back on the market
       if (e && e.price && ad.price < e.price * 0.99) {
@@ -58,9 +59,9 @@ export async function mergeAds(ads) {
       continue;
     }
     await pool.query(
-      `INSERT INTO listings(id,source,url,type,sqm,price,floor,beds,year,location,multi,posted,img)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT DO NOTHING`,
-      [ad.id, ad.source, ad.url, ad.type, ad.sqm, ad.price, ad.floor || "", ad.beds || null, ad.year || null, ad.location || "", !!ad.multi, ad.posted || "", ad.img === true ? true : null]
+      `INSERT INTO listings(id,source,url,type,sqm,price,floor,beds,year,location,multi,posted,img,photo)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) ON CONFLICT DO NOTHING`,
+      [ad.id, ad.source, ad.url, ad.type, ad.sqm, ad.price, ad.floor || "", ad.beds || null, ad.year || null, ad.location || "", !!ad.multi, ad.posted || "", ad.img === true ? true : null, ad.photo || null]
     );
     existing.push({ ...ad, alsoOn: [] }); ids.add(ad.id); urls.add(ad.url); created++;
     createdList.push(ad);

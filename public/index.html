@@ -43,6 +43,9 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 .row.is-new{border-left:3px solid var(--new)}
 .thumb{width:64px;height:64px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-content:center;text-align:center;line-height:1.05}
 .thumb b{font-size:1.15rem}.thumb span{font-size:.7rem}
+.thumb.has-photo{width:104px;height:78px;padding:0;overflow:hidden;position:relative;background:#ddd}
+.thumb.has-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb.has-photo .sq{position:absolute;left:4px;bottom:4px;background:#000a;color:#fff;font-size:.68rem;padding:1px 5px;border-radius:4px}
 .facts{min-width:0;display:grid;gap:3px}
 .loc{font-weight:600;font-size:1rem}
 .loc a{color:inherit;text-decoration:none}
@@ -73,6 +76,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 @media (max-width:560px){
   .row{grid-template-columns:56px minmax(0,1fr)}
   .thumb{width:56px;height:56px}
+  .thumb.has-photo{width:84px;height:64px}
   .side{grid-column:1/-1;justify-items:start;text-align:left;grid-template-columns:auto auto;align-items:center;gap:6px 12px}
   .status{justify-content:flex-start}
   .note{width:100%;grid-column:1/-1}
@@ -232,7 +236,9 @@ function rowEl(x){
   const st = x.status || "new";
   const d = document.createElement("article");
   d.className = "row" + (st === "new" && x.firstSeen && Date.now()-Date.parse(x.firstSeen) < 864e5 ? " is-new" : "");
-  const img = `<div class="thumb" aria-hidden="true"><b>${x.sqm ?? "–"}</b><span>τ.μ.</span></div>`;
+  const img = x.photo
+    ? `<a class="thumb has-photo" href="${x.url}" target="_blank" rel="noopener" aria-label="Άνοιγμα αγγελίας"><img src="${x.photo}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.className='thumb';this.parentNode.innerHTML='<b>${x.sqm ?? "–"}</b><span>τ.μ.</span>'"><span class="sq">${x.sqm ?? "–"} τ.μ.</span></a>`
+    : `<div class="thumb" aria-hidden="true"><b>${x.sqm ?? "–"}</b><span>τ.μ.</span></div>`;
   const ppm = x.price && x.sqm ? Math.round(x.price / x.sqm) : null;
   d.innerHTML = `${img}
     <div class="facts">
