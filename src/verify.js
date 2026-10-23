@@ -3,7 +3,8 @@
 import { pool } from "./db.js";
 
 const HOST = { spiti24: "www.spiti24.gr", xe: "www.xe.gr", spitogatos: "www.spitogatos.gr" };
-const LIMIT = { spiti24: 200, spitogatos: 200, xe: 100 };
+const LIMIT = { spiti24: 200, spitogatos: 200, xe: 150 };
+const PHOTO = { spiti24: /spitogatos\.gr\/\d{5,}_/, spitogatos: /spitogatos\.gr\/\d{5,}_/, xe: /blob\.cdn\.xe\.gr/ };   // what a real ad photo URL looks like (og:image)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export async function verifySite(page, key) {
@@ -12,12 +13,12 @@ export async function verifySite(page, key) {
       WHERE source=$1 AND gone_at IS NULL AND status IN ('new','contacted')
         AND (also_on IS NULL OR also_on='[]'::jsonb)
         AND first_seen < now() - interval '1 day'
-        AND (checked_at IS NULL OR checked_at < now() - interval '2 days')
-      ORDER BY checked_at NULLS FIRST, first_seen LIMIT $2`, [key, LIMIT[key] || 100]);
+        AND (checked_at IS NULL OR checked_at < now() - interval '2 days' OR img IS NULL)
+      ORDER BY (img IS NULL) DESC, checked_at NULLS FIRST, first_seen LIMIT $2`, [key, LIMIT[key] || 100]);
   if (!rows.length) return { checked: 0, gone: 0 };
   if (new URL(page.url()).host !== HOST[key]) await page.goto("https://" + HOST[key] + "/", { waitUntil: "domcontentloaded", timeout: 30000 });
 
-  const alive = [], gone = [];
+  const alive = [], gone = [], withPhoto = [], noPhoto = [];
   let unknownRun = 0, unknown = 0;
   for (const r of rows) {
     let v;
@@ -25,14 +26,17 @@ export async function verifySite(page, key) {
       try {
         const resp = await page.goto(r.url, { waitUntil: "domcontentloaded", timeout: 30000 });
         await page.waitForTimeout(2500);
-        v = { status: resp ? resp.status() : 0, final: page.url(), title: await page.title() };
+        const og = await page.locator('meta[property="og:image"]').first().getAttribute("content", { timeout: 2000 }).catch(() => null);
+        const ogTitle = await page.locator('meta[property="og:title"]').count().catch(() => 0);
+        v = { status: resp ? resp.status() : 0, final: page.url(), title: await page.title(), og: og || "", page: ogTitle > 0 };
       } catch (e) { v = { err: String(e).slice(0, 100) }; }
     } else {
       v = await page.evaluate(async (url) => {
         try {
           const res = await fetch(url, { credentials: "include", redirect: "follow" });
           const html = res.status === 200 ? await res.text() : "";
-          return { status: res.status, final: res.url, title: (html.match(/<title>([^<]*)/) || [])[1] || "" };
+          const tag = (html.match(/<meta[^>]*og:image[^>]*>/) || [""])[0];
+          return { status: res.status, final: res.url, title: (html.match(/<title>([^<]*)/) || [])[1] || "", og: (tag.match(/content=["']([^"']*)/) || [])[1] || "", page: html.length > 5000 };
         } catch (e) { return { err: String(e).slice(0, 100) }; }
       }, r.url);
     }
@@ -44,7 +48,11 @@ export async function verifySite(page, key) {
       else if (v.status === 200) verdict = "alive";
     }
     if (verdict === "unknown") { unknown++; if (++unknownRun >= 5) break; } else unknownRun = 0;
-    if (verdict === "gone") gone.push(r.id); else if (verdict === "alive") alive.push(r.id);
+    if (verdict === "gone") gone.push(r.id);
+    else if (verdict === "alive") {
+      alive.push(r.id);
+      if (v.page) (PHOTO[key].test(v.og || "") ? withPhoto : noPhoto).push(r.id);   // only judged when the ad page really loaded
+    }
     await sleep(1200 + Math.random() * 1400);
   }
   const checked = alive.length + gone.length;
@@ -54,7 +62,9 @@ export async function verifySite(page, key) {
     return { checked, gone: 0, suspicious: true };
   }
   if (alive.length) await pool.query("UPDATE listings SET checked_at=now() WHERE id = ANY($1)", [alive]);
+  if (withPhoto.length) await pool.query("UPDATE listings SET img=true WHERE id = ANY($1)", [withPhoto]);
+  if (noPhoto.length) await pool.query("UPDATE listings SET img=false WHERE id = ANY($1)", [noPhoto]);   // hidden from the list; shows again if a list later shows a photo
   if (gone.length) await pool.query("DELETE FROM listings WHERE id = ANY($1)", [gone]);   // off the market: remove it from the list
-  console.log(`[verify ${key}] checked ${checked}, gone ${gone.length}, unclear ${unknown}`);
-  return { checked, gone: gone.length, unclear: unknown };
+  console.log(`[verify ${key}] checked ${checked}, gone ${gone.length}, no photo ${noPhoto.length}, unclear ${unknown}`);
+  return { checked, gone: gone.length, noPhoto: noPhoto.length, unclear: unknown };
 }
