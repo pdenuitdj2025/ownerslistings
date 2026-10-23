@@ -286,7 +286,6 @@ function rowEl(x){
     add("dates", [dt.published ? "Δημοσίευση: " + dt.published : "", dt.updated ? "Τελευταία ενημέρωση: " + dt.updated : ""].filter(Boolean).join(" · "));
     if (dt.facts?.length) { const c = document.createElement("div"); c.className = "chips"; dt.facts.forEach(([k, v]) => { const e = document.createElement("span"); e.className = "chip"; e.append(k + ": "); const b = document.createElement("b"); b.textContent = v; e.appendChild(b); c.appendChild(e); }); det.appendChild(c); }
     if (dt.extras?.length) { const c = document.createElement("div"); c.className = "chips"; dt.extras.forEach((v) => { const e = document.createElement("span"); e.className = "chip x"; e.textContent = v; c.appendChild(e); }); det.appendChild(c); }
-    const ds = add("desc", dt.desc); if (ds) { ds.title = "Κλικ για ανάπτυξη"; ds.addEventListener("click", () => ds.classList.toggle("open")); }
   }
   const note = d.querySelector(".note"); note.value = x.note || "";
   note.addEventListener("change", () => save(x.id, { note: note.value.trim() }, "Η σημείωση αποθηκεύτηκε"));

@@ -22,7 +22,7 @@ export async function extractDetails(page, key) {
     dEnd = idx(/^Χαρακτηριστικά$/, dStart);
     fStart = dEnd + 1; fEnd = idx(/^Τοποθεσία$/, fStart);
   }
-  if (dStart > 0 && dEnd > dStart) out.desc = lines.slice(dStart, dEnd).filter((l) => !/^(Δημοσίευση αγγελίας|Τελευταία [Εε]νημέρωση|Κωδικός)/.test(l) && !/^[\d/]+$/.test(l)).join(" ").slice(0, 700);
+  if (dStart > 0 && dEnd > dStart) out.desc = lines.slice(dStart, dEnd).filter((l) => !/^(Δημοσίευση αγγελίας|Τελευταία [Εε]νημέρωση|Κωδικός)/.test(l) && !/^[\d/]+$/.test(l)).join(" ").slice(0, 0);
   if (fStart > 0 && fEnd > fStart) {
     const blk = lines.slice(fStart, fEnd);
     for (let i = 0; i < blk.length; i++) {
@@ -38,5 +38,5 @@ export async function extractDetails(page, key) {
   }
   if (!out.address && fEnd > 0) { const t = lines[fEnd + 1]; if (t && key === "spitogatos") out.address = lines[fEnd + 2] || ""; }
   out.extras = [...new Set(out.extras)].slice(0, 30);
-  return out.desc || out.facts.length || out.updated ? out : null;
+  return out.facts.length || out.updated ? out : null;
 }
