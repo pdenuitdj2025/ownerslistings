@@ -4,6 +4,7 @@ export async function scrapeSpitogatos(page) {
   await page.goto("https://www.spitogatos.gr/pwliseis-katoikies/athina-kentro/prwti_dimosieusi_24wres/order_datemodified_desc", { waitUntil: "load", timeout: 45000 });
   await page.waitForTimeout(3000);
   await guardCaptcha(page, "Spitogatos");
+  page.on("console", (m) => { if (m.text().startsWith("[sg]")) console.log(m.text()); });
   return page.evaluate(async () => {
     const out = [];
     const ATH = ["Αθήνα - Κέντρο", "Κολωνάκι - Λυκαβηττός", "Κολωνός - Κολοκυνθούς"], PIR = ["Κέντρο - Λιμάνι", "Καλλίπολη – Φρεαττύδα", "Πειραιάς"];
@@ -16,6 +17,7 @@ export async function scrapeSpitogatos(page) {
     const seen = new Set();
     const read = (d) => {
       const arts = [...d.querySelectorAll("article")];
+      const pageIds = arts.map((c) => (c.querySelector('a[href*="/aggelia/"]')?.getAttribute("href") || "").match(/aggelia\/(\d+)/)?.[1] || "").filter(Boolean).join(",");
       for (const c of arts) {
         if (c.querySelector('a[href*="/mesites/"]')) continue;
         const t = c.querySelector("h3.tile__title")?.textContent.trim(); if (!t) continue;
@@ -30,17 +32,20 @@ export async function scrapeSpitogatos(page) {
           posted: c.querySelector("time")?.textContent.trim() || "",
         });
       }
-      return arts.length;
+      return { n: arts.length, pageIds };
     };
     const AREAS = ["athina-kentro", "athina-voreia-proastia", "athina-notia-proastia", "athina-dytika-proastia", "athina-anatolika-proastia", "peiraias", "proastia-peiraia", "ypoloipo-attikis"];
     // 1) ads first published in the last 24 h   2) the most recently updated ads (old ads that were edited, renewed or lowered their price)
-    for (const [filter, maxPages] of [["prwti_dimosieusi_24wres/", 20], ["", 5]]) {
+    for (const [filter, maxPages] of [["prwti_dimosieusi_24wres/", 20], ["", 12]]) {
       for (const area of AREAS) {
+        let prev = "";
         for (let p = 1; p <= maxPages; p++) {
           const res = await fetch(`/pwliseis-katoikies/${area}/${filter}order_datemodified_desc` + (p > 1 ? `/selida_${p}` : ""), { credentials: "include" });
           if (!res.ok) break;
-          const n = read(new DOMParser().parseFromString(await res.text(), "text/html"));
-          if (n < 30) break;
+          const { n, pageIds } = read(new DOMParser().parseFromString(await res.text(), "text/html"));
+          if (n === 0 || pageIds === prev) break;   // empty page, or the site repeated the last page
+          prev = pageIds;
+          if (p === 1 || n < 20) console.log(`[sg] ${filter || "updated/"}${area} page ${p}: ${n} cards`);
           await new Promise((r) => setTimeout(r, 1500));
         }
       }
