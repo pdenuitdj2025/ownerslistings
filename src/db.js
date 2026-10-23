@@ -27,6 +27,7 @@ export async function init() {
     ALTER TABLE listings ADD COLUMN IF NOT EXISTS phone_checked timestamptz;
     ALTER TABLE listings ADD COLUMN IF NOT EXISTS details jsonb;
     ALTER TABLE listings ADD COLUMN IF NOT EXISTS details_checked timestamptz;
+    UPDATE listings SET details_checked=NULL WHERE details IS NOT NULL AND coalesce(details->>'desc','')='' AND jsonb_array_length(coalesce(details->'facts','[]'::jsonb))=0;
     DELETE FROM listings WHERE img = false;
     CREATE TABLE IF NOT EXISTS kv (k text PRIMARY KEY, v jsonb NOT NULL);
   `);
