@@ -1,6 +1,7 @@
 // Reads the owner's phone number from an ad page, the way a visitor would: press "Εμφάνιση τηλεφώνου" and read what appears.
 // Spitogatos and Spiti24 only (xe.gr has no reveal button).
 import { pool } from "./db.js";
+import { extractDetails } from "./details.js";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const GR = /(?:\+?30[\s.-]?)?(69\d[\s.-]?\d{3}[\s.-]?\d{4}|2\d{2,3}[\s.-]?\d{3}[\s.-]?\d{3,4})/;
 
@@ -46,14 +47,17 @@ export async function revealPhone(page) {
 export async function phoneSite(page, key, { limit = 60 } = {}) {
   if (key === "xe") return { checked: 0, found: 0 };
   const { rows } = await pool.query(
-    `SELECT id, url FROM listings WHERE source=$1 AND gone_at IS NULL AND img IS NOT FALSE AND phone IS NULL AND phone_checked IS NULL
+    `SELECT id, url, phone FROM listings WHERE source=$1 AND gone_at IS NULL AND img IS NOT FALSE AND ((phone IS NULL AND phone_checked IS NULL) OR details_checked IS NULL)
       ORDER BY first_seen DESC LIMIT $2`, [key, limit]);
   let found = 0, checked = 0, misses = 0;
   for (const r of rows) {
     try {
       const resp = await page.goto(r.url, { waitUntil: "domcontentloaded", timeout: 30000 });
-      if (!resp || resp.status() !== 200) { checked++; await pool.query("UPDATE listings SET phone_checked=now() WHERE id=$1", [r.id]); continue; }
+      if (!resp || resp.status() !== 200) { checked++; await pool.query("UPDATE listings SET phone_checked=now(), details_checked=now() WHERE id=$1", [r.id]); continue; }
       await page.waitForTimeout(1500);
+      const det = await extractDetails(page, key).catch(() => null);
+      await pool.query("UPDATE listings SET details=$2, details_checked=now() WHERE id=$1", [r.id, det ? JSON.stringify(det) : null]);
+      if (r.phone) { checked++; continue; }
       const p = await revealPhone(page);
       checked++;
       if (p) { found++; misses = 0; await pool.query("UPDATE listings SET phone=$2, phone_checked=now() WHERE id=$1", [r.id, p]); }

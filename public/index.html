@@ -51,6 +51,15 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 .loc a{color:inherit;text-decoration:none}
 .loc a:hover{color:var(--accent);text-decoration:underline}
 .spec{color:var(--muted);font-size:.88rem;display:flex;flex-wrap:wrap;gap:4px 12px}
+.det{display:grid;gap:6px;margin-top:6px;font-size:.84rem}
+.det .addr{color:var(--fg)}
+.det .dates{color:var(--muted);font-size:.78rem}
+.det .desc{color:var(--fg);line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+.det .desc.open{-webkit-line-clamp:unset}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{font-size:.74rem;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.chip b{color:var(--fg);font-weight:600}
+.chip.x{background:var(--accent-soft);color:var(--accent);border-color:transparent}
 .meta{font-size:.8rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
 .pill{font-size:.72rem;font-weight:600;letter-spacing:.03em;padding:2px 7px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
 .pill.site{background:transparent;color:var(--muted);border:1px solid var(--line)}
@@ -244,6 +253,7 @@ function rowEl(x){
       <div class="loc"><a href="${x.url}" target="_blank" rel="noopener"></a></div>
       <div class="spec"></div>
       <div class="meta"></div>
+      <div class="det"></div>
     </div>
     ${img}
     <div class="side">
@@ -269,6 +279,15 @@ function rowEl(x){
   }
   meta.insertAdjacentHTML("beforeend", x.multi ? `<span class="pill multi">Ομαδοποιημένη · ιδιώτης + άλλοι</span>` : `<span class="pill">Αγγελία ιδιώτη</span>`);
   const m = document.createElement("span"); m.textContent = [x.posted ? `δημοσιεύτηκε ${x.posted.toLowerCase()}` : "", ago(x.firstSeen)].filter(Boolean).join(" · "); meta.appendChild(m);
+  const dt = x.details, det = d.querySelector(".det");
+  if (dt) {
+    const add = (cls, txt) => { if (!txt) return; const e = document.createElement("div"); e.className = cls; e.textContent = txt; det.appendChild(e); return e; };
+    add("addr", dt.address ? "📍 " + dt.address : "");
+    add("dates", [dt.published ? "Δημοσίευση: " + dt.published : "", dt.updated ? "Τελευταία ενημέρωση: " + dt.updated : ""].filter(Boolean).join(" · "));
+    if (dt.facts?.length) { const c = document.createElement("div"); c.className = "chips"; dt.facts.forEach(([k, v]) => { const e = document.createElement("span"); e.className = "chip"; e.append(k + ": "); const b = document.createElement("b"); b.textContent = v; e.appendChild(b); c.appendChild(e); }); det.appendChild(c); }
+    if (dt.extras?.length) { const c = document.createElement("div"); c.className = "chips"; dt.extras.forEach((v) => { const e = document.createElement("span"); e.className = "chip x"; e.textContent = v; c.appendChild(e); }); det.appendChild(c); }
+    const ds = add("desc", dt.desc); if (ds) { ds.title = "Κλικ για ανάπτυξη"; ds.addEventListener("click", () => ds.classList.toggle("open")); }
+  }
   const note = d.querySelector(".note"); note.value = x.note || "";
   note.addEventListener("change", () => save(x.id, { note: note.value.trim() }, "Η σημείωση αποθηκεύτηκε"));
   d.querySelectorAll(".st").forEach(b => b.addEventListener("click", () => {

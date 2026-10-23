@@ -25,6 +25,8 @@ export async function init() {
     ALTER TABLE listings ADD COLUMN IF NOT EXISTS checked_at timestamptz;
     ALTER TABLE listings ADD COLUMN IF NOT EXISTS phone text;
     ALTER TABLE listings ADD COLUMN IF NOT EXISTS phone_checked timestamptz;
+    ALTER TABLE listings ADD COLUMN IF NOT EXISTS details jsonb;
+    ALTER TABLE listings ADD COLUMN IF NOT EXISTS details_checked timestamptz;
     DELETE FROM listings WHERE img = false;
     CREATE TABLE IF NOT EXISTS kv (k text PRIMARY KEY, v jsonb NOT NULL);
   `);
@@ -41,5 +43,5 @@ export async function kvSet(k, v) {
 export const toApi = (r) => ({
   id: r.id, source: r.source, url: r.url, type: r.type, sqm: r.sqm, price: r.price, floor: r.floor,
   beds: r.beds, year: r.year, location: r.location, multi: r.multi, posted: r.posted,
-  prevPrice: r.prev_price || undefined, phone: r.phone || undefined, photo: r.photo || undefined, gone: !!r.gone_at, status: r.status, note: r.note, firstSeen: r.first_seen, alsoOn: r.also_on?.length ? r.also_on : undefined,
+  prevPrice: r.prev_price || undefined, phone: r.phone || undefined, details: r.details || undefined, photo: r.photo || undefined, gone: !!r.gone_at, status: r.status, note: r.note, firstSeen: r.first_seen, alsoOn: r.also_on?.length ? r.also_on : undefined,
 });
