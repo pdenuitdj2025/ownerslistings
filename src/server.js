@@ -7,7 +7,7 @@ import { runAll, isRunning, debugPage } from "./runner.js";
 
 const PASSWORD = process.env.TEAM_PASSWORD;
 if (!PASSWORD) { console.error("Set TEAM_PASSWORD in Railway variables (the shared password for your team)."); process.exit(1); }
-const RUN_HOUR = +(process.env.RUN_HOUR_ATHENS ?? 7);   // one scrape per day, Athens time
+const RUN_HOURS = (process.env.RUN_HOURS_ATHENS || "10,22").split(",").map(Number).filter((n) => n >= 0 && n < 24).sort((a, b) => a - b);   // scrape twice a day, Athens time
 
 const app = express();
 app.use(express.json({ limit: "10mb" }));
@@ -86,14 +86,15 @@ app.use(express.static(path.join(path.dirname(fileURLToPath(import.meta.url)), "
 await init();
 app.listen(process.env.PORT || 3000, () => console.log("listening"));
 
-// Daily schedule: once a day at RUN_HOUR (Athens) — gentle on the sites.
+// Schedule: one run at each hour in RUN_HOURS (Athens time), 10:00 and 22:00 by default. The first run of the day also re-checks which listed ads are still online.
 const athensKey = () => new Date().toLocaleString("sv-SE", { timeZone: "Europe/Athens" });   // "YYYY-MM-DD HH:MM:SS"
 setInterval(async () => {
   const k = athensKey(), day = k.slice(0, 10), hour = +k.slice(11, 13);
-  if (hour < RUN_HOUR || isRunning()) return;
-  const last = await kvGet("lastScheduledDay");
-  if (last === day) return;
-  await kvSet("lastScheduledDay", day);
+  const due = RUN_HOURS.filter((h) => h <= hour).pop();
+  if (due === undefined || isRunning()) return;
+  const slot = `${day} ${due}`;
+  if ((await kvGet("lastScheduledSlot")) === slot) return;
+  await kvSet("lastScheduledSlot", slot);
   console.log("scheduled run", k);
-  runAll().catch((e) => console.error(e));
+  runAll({ verify: due === RUN_HOURS[0] }).catch((e) => console.error(e));
 }, 5 * 60 * 1000);

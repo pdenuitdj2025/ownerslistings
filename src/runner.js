@@ -25,7 +25,7 @@ const SITES = [
 let running = false;
 export const isRunning = () => running;
 
-export async function runAll() {
+export async function runAll({ verify = true } = {}) {
   if (running) return { skipped: true };
   running = true;
   const started = new Date().toISOString();
@@ -47,7 +47,7 @@ export async function runAll() {
         const { created, merged, dropped } = await mergeAds(ads);
         totalNew += created; totalMerged += merged;
         sites[s.key] = { status: "ok", at: new Date().toISOString(), scraped: ads.length, created, merged, dropped };
-        try { sites[s.key].verified = await verifySite(page, s.key); } catch (e) { console.error(`[${s.label}] verify failed: ${e.message}`); sites[s.key].verified = { error: e.message.slice(0, 120) }; }
+        if (verify) try { sites[s.key].verified = await verifySite(page, s.key); } catch (e) { console.error(`[${s.label}] verify failed: ${e.message}`); sites[s.key].verified = { error: e.message.slice(0, 120) }; }
         console.log(`[${s.label}] scraped ${ads.length}, new ${created}, merged ${merged}, price drops ${dropped}`);
       } catch (e) {
         console.error(`[${s.label}] ${e.message}`);
@@ -83,6 +83,6 @@ export async function debugPage(site, url, click) {
     if (click) { await page.getByText(click, { exact: true }).first().click({ timeout: 6000, force: true }).catch((e) => console.log("debug click failed", String(e).slice(0, 100))); await page.waitForTimeout(4000); }
     const inputs = await page.locator("input:visible").evaluateAll((els) => els.map((e) => `${e.type}|${e.name}|${e.placeholder}|${e.autocomplete}`));
     const shot = (await page.screenshot({ type: "jpeg", quality: 55 })).toString("base64");
-    return { url: page.url(), title: await page.title(), text: (await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 1500), inputs, frames: page.frames().map((f) => f.url().slice(0, 100)), cookies: (await context.cookies()).map((c) => c.name).slice(0, 40), shot };
+    return { url: page.url(), title: await page.title(), text: (await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 1500), inputs, frames: page.frames().map((f) => f.url().slice(0, 100)), agencyLinks: await page.locator('a[href*="/mesites/"]').evaluateAll((els) => els.map((e) => e.getAttribute("href")).slice(0, 5)).catch(() => []), cookies: (await context.cookies()).map((c) => c.name).slice(0, 40), shot };
   } finally { await browser.close(); }
 }
