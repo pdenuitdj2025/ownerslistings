@@ -14,6 +14,10 @@ export async function revealPhone(page) {
       for (const t of tel) { const p = cleanPhone(decodeURIComponent(t.slice(4))); if (p) return p; }
       return null;
     };
+    for (const css of [".fc-cta-do-not-consent", ".fc-cta-consent"]) {   // Google consent banner (Spiti24)
+      const c = page.locator(css).first();
+      if (await c.isVisible().catch(() => false)) { await c.click({ timeout: 3000 }).catch(() => {}); await page.waitForTimeout(1000); break; }
+    }
     for (const re of [/Απόρριψη όλων|Απόρριψη|Reject all/i, /Αποδοχή όλων|Αποδοχή|Συμφωνώ|Accept/i]) {   // a cookie banner can cover the button; decline first
       const c = page.getByRole("button", { name: re }).first();
       if (await c.isVisible().catch(() => false)) { await c.click({ timeout: 3000 }).catch(() => {}); await page.waitForTimeout(800); break; }
