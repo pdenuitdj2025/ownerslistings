@@ -6,7 +6,7 @@ import { ensureLogin, loadState, saveState } from "./auth.js";
 import { scrapeSpiti24 } from "./scrapers/spiti24.js";
 // import { scrapePlot } from "./scrapers/plot.js";
 import { scrapeXe, dismissConsent } from "./scrapers/xe.js";
-import { scrapeSpitogatos } from "./scrapers/spitogatos.js";
+import { scrapeSpitogatos, readPages, AREAS as SG_AREAS } from "./scrapers/spitogatos.js";
 import { verifySite } from "./verify.js";
 
 // Optional proxy (env PROXY_URL, e.g. http://user:pass@host:port) used ONLY for sites that block datacenter addresses.
@@ -65,6 +65,40 @@ export async function runAll({ verify = true } = {}) {
   }
   await kvSet("run", { lastCheck: new Date().toISOString(), lastNew: totalNew, lastMerged: totalMerged, started });
   return { totalNew, totalMerged };
+}
+
+// Weekly full sweep of Spitogatos (it has no owners-only filter, so every list page is read and agency ads are dropped).
+// Slow on purpose, resumable: progress is kept in the database, so a restart continues where it stopped.
+export async function runSweep() {
+  if (running) return { skipped: true };
+  running = true;
+  let st = (await kvGet("sweep")) || {};
+  if (!st.startedAt || st.done) st = { startedAt: new Date().toISOString(), ai: 0, page: 1, prev: "", ads: 0, created: 0, done: false };
+  const s = SITES.find((x) => x.key === "spitogatos");
+  const browser = await chromium.launch({ headless: true, args: ["--no-sandbox", "--disable-blink-features=AutomationControlled"] });
+  try {
+    const context = await browser.newContext({ userAgent: UA, locale: "el-GR", timezoneId: "Europe/Athens", viewport: { width: 1366, height: 900 }, storageState: await loadState("spitogatos") });
+    await context.addInitScript(() => Object.defineProperty(navigator, "webdriver", { get: () => undefined }));
+    const page = await context.newPage();
+    page.setDefaultTimeout(30000);
+    await ensureLogin(page, context, { site: s.key, label: s.label, ...s.login });
+    await saveState("spitogatos", context);
+    while (st.ai < SG_AREAS.length) {
+      const r = await page.evaluate(readPages, { area: SG_AREAS[st.ai], filter: "", from: st.page, to: st.page + 19, delay: 1400, prevIds: st.prev });
+      if (r.blocked) { st.note = `blocked with ${r.status}, will resume`; await kvSet("sweep", st); console.error("[sweep]", st.note); return { paused: true }; }
+      const { created } = await mergeAds(r.out);
+      st.ads += r.out.length; st.created += created; st.prev = r.lastIds; st.page += r.read; st.note = "";
+      if (r.ended || st.page > 2500) { console.log(`[sweep] ${SG_AREAS[st.ai]} done at page ${st.page}`); st.ai++; st.page = 1; st.prev = ""; }
+      await kvSet("sweep", st);
+    }
+    st.done = true; st.finishedAt = new Date().toISOString();
+    await kvSet("sweep", st);
+    console.log(`[sweep] finished: ${st.ads} owner ads read, ${st.created} new`);
+    return { done: true };
+  } catch (e) {
+    console.error("[sweep]", e.message); st.note = String(e.message).slice(0, 200); await kvSet("sweep", st).catch(() => {});
+    return { error: e.message };
+  } finally { await browser.close().catch(() => {}); running = false; }
 }
 
 // Debug helper (team-password protected): opens a URL with the saved session of a site and reports what is on screen.

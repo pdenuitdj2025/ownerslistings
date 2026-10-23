@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { init, pool, kvGet, kvSet, toApi } from "./db.js";
 import { mergeAds } from "./merge.js";
-import { runAll, isRunning, debugPage } from "./runner.js";
+import { runAll, runSweep, isRunning, debugPage } from "./runner.js";
 
 const PASSWORD = process.env.TEAM_PASSWORD;
 if (!PASSWORD) { console.error("Set TEAM_PASSWORD in Railway variables (the shared password for your team)."); process.exit(1); }
@@ -49,7 +49,8 @@ app.patch("/api/listings/:id", async (req, res) => {
     [req.params.id, status ?? null, note === undefined ? null : String(note).slice(0, 2000)]);
   res.status(r.rowCount ? 200 : 404).json({ ok: !!r.rowCount });
 });
-app.get("/api/meta", async (_q, res) => res.json({ run: await kvGet("run"), sites: (await kvGet("sites")) || {}, running: isRunning() }));
+app.get("/api/meta", async (_q, res) => res.json({ run: await kvGet("run"), sites: (await kvGet("sites")) || {}, sweep: await kvGet("sweep"), running: isRunning() }));
+app.post("/api/sweep", (_q, res) => { const started = !isRunning(); if (started) runSweep().catch((e) => console.error(e)); res.json({ started }); });
 app.post("/api/run", async (_q, res) => {
   const started = !isRunning();
   if (started) { await kvSet("lastScheduledSlot", dueSlot()).catch(() => {}); runAll().catch((e) => console.error(e)); }   // a manual run counts as the current slot
@@ -108,4 +109,20 @@ setInterval(async () => {
   await kvSet("lastScheduledSlot", slot);
   console.log("scheduled run", k);
   runAll({ verify: due === RUN_HOURS[0] }).catch((e) => console.error(e));
+}, 5 * 60 * 1000);
+// Weekly Spitogatos sweep: Sunday from 04:00 Athens time. An unfinished sweep (restart, block) is resumed on the next tick.
+setInterval(async () => {
+  try {
+    if (isRunning()) return;
+    const k = athensKey(), hour = +k.slice(11, 13), day = k.slice(0, 10);
+    const sw = await kvGet("sweep");
+    const sunday = new Date().toLocaleDateString("en-US", { timeZone: "Europe/Athens", weekday: "short" }) === "Sun";
+    const unfinished = sw && sw.startedAt && !sw.done;
+    if (unfinished && (hour >= 3 && hour < 9)) { console.log("resuming sweep"); runSweep().catch((e) => console.error(e)); return; }
+    if (sunday && hour >= 4 && hour < 9 && (await kvGet("lastSweepDay")) !== day && !unfinished) {
+      await kvSet("lastSweepDay", day);
+      console.log("starting weekly sweep", k);
+      runSweep().catch((e) => console.error(e));
+    }
+  } catch (e) { console.error(e); }
 }, 5 * 60 * 1000);
