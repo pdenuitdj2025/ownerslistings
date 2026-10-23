@@ -136,7 +136,11 @@ export async function debugPage(site, url, click, sel, find, dump, phone) {
       const seen = []; page.on("response", async (r) => { if (/emfanisi-tilefonou|phone/i.test(r.url())) seen.push(r.status() + " " + r.url().slice(0, 80) + " :: " + (await r.text().catch(() => "")).replace(/\d{4,}/g, "#").slice(0, 200)); });
       const btnTexts = await page.locator("button:visible").evaluateAll((els) => els.map((e) => e.innerText.trim().slice(0, 30)).slice(0, 12));
       const p = await revealPhone(page);
-      return { phone: p ? p.replace(/\d(?=\d{3})/g, "#") : null, btnTexts, seen, shotLen: 0 };
+      const { extractDetails } = await import("./details.js");
+      const det = await extractDetails(page, site).catch((e) => String(e));
+      const lines = (await page.locator("body").innerText()).split("\n").map((l) => l.trim()).filter(Boolean);
+      const i0 = Math.max(0, lines.findIndex((l) => /^Περιγραφή/.test(l)) - 2);
+      return { phone: p ? "ok" : null, det: det && typeof det === "object" ? { ...det, desc: (det.desc || "").slice(0, 80) } : det, lines: lines.slice(i0, i0 + 40).map((l) => l.slice(0, 50).replace(/\d{9,}/g, "#")) };
     }
     if (false) { const p = await revealPhone(page); const vis = await page.getByText("Εμφάνιση τηλεφώνου").evaluateAll((els) => els.map((e) => (e.offsetParent ? "vis" : "hid") + ":" + e.tagName + "." + e.className.toString().slice(0, 40))); return { phone: p ? p.replace(/\d(?=\d{3})/g, "#") : null, len: p ? p.length : 0, vis, after: (await page.locator(".mfp-content, [role=dialog], .modal, [class*=popup]:visible, a.reAgentPhone.s24EecClick").evaluateAll((els) => els.map((e) => e.innerText.replace(/\s+/g, " ").replace(/\d{4,}/g, "#").slice(0, 300)))).slice(0, 6) }; }
     const inputs = await page.locator("input:visible").evaluateAll((els) => els.map((e) => `${e.type}|${e.name}|${e.placeholder}|${e.autocomplete}`));
