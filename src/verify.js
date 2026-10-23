@@ -25,6 +25,14 @@ export async function verifySite(page, key, { mode } = {}) {
 
   const alive = [], gone = [], withPhoto = [], noPhoto = [], photoUrl = {};
   let unknownRun = 0, unknown = 0;
+  const flush = async () => {   // save progress as we go, so the list fills in while the check is still running
+    if (alive.length) await pool.query("UPDATE listings SET checked_at=now() WHERE id = ANY($1)", [alive]);
+    if (withPhoto.length) await pool.query("UPDATE listings SET img=true WHERE id = ANY($1)", [withPhoto]);
+    for (const [id, url] of Object.entries(photoUrl)) await pool.query("UPDATE listings SET photo=$2 WHERE id=$1 AND photo IS NULL", [id, url]);
+    if (noPhoto.length) await pool.query("UPDATE listings SET img=false WHERE id = ANY($1)", [noPhoto]);   // hidden; shows again if a list later shows a photo
+    alive.length = 0; withPhoto.length = 0; noPhoto.length = 0; for (const k of Object.keys(photoUrl)) delete photoUrl[k];
+  };
+  let total = 0, totalNoPhoto = 0;
   for (const r of rows) {
     let v;
     if (key === "xe") {   // xe.gr is a JS app: open the ad like a visitor and see whether it bounces to the generic search page
@@ -60,19 +68,19 @@ export async function verifySite(page, key, { mode } = {}) {
       if (v.page) (PHOTO[key].test(v.og || "") ? withPhoto : noPhoto).push(r.id);
       if (PHOTO[key].test(v.og || "")) photoUrl[r.id] = v.og.replace(/^http:/, "https:");   // only judged when the ad page really loaded
     }
+    if (alive.length >= 15) { total += alive.length; totalNoPhoto += noPhoto.length; await flush(); }
     await sleep(1200 + Math.random() * 1400);
   }
-  const checked = alive.length + gone.length;
-  // Safety net: if most of a batch looks "gone", the site is probably blocking us, so change nothing.
+  total += alive.length; totalNoPhoto += noPhoto.length;
+  const checked = total + gone.length;
+  // Safety net: if most of a batch looks "gone", the site is probably blocking us, so remove nothing.
   if (checked >= 20 && gone.length / checked > 0.6) {
+    await flush();
     console.error(`[verify ${key}] ${gone.length}/${checked} look gone, ignoring batch`);
     return { checked, gone: 0, suspicious: true };
   }
-  if (alive.length) await pool.query("UPDATE listings SET checked_at=now() WHERE id = ANY($1)", [alive]);
-  if (withPhoto.length) await pool.query("UPDATE listings SET img=true WHERE id = ANY($1)", [withPhoto]);
-  for (const [id, url] of Object.entries(photoUrl)) await pool.query("UPDATE listings SET photo=$2 WHERE id=$1 AND photo IS NULL", [id, url]);
-  if (noPhoto.length) await pool.query("UPDATE listings SET img=false WHERE id = ANY($1)", [noPhoto]);   // hidden from the list; shows again if a list later shows a photo
+  await flush();
   if (gone.length) await pool.query("DELETE FROM listings WHERE id = ANY($1)", [gone]);   // off the market: remove it from the list
-  console.log(`[verify ${key}] checked ${checked}, gone ${gone.length}, no photo ${noPhoto.length}, unclear ${unknown}`);
-  return { checked, gone: gone.length, noPhoto: noPhoto.length, unclear: unknown };
+  console.log(`[verify ${key}] checked ${checked}, gone ${gone.length}, no photo ${totalNoPhoto}, unclear ${unknown}`);
+  return { checked, gone: gone.length, noPhoto: totalNoPhoto, unclear: unknown };
 }
