@@ -284,8 +284,9 @@ function rowEl(x){
     const add = (cls, txt) => { if (!txt) return; const e = document.createElement("div"); e.className = cls; e.textContent = txt; det.appendChild(e); return e; };
     add("addr", dt.address ? "📍 " + dt.address : "");
     add("dates", [dt.published ? "Δημοσίευση: " + dt.published : "", dt.updated ? "Τελευταία ενημέρωση: " + dt.updated : ""].filter(Boolean).join(" · "));
-    if (dt.facts?.length) { const c = document.createElement("div"); c.className = "chips"; dt.facts.forEach(([k, v]) => { const e = document.createElement("span"); e.className = "chip"; e.append(k + ": "); const b = document.createElement("b"); b.textContent = v; e.appendChild(b); c.appendChild(e); }); det.appendChild(c); }
-    if (dt.extras?.length) { const c = document.createElement("div"); c.className = "chips"; dt.extras.forEach((v) => { const e = document.createElement("span"); e.className = "chip x"; e.textContent = v; c.appendChild(e); }); det.appendChild(c); }
+    const MAIN = ["Όροφος","Έτος κατασκευής","Θέρμανση","Σύστημα θέρμανσης","Ενεργειακή κλάση","Μπάνια","Κατάσταση","Κατασκευή","Πάρκινγκ","Εμβαδόν οικοπέδου"];
+    const mf = (dt.facts || []).filter(([k]) => MAIN.includes(k));
+    if (mf.length) { const c = document.createElement("div"); c.className = "chips"; mf.forEach(([k, v]) => { const e = document.createElement("span"); e.className = "chip"; e.append(k + ": "); const b = document.createElement("b"); b.textContent = v; e.appendChild(b); c.appendChild(e); }); det.appendChild(c); }
   }
   const note = d.querySelector(".note"); note.value = x.note || "";
   note.addEventListener("change", () => save(x.id, { note: note.value.trim() }, "Η σημείωση αποθηκεύτηκε"));
