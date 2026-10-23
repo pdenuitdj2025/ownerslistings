@@ -7,6 +7,7 @@ import { scrapeSpiti24 } from "./scrapers/spiti24.js";
 // import { scrapePlot } from "./scrapers/plot.js";
 import { scrapeXe, dismissConsent } from "./scrapers/xe.js";
 import { scrapeSpitogatos } from "./scrapers/spitogatos.js";
+import { verifySite } from "./verify.js";
 
 // Optional proxy (env PROXY_URL, e.g. http://user:pass@host:port) used ONLY for sites that block datacenter addresses.
 function proxyOpt() {
@@ -46,6 +47,7 @@ export async function runAll() {
         const { created, merged, dropped } = await mergeAds(ads);
         totalNew += created; totalMerged += merged;
         sites[s.key] = { status: "ok", at: new Date().toISOString(), scraped: ads.length, created, merged, dropped };
+        try { sites[s.key].verified = await verifySite(page, s.key); } catch (e) { console.error(`[${s.label}] verify failed: ${e.message}`); sites[s.key].verified = { error: e.message.slice(0, 120) }; }
         console.log(`[${s.label}] scraped ${ads.length}, new ${created}, merged ${merged}, price drops ${dropped}`);
       } catch (e) {
         console.error(`[${s.label}] ${e.message}`);

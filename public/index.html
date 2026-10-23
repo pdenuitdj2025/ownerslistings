@@ -135,6 +135,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
     <button class="tab" data-tab="contacted" aria-pressed="false">Επικοινωνήσαμε</button>
     <button class="tab" data-tab="skip" aria-pressed="false">Δεν ενδιαφέρει</button>
     <button class="tab" data-tab="all" aria-pressed="false">Όλες</button>
+    <button class="tab" data-tab="gone" aria-pressed="false" title="Αγγελίες που δεν είναι πια διαθέσιμες στον ιστότοπο">Αποσύρθηκαν</button>
     <span class="spacer"></span>
     <label class="check" for="solo"><input id="solo" type="checkbox" checked> Μόνο ιδιώτες (απόκρυψη ομαδοποιημένων αγγελιών με μεσίτες)</label>
   </div>
@@ -190,7 +191,7 @@ function filtered(){
   const fOn = els.fmin.value !== "" || els.fmax.value !== "";
   const fmin = els.fmin.value === "" ? -Infinity : +els.fmin.value, fmax = els.fmax.value === "" ? Infinity : +els.fmax.value;
   let r = rows.filter(x =>
-    (tab === "all" || (x.status || "new") === tab) &&
+    (tab === "gone" ? x.gone : !x.gone && (tab === "all" || (x.status || "new") === tab)) &&
     (!els.solo.checked || !x.multi) &&
     (!q || norm(x.location).includes(q)) &&
     (!muni || muniOf(x.location) === muni) &&
@@ -212,7 +213,7 @@ function ago(iso){ if(!iso) return ""; const h = (Date.now() - Date.parse(iso)) 
   if (h < 1) return "βρέθηκε πριν <1 ώρα"; if (h < 24) return `βρέθηκε πριν ${Math.floor(h)} ω.`; const d = Math.floor(h/24); return `βρέθηκε πριν ${d} ημ.`; }
 
 function render(){
-  const all = rows.filter(x => !els.solo.checked || !x.multi);
+  const all = rows.filter(x => !x.gone && (!els.solo.checked || !x.multi));
   const c = s => all.filter(x => (x.status||"new") === s).length;
   const fresh = all.filter(x => (x.status||"new")==="new" && x.firstSeen && Date.now()-Date.parse(x.firstSeen) < 864e5).length;
   els.counts.innerHTML = `<span class="count"><b>${fresh}</b>νέες σήμερα</span><span class="count"><b>${c("new")}</b>προς έλεγχο</span><span class="count"><b>${c("contacted")}</b>επικοινωνήσαμε</span>`;

@@ -32,6 +32,7 @@ export async function mergeAds(ads) {
     if (ad.beds > 100) ad.beds = null; if (ad.year && (ad.year < 1800 || ad.year > 2100)) ad.year = null;
     if (ids.has(ad.id)) {   // already listed: only react to a price drop (>1 %), and put a skipped home back in the review list
       const e = existing.find((x) => x.id === ad.id);
+      if (e && e.gone_at) { await pool.query("UPDATE listings SET gone_at=NULL, checked_at=now() WHERE id=$1", [e.id]); e.gone_at = null; }   // it is back on the market
       if (e && e.price && ad.price < e.price * 0.99) {
         await pool.query(`UPDATE listings SET prev_price=$2, price=$3, status=CASE WHEN status='skip' THEN 'new' ELSE status END WHERE id=$1`, [e.id, e.price, ad.price]);
         e.price = ad.price; dropped++;
