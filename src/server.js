@@ -126,7 +126,7 @@ setInterval(async () => {
       if (await kvGet("scanPending")) {
         await kvSet("lastPhonePass", new Date().toISOString());
         console.log("full scan");
-        const done = async () => { const left = await pool.query("SELECT count(*)::int AS n FROM listings WHERE gone_at IS NULL AND (checked_at IS NULL OR checked_at < $1)", [await kvGet("scanStartedAt")]); if (!left.rows[0].n) { await kvSet("scanPending", false); await kvSet("scanVersion", "v1"); } };
+        const done = async () => { const left = await pool.query("SELECT count(*)::int AS n FROM listings WHERE gone_at IS NULL AND (checked_at IS NULL OR checked_at < $1)", [await kvGet("scanStartedAt")]); if (!left.rows[0].n) { await kvSet("scanPending", false); await kvSet("scanVersion", "v2"); } };
         runAll({ scan: true }).then(done).catch((e) => console.error(e));
       }
       return;
@@ -137,7 +137,12 @@ setInterval(async () => {
   } catch (e) { console.error(e); }
 }, 2 * 60 * 1000);
 // One-time full scan requested for this version: queue it once after deploy.
-(async () => { try { if ((await kvGet("scanVersion")) !== "v1" && !(await kvGet("scanPending"))) { await kvSet("scanStartedAt", new Date().toISOString()); await kvSet("scanPending", true); } } catch {} })();
+(async () => { try {
+  if ((await kvGet("scanVersion")) !== "v2" && !(await kvGet("scanPending"))) {   // v2: re-check homes that are listed on several sites (a dead main ad now hands over to its twin)
+    await pool.query("UPDATE listings SET checked_at=NULL WHERE also_on <> '[]'::jsonb");
+    await kvSet("scanStartedAt", new Date(Date.now() - 6 * 36e5).toISOString()); await kvSet("scanPending", true);
+  }
+} catch {} })();
 // Weekly Spitogatos sweep: Sunday from 04:00 Athens time. An unfinished sweep (restart, block) is resumed on the next tick.
 setInterval(async () => {
   try {

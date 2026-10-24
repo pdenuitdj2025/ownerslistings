@@ -28,9 +28,23 @@ export async function verifySite(page, key, { mode, since } = {}) {
   if (!rows.length) return { checked: 0, gone: 0 };
   if (new URL(page.url()).host !== HOST[key]) await page.goto("https://" + HOST[key] + "/", { waitUntil: "domcontentloaded", timeout: 30000 });
 
+  const promote = [];   // gone here but the same home is still listed on another site: make that listing the main one
   const alive = [], gone = [], withPhoto = [], noPhoto = [], photoUrl = {};
   let unknownRun = 0, unknown = 0;
-  const flush = async () => {   // save progress as we go, so the list fills in while the check is still running
+  const SITEKEY = { "xe.gr": "xe", "Spitogatos": "spitogatos", "Spiti24": "spiti24" };
+  const doPromote = async () => {
+    while (promote.length) {
+      const id = promote.pop();
+      const { rows: [row] } = await pool.query("SELECT also_on FROM listings WHERE id=$1", [id]);
+      const also = (row?.also_on || []);
+      const pick = also.find((a) => SITEKEY[a.site] && SITEKEY[a.site] !== key) || also[0];
+      if (!pick) { await pool.query("DELETE FROM listings WHERE id=$1", [id]); continue; }
+      const rest = also.filter((a) => a !== pick && a.url !== pick.url);
+      await pool.query("UPDATE listings SET source=$2, url=$3, also_on=$4, photo=NULL, img=NULL, checked_at=NULL WHERE id=$1", [id, SITEKEY[pick.site] || key, pick.url, JSON.stringify(rest)]);
+    }
+  };
+  const flush = async () => {
+    if (promote.length < 25) await doPromote();   // save progress as we go, so the list fills in while the check is still running
     if (alive.length) await pool.query("UPDATE listings SET checked_at=now() WHERE id = ANY($1)", [alive]);
     if (withPhoto.length) await pool.query("UPDATE listings SET img=true WHERE id = ANY($1)", [withPhoto]);
     for (const [id, url] of Object.entries(photoUrl)) await pool.query("UPDATE listings SET photo=$2 WHERE id=$1 AND photo IS NULL", [id, url]);
@@ -68,7 +82,7 @@ export async function verifySite(page, key, { mode, since } = {}) {
       else if (v.status === 200) verdict = "alive";
     }
     if (verdict === "unknown") { unknown++; if (++unknownRun >= 5) break; } else unknownRun = 0;
-    if (verdict === "gone" && !r.solo) verdict = "unknown";   // it may still be live on the other site
+    if (verdict === "gone" && !r.solo) { promote.push(r.id); verdict = "promoted"; }   // it may still be live on the other site
     if (verdict === "gone") gone.push(r.id);
     else if (verdict === "alive") {
       alive.push(r.id);
@@ -79,14 +93,16 @@ export async function verifySite(page, key, { mode, since } = {}) {
     await sleep(1200 + Math.random() * 1400);
   }
   total += alive.length; totalNoPhoto += noPhoto.length;
-  const checked = total + gone.length + goneDeleted;
+  const checked = total + gone.length + goneDeleted + promote.length;
   // Safety net: if most of a batch looks "gone", the site is probably blocking us, so remove nothing.
-  if (checked >= 20 && gone.length / checked > 0.6) {
+  if (checked >= 20 && (gone.length + promote.length) / checked > 0.6) {
+    promote.length = 0;
     await flush();
     console.error(`[verify ${key}] ${gone.length}/${checked} look gone, ignoring batch`);
     return { checked, gone: 0, suspicious: true };
   }
   await flush();
+  await doPromote();
   if (gone.length) await pool.query("DELETE FROM listings WHERE id = ANY($1)", [gone]);   // off the market: remove it from the list
   const goneAll = gone.length + goneDeleted;
   console.log(`[verify ${key}] checked ${checked}, gone ${goneAll}, no photo ${totalNoPhoto}, unclear ${unknown}`);
