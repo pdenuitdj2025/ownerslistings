@@ -51,8 +51,8 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 .loc a{color:inherit;text-decoration:none}
 .loc a:hover{color:var(--accent);text-decoration:underline}
 .spec{color:var(--muted);font-size:.88rem;display:flex;flex-wrap:wrap;gap:4px 12px}
-.det{flex:1;min-height:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-top:8px;grid-auto-rows:minmax(46px,1fr);overflow:hidden;align-content:start}
-.tile{border:1px solid var(--line);border-radius:8px;padding:4px 9px;display:flex;flex-direction:column;justify-content:center;gap:0;min-width:0;overflow:hidden}
+.det{flex:1;min-height:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-top:8px;grid-auto-rows:44px;overflow:hidden;align-content:start}
+.tile{border:1px solid var(--line);border-radius:8px;padding:3px 9px;display:flex;flex-direction:column;justify-content:center;gap:0;min-width:0;overflow:hidden}
 .tile.wide{grid-column:span 2}
 @media (max-width:1000px){.det{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));grid-auto-rows:minmax(46px,auto)}}
 .tile.full{grid-column:1/-1}
@@ -240,6 +240,14 @@ function medians(){
 }
 const parseDate = t => { const m = String(t || "").match(/(\d\d)\/(\d\d)\/(\d{4})/); return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null; };
 const daysAgo = d => d ? Math.max(0, Math.floor((Date.now() - d.getTime()) / 864e5)) : null;
+function fitTiles(det){
+  det.querySelectorAll(".tile").forEach(t => t.style.display = "");
+  if (matchMedia("(max-width:1000px)").matches) return;   // stacked layout: show everything
+  const lim = det.getBoundingClientRect().bottom + 0.5;
+  [...det.querySelectorAll(".tile")].forEach(t => { if (t.getBoundingClientRect().bottom > lim) t.style.display = "none"; });
+}
+function fitAll(){ requestAnimationFrame(() => document.querySelectorAll(".det").forEach(fitTiles)); }
+addEventListener("resize", () => { clearTimeout(fitAll.t); fitAll.t = setTimeout(fitAll, 150); });
 function render(){
   const all = rows.filter(x => (!els.solo.checked || !x.multi));
   const c = s => all.filter(x => (x.status||"new") === s).length;
@@ -253,6 +261,7 @@ function render(){
   const frag = document.createDocumentFragment();
   for (const x of r.slice(0, shown)) frag.appendChild(rowEl(x));
   els.list.appendChild(frag);
+  fitAll();
   els.more.hidden = r.length <= shown;
   els.more.textContent = `Περισσότερα (απομένουν ${r.length - shown})`;
 }
@@ -302,7 +311,7 @@ function rowEl(x){
     const tile = (k, v, wide) => { if (!v) return; const e = document.createElement("div"); e.className = "tile" + (wide === "full" ? " full" : wide ? " wide" : ""); const a = document.createElement("span"); a.textContent = k; const b = document.createElement("b"); b.textContent = v; e.append(a, b); det.appendChild(e); };
     tile("Διεύθυνση", dt.address, "full");
     tile("Δημοσίευση", dt.published); tile("Ενημέρωση", dt.updated);
-    (dt.facts || []).filter(([k]) => MAIN.includes(k)).forEach(([k, v]) => tile(k === "Σύστημα θέρμανσης" ? "Θέρμανση" : k, v, v.length > 20));
+    (dt.facts || []).filter(([k]) => MAIN.includes(k)).sort((p, q) => MAIN.indexOf(p[0]) - MAIN.indexOf(q[0])).forEach(([k, v]) => tile(k === "Σύστημα θέρμανσης" ? "Θέρμανση" : k, v, v.length > 20));
   }
   const ag = d.querySelector(".agent");
   const line = (k, v, cls) => { const e = document.createElement("div"); e.className = "ag" + (cls ? " " + cls : ""); const a = document.createElement("span"); a.textContent = k; const b = document.createElement("b"); b.textContent = v; e.append(a, b); ag.appendChild(e); };
