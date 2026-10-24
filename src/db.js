@@ -33,6 +33,14 @@ export async function init() {
   `);
 }
 
+// one-time cleanup of wrong xe.gr data (footer phone number, mixed-up detail values); runs once
+export async function fixXe1() {
+  if (await kvGet("fixXe1")) return;
+  await pool.query("UPDATE listings SET phone=NULL, phone_checked=NULL WHERE phone='2109091300'");
+  await pool.query("UPDATE listings SET details=NULL, details_checked=NULL WHERE source='xe'");
+  await kvSet("fixXe1", true);
+}
+
 export async function kvGet(k) {
   const r = await pool.query("SELECT v FROM kv WHERE k=$1", [k]);
   return r.rows[0]?.v ?? null;

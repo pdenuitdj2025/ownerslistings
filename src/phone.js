@@ -9,11 +9,18 @@ const GR = /(?:\+?30[\s.-]?)?(69\d[\s.-]?\d{3}[\s.-]?\d{4}|2\d{2,3}[\s.-]?\d{3}[
 export const cleanPhone = (s) => { const m = String(s || "").match(GR); return m ? m[1].replace(/\D/g, "") : null; };
 
 // Page is already on the ad. Returns digits or null.
-export async function revealPhone(page) {
+const BAD = new Set(["2109091300"]);   // xe.gr's own switchboard number (page footer) – never an owner's number
+export async function revealPhone(page, key) {
   try {
+    let base = new Set();   // numbers already on the page before pressing the button (footer, header…)
+    const telList = async () => (await page.locator('a[href^="tel:"]').evaluateAll((els) => els.map((e) => e.getAttribute("href")))).map((t) => cleanPhone(decodeURIComponent(t.slice(4)))).filter(Boolean);
+    const ok = (p) => p && !BAD.has(p) && !base.has(p);
     const grab = async () => {
-      const tel = await page.locator('a[href^="tel:"]').evaluateAll((els) => els.map((e) => e.getAttribute("href")));
-      for (const t of tel) { const p = cleanPhone(decodeURIComponent(t.slice(4))); if (p) return p; }
+      for (const p of await telList()) if (ok(p)) return p;
+      if (key === "xe") {   // xe.gr shows the number in a pop-up
+        const boxes = await page.locator('[role="dialog"], [class*="modal" i], [class*="popup" i], [class*="phone" i]').evaluateAll((els) => els.map((e) => e.innerText || "")).catch(() => []);
+        for (const t of boxes) { const p = cleanPhone(t.replace(/\s+/g, " ")); if (ok(p)) return p; }
+      }
       return null;
     };
     for (const css of [".fc-cta-do-not-consent", ".fc-cta-consent"]) {   // Google consent banner (Spiti24)
@@ -24,7 +31,8 @@ export async function revealPhone(page) {
       const c = page.locator(".qc-cmp2-summary-buttons button, .qc-cmp2-footer button, button").filter({ hasText: re }).first();
       if (await c.isVisible().catch(() => false)) { await c.click({ timeout: 3000 }).catch(() => {}); await page.waitForTimeout(800); break; }
     }
-    const already = await grab(); if (already) return already;
+    if (key === "xe") base = new Set(await telList());
+    const already = key === "xe" ? null : await grab(); if (already) return already;
     const btns = page.getByText(/Εμφάνιση τηλεφώνου|Προβολή τηλεφώνου/);
     const n = await btns.count();
     for (let i = 0; i < n; i++) {
@@ -35,12 +43,13 @@ export async function revealPhone(page) {
         await page.waitForTimeout(700);
         const p = await grab(); if (p) return p;
         const near = await b.locator("xpath=ancestor::*[self::li or self::div][1]").innerText({ timeout: 1500 }).catch(() => "");
-        const q = cleanPhone(near); if (q) return q;
+        const q = cleanPhone(near); if (ok(q)) return q;
       }
     }
     const body = await page.locator("body").innerText().catch(() => "");
     const m = body.match(/(?:Τηλέφωνο|Κινητό|Τηλ\.?)\s*:?\s*([+\d][\d\s.-]{8,16})/);
-    return m ? cleanPhone(m[1]) : null;
+    const f = m ? cleanPhone(m[1]) : null;
+    return ok(f) ? f : null;
   } catch { return null; }
 }
 
@@ -61,7 +70,7 @@ export async function phoneSite(page, key, { limit = 60, maxMs = 0 } = {}) {
       const det = await extractDetails(page, key).catch(() => null);
       await pool.query("UPDATE listings SET details=$2, details_checked=now() WHERE id=$1", [r.id, det ? JSON.stringify(det) : null]);
       if (r.phone) { checked++; continue; }
-      const p = await revealPhone(page);
+      const p = await revealPhone(page, key);
       checked++;
       if (p) { found++; misses = 0; await pool.query("UPDATE listings SET phone=$2, phone_checked=now() WHERE id=$1", [r.id, p]); }
       else { misses++; await pool.query("UPDATE listings SET phone_checked=now() WHERE id=$1", [r.id]); if (misses >= 12 && found === 0) break; }   // the button isn't working: stop instead of hammering the site

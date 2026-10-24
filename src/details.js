@@ -11,12 +11,20 @@ export function xeDetails(text) {
   const d = flat.match(/Τελευταία δημοσίευση:\s*(\d{1,2}) (\S+) (\d{4})/);
   if (d && MONTHS[d[2]]) out.updated = `${String(d[1]).padStart(2, "0")}/${String(MONTHS[d[2]]).padStart(2, "0")}/${d[3]}`;
   const a = flat.match(/Τοποθεσία ακινήτου (.+?)(?: Χαρακτηριστικά αγγελίας| Πληροφορίες αγγελιοδότη|$)/);
-  if (a) out.address = a[1].replace(/, Ελλάδα$/, "").slice(0, 120);
+  if (a && !/^Χαρακτηριστικά|δημοσίευση|Πληροφορίες/.test(a[1])) out.address = a[1].replace(/, Ελλάδα$/, "").slice(0, 120);
   const b = flat.match(/Βασικά χαρακτηριστικά(?: \d+ χαρακτηριστικά)? (.+?)(?: Δες όλα τα χαρακτηριστικά| Περιγραφή ακινήτου)/);
   if (b) {
     const labels = ["Όροφος", "Υπνοδωμάτια", "Μπάνια", "WC", "Έτος κατασκευής", "Έτος ανακαίνισης", "Ενεργειακή κλάση", "Θέρμανση", "Διαθέσιμο από", "Επίπεδα", "Κατάσταση", "Parking", "Πάρκινγκ"];
     const re = new RegExp("(" + labels.join("|") + "):\\s*(.+?)(?=\\s(?:" + labels.join("|") + "):|\\sΤιμή συζητήσιμη|$)", "g");
-    for (const m of b[1].matchAll(re)) out.facts.push([m[1] === "Parking" ? "Πάρκινγκ" : m[1], m[2].trim()]);
+    for (const m of b[1].matchAll(re)) {
+      let v = m[2].trim(); const k = m[1];
+      if (/^(Έτος κατασκευής|Έτος ανακαίνισης)$/.test(k)) v = (v.match(/^\d{4}/) || [""])[0];
+      else if (/^(Υπνοδωμάτια|Μπάνια|WC|Επίπεδα)$/.test(k)) v = (v.match(/^\d+/) || [""])[0];
+      else if (k === "Ενεργειακή κλάση") v = (v.match(/^[A-ZΑ-Ω][+]?/) || [""])[0];
+      else if (k === "Διαθέσιμο από") v = (v.match(/^\d{1,2}\/\d{1,2}\/\d{4}/) || [v.split(" ").slice(0, 2).join(" ")])[0];
+      else if (k === "Όροφος") v = (v.match(/^(Υπόγειο|Ημιυπόγειο|Ισόγειο|Ημιόροφος|Μεσοπάτωμα|\d+ος|\d+ο)/) || [v.split(" ")[0]])[0];
+      if (v) out.facts.push([k === "Parking" ? "Πάρκινγκ" : k, v]);
+    }
   }
   return out.facts.length || out.address ? out : null;
 }
