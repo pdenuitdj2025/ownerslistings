@@ -51,6 +51,7 @@ app.patch("/api/listings/:id", async (req, res) => {
 });
 app.get("/api/meta", async (_q, res) => res.json({ run: await kvGet("run"), sites: (await kvGet("sites")) || {}, sweep: await kvGet("sweep"), running: isRunning() }));
 app.get("/api/hidden", async (_q, res) => { const { rows } = await pool.query("SELECT id, source, url, price, sqm, location, checked_at FROM listings WHERE img = false ORDER BY checked_at DESC LIMIT 400"); res.json(rows); });
+app.post("/api/scan", async (_q, res) => { await kvSet("scanStartedAt", new Date().toISOString()); await kvSet("scanPending", true); res.json({ queued: true }); });
 app.post("/api/phones", (_q, res) => { const started = !isRunning(); if (started) runAll({ phones: true }).catch((e) => console.error(e)); res.json({ started }); });
 app.post("/api/enrich", (_q, res) => { const started = !isRunning(); if (started) runAll({ enrich: true }).catch((e) => console.error(e)); res.json({ started }); });
 app.post("/api/sweep", (_q, res) => { const started = !isRunning(); if (started) runSweep().catch((e) => console.error(e)); res.json({ started }); });
@@ -120,12 +121,22 @@ setInterval(async () => {
     const last = await kvGet("lastPhonePass");
     if (last && Date.now() - Date.parse(last) < 10 * 60 * 1000) return;
     const { rows } = await pool.query(`SELECT count(*)::int AS n FROM listings WHERE gone_at IS NULL AND img IS NOT FALSE AND ((phone IS NULL AND phone_checked IS NULL) OR details_checked IS NULL)`);
-    if (!rows[0].n) return;
+    if (!rows[0].n) {   // nothing left to read: if a full scan is waiting, run it now (dead ads + ads without a photo)
+      if (await kvGet("scanPending")) {
+        await kvSet("lastPhonePass", new Date().toISOString());
+        console.log("full scan");
+        const done = async () => { const left = await pool.query("SELECT count(*)::int AS n FROM listings WHERE gone_at IS NULL AND (checked_at IS NULL OR checked_at < $1)", [await kvGet("scanStartedAt")]); if (!left.rows[0].n) { await kvSet("scanPending", false); await kvSet("scanVersion", "v1"); } };
+        runAll({ scan: true }).then(done).catch((e) => console.error(e));
+      }
+      return;
+    }
     await kvSet("lastPhonePass", new Date().toISOString());
     console.log("phone/details pass, pending", rows[0].n);
     runAll({ phones: true }).catch((e) => console.error(e));
   } catch (e) { console.error(e); }
 }, 2 * 60 * 1000);
+// One-time full scan requested for this version: queue it once after deploy.
+(async () => { try { if ((await kvGet("scanVersion")) !== "v1" && !(await kvGet("scanPending"))) { await kvSet("scanStartedAt", new Date().toISOString()); await kvSet("scanPending", true); } } catch {} })();
 // Weekly Spitogatos sweep: Sunday from 04:00 Athens time. An unfinished sweep (restart, block) is resumed on the next tick.
 setInterval(async () => {
   try {

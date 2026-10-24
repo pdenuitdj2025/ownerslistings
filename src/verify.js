@@ -7,9 +7,14 @@ const LIMIT = { spiti24: 200, spitogatos: 200, xe: 150 };
 const PHOTO = { spiti24: /spitogatos\.gr\/\d{5,}_/, spitogatos: /spitogatos\.gr\/\d{5,}_/, xe: /blob\.cdn\.xe\.gr/ };   // what a real ad photo URL looks like (og:image)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export async function verifySite(page, key, { mode } = {}) {
+export async function verifySite(page, key, { mode, since } = {}) {
+  const scan = mode === "scan";   // full re-check of every listing (all statuses), resumable: skips rows already checked since the scan started
   const photos = mode === "photos";   // backfill: every listed ad that has no photo link yet, all statuses, no daily cap
-  const { rows } = photos
+  const { rows } = scan
+    ? await pool.query(
+        `SELECT id, url, (also_on IS NULL OR also_on='[]'::jsonb) AS solo FROM listings
+          WHERE source=$1 AND gone_at IS NULL AND (checked_at IS NULL OR checked_at < $2) ORDER BY first_seen DESC LIMIT 3000`, [key, since])
+    : photos
     ? await pool.query(
         `SELECT id, url, (also_on IS NULL OR also_on='[]'::jsonb) AS solo FROM listings
           WHERE source=$1 AND gone_at IS NULL AND img IS NOT FALSE AND photo IS NULL ORDER BY first_seen DESC LIMIT 2000`, [key])
@@ -30,9 +35,10 @@ export async function verifySite(page, key, { mode } = {}) {
     if (withPhoto.length) await pool.query("UPDATE listings SET img=true WHERE id = ANY($1)", [withPhoto]);
     for (const [id, url] of Object.entries(photoUrl)) await pool.query("UPDATE listings SET photo=$2 WHERE id=$1 AND photo IS NULL", [id, url]);
     if (noPhoto.length) await pool.query("DELETE FROM listings WHERE id = ANY($1)", [noPhoto]);   // no photo: removed
+    if (scan && gone.length && gone.length < 25) { await pool.query("DELETE FROM listings WHERE id = ANY($1)", [gone]); goneDeleted += gone.length; gone.length = 0; }   // scan: drop dead ads as they are found (a big sudden batch is held back by the safety net)
     alive.length = 0; withPhoto.length = 0; noPhoto.length = 0; for (const k of Object.keys(photoUrl)) delete photoUrl[k];
   };
-  let total = 0, totalNoPhoto = 0;
+  let total = 0, totalNoPhoto = 0, goneDeleted = 0;
   for (const r of rows) {
     let v;
     if (key === "xe") {   // xe.gr is a JS app: open the ad like a visitor and see whether it bounces to the generic search page
@@ -41,7 +47,8 @@ export async function verifySite(page, key, { mode } = {}) {
         await page.waitForTimeout(2500);
         const og = await page.locator('meta[property="og:image"]').first().getAttribute("content", { timeout: 2000 }).catch(() => null);
         const ogTitle = await page.locator('meta[property="og:title"]').count().catch(() => 0);
-        v = { status: resp ? resp.status() : 0, final: page.url(), title: await page.title(), og: og || "", page: ogTitle > 0 };
+        const bodyTxt = await page.locator("body").innerText({ timeout: 3000 }).catch(() => "");
+        v = { dead: /δεν είναι πλέον (διαθέσιμη|δημοσιευμένη)|έχει αφαιρεθεί|Η αγγελία δεν υπάρχει/.test(bodyTxt.slice(0, 1500)), status: resp ? resp.status() : 0, final: page.url(), title: await page.title(), og: og || "", page: ogTitle > 0 };
       } catch (e) { v = { err: String(e).slice(0, 100) }; }
     } else {
       v = await page.evaluate(async (url) => {
@@ -49,7 +56,7 @@ export async function verifySite(page, key, { mode } = {}) {
           const res = await fetch(url, { credentials: "include", redirect: "follow" });
           const html = res.status === 200 ? await res.text() : "";
           const tag = (html.match(/<meta[^>]*og:image[^>]*>/) || [""])[0];
-          return { status: res.status, final: res.url, title: (html.match(/<title>([^<]*)/) || [])[1] || "", og: (tag.match(/content=["']([^"']*)/) || [])[1] || "", page: html.length > 5000 };
+          return { dead: /δεν είναι πλέον δημοσιευμένο/.test(html), status: res.status, final: res.url, title: (html.match(/<title>([^<]*)/) || [])[1] || "", og: (tag.match(/content=["']([^"']*)/) || [])[1] || "", page: html.length > 5000 };
         } catch (e) { return { err: String(e).slice(0, 100) }; }
       }, r.url);
     }
@@ -57,7 +64,7 @@ export async function verifySite(page, key, { mode } = {}) {
     if (!v.err) {
       if (v.status === 404 || v.status === 410) verdict = "gone";
       else if (v.status === 200 && /\/property\/r\//.test(v.final) && !/\/property\/r\//.test(r.url)) verdict = "gone";   // xe.gr sends removed ads to the generic search page
-      else if (v.status === 200 && /δεν είναι διαθέσιμη|Η Σελίδα Δεν Βρέθηκε/.test(v.title)) verdict = "gone";
+      else if (v.status === 200 && (v.dead || /δεν είναι διαθέσιμη|Η Σελίδα Δεν Βρέθηκε/.test(v.title))) verdict = "gone";
       else if (v.status === 200) verdict = "alive";
     }
     if (verdict === "unknown") { unknown++; if (++unknownRun >= 5) break; } else unknownRun = 0;
@@ -72,7 +79,7 @@ export async function verifySite(page, key, { mode } = {}) {
     await sleep(1200 + Math.random() * 1400);
   }
   total += alive.length; totalNoPhoto += noPhoto.length;
-  const checked = total + gone.length;
+  const checked = total + gone.length + goneDeleted;
   // Safety net: if most of a batch looks "gone", the site is probably blocking us, so remove nothing.
   if (checked >= 20 && gone.length / checked > 0.6) {
     await flush();
@@ -81,6 +88,7 @@ export async function verifySite(page, key, { mode } = {}) {
   }
   await flush();
   if (gone.length) await pool.query("DELETE FROM listings WHERE id = ANY($1)", [gone]);   // off the market: remove it from the list
-  console.log(`[verify ${key}] checked ${checked}, gone ${gone.length}, no photo ${totalNoPhoto}, unclear ${unknown}`);
-  return { checked, gone: gone.length, noPhoto: totalNoPhoto, unclear: unknown };
+  const goneAll = gone.length + goneDeleted;
+  console.log(`[verify ${key}] checked ${checked}, gone ${goneAll}, no photo ${totalNoPhoto}, unclear ${unknown}`);
+  return { checked, gone: goneAll, noPhoto: totalNoPhoto, unclear: unknown };
 }

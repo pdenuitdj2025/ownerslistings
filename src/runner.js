@@ -26,7 +26,7 @@ const SITES = [
 let running = false;
 export const isRunning = () => running;
 
-export async function runAll({ verify = true, enrich = false, phones = false } = {}) {
+export async function runAll({ verify = true, enrich = false, phones = false, scan = false } = {}) {
   if (running) return { skipped: true };
   running = true;
   const started = new Date().toISOString();
@@ -42,6 +42,15 @@ export async function runAll({ verify = true, enrich = false, phones = false } =
         page = await context.newPage();
         page.setDefaultTimeout(30000);
         if (s.login) await ensureLogin(page, context, { site: s.key, label: s.label, ...s.login });
+        if (scan) {   // full re-check of every listing: dead ads and ads without a photo are removed
+          const since = (await kvGet("scanStartedAt")) || new Date().toISOString();
+          const e = await verifySite(page, s.key, { mode: "scan", since });
+          if (s.login) await saveState(s.key, context);
+          sites[s.key] = { ...(sites[s.key] || {}), scan: { ...e, at: new Date().toISOString() } };
+          console.log(`[${s.label}] scan: ${JSON.stringify(e)}`);
+          await kvSet("sites", sites);
+          continue;
+        }
         if (phones) {   // phone backfill only
           const e = await phoneSite(page, s.key, { limit: 2000, maxMs: 25 * 60 * 1000 });
           if (s.login) await saveState(s.key, context);
