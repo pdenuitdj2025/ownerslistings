@@ -214,7 +214,7 @@ function filtered(){
     (!q || norm(x.location).includes(q)) &&
     (!muni || muniOf(x.location) === muni) &&
     (!type || x.type === type) &&
-    (!els.src.value || sitesOf(x).includes(SITE[els.src.value])) &&
+    (!els.src.value || srcOf(x) === els.src.value) &&
     (x.price == null || (x.price >= pmin && x.price <= pmax)) &&
     (x.sqm == null || (x.sqm >= smin && x.sqm <= smax)) &&
     (!fOn || floorsOf(x.floor).some(n => n >= fmin && n <= fmax)));
@@ -298,9 +298,10 @@ function rowEl(x){
   spec.forEach(t => { const s = document.createElement("span"); s.textContent = t; d.querySelector(".spec").appendChild(s); });
   const meta = d.querySelector(".meta");
   meta.insertAdjacentHTML("beforeend", `<span class="pill site">${SITE[srcOf(x)]}</span>`);
-  if (x.alsoOn && x.alsoOn.length) {
+  if (x.alsoOn && x.alsoOn.some(a => a.site !== SITE[srcOf(x)])) {
     const also = document.createElement("span"); also.className = "also"; also.append("Και σε ");
-    x.alsoOn.forEach((a, i) => { if (i) also.append(", "); const l = document.createElement("a"); l.href = a.url; l.target = "_blank"; l.rel = "noopener"; l.textContent = a.site + " ↗"; also.appendChild(l); });
+    const seenSites = new Set([SITE[srcOf(x)]]); const uniq = x.alsoOn.filter(a => !seenSites.has(a.site) && seenSites.add(a.site));
+    uniq.forEach((a, i) => { if (i) also.append(", "); const l = document.createElement("a"); l.href = a.url; l.target = "_blank"; l.rel = "noopener"; l.textContent = a.site + " ↗"; also.appendChild(l); });
     meta.appendChild(also);
   }
   meta.insertAdjacentHTML("beforeend", x.multi ? `<span class="pill multi">Ομαδοποιημένη · ιδιώτης + άλλοι</span>` : `<span class="pill">Αγγελία ιδιώτη</span>`);
