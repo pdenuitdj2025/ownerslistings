@@ -4,9 +4,27 @@ const LABELS = new Set(["Περιοχή", "Διεύθυνση", "Ζώνη", "Έ�
 const HEAD = new Set(["Εσωτερικό", "Εξωτερικά χαρακτηριστικά", "Περισσότερα στοιχεία", "Χαρακτηριστικά", "Λεπτομέρειες ακινήτου"]);
 const date = (t, re) => (t.match(re) || [])[1] || "";
 
+const MONTHS = { "Ιανουαρίου": 1, "Φεβρουαρίου": 2, "Μαρτίου": 3, "Απριλίου": 4, "Μαΐου": 5, "Ιουνίου": 6, "Ιουλίου": 7, "Ιουλίου ": 7, "Αυγούστου": 8, "Σεπτεμβρίου": 9, "Οκτωβρίου": 10, "Νοεμβρίου": 11, "Δεκεμβρίου": 12 };
+export function xeDetails(text) {
+  const flat = text.replace(/\s+/g, " ");
+  const out = { published: "", updated: "", desc: "", address: "", facts: [], extras: [] };
+  const d = flat.match(/Τελευταία δημοσίευση:\s*(\d{1,2}) (\S+) (\d{4})/);
+  if (d && MONTHS[d[2]]) out.updated = `${String(d[1]).padStart(2, "0")}/${String(MONTHS[d[2]]).padStart(2, "0")}/${d[3]}`;
+  const a = flat.match(/Τοποθεσία ακινήτου (.+?)(?: Χαρακτηριστικά αγγελίας| Πληροφορίες αγγελιοδότη|$)/);
+  if (a) out.address = a[1].replace(/, Ελλάδα$/, "").slice(0, 120);
+  const b = flat.match(/Βασικά χαρακτηριστικά(?: \d+ χαρακτηριστικά)? (.+?)(?: Δες όλα τα χαρακτηριστικά| Περιγραφή ακινήτου)/);
+  if (b) {
+    const labels = ["Όροφος", "Υπνοδωμάτια", "Μπάνια", "WC", "Έτος κατασκευής", "Έτος ανακαίνισης", "Ενεργειακή κλάση", "Θέρμανση", "Διαθέσιμο από", "Επίπεδα", "Κατάσταση", "Parking", "Πάρκινγκ"];
+    const re = new RegExp("(" + labels.join("|") + "):\\s*(.+?)(?=\\s(?:" + labels.join("|") + "):|\\sΤιμή συζητήσιμη|$)", "g");
+    for (const m of b[1].matchAll(re)) out.facts.push([m[1] === "Parking" ? "Πάρκινγκ" : m[1], m[2].trim()]);
+  }
+  return out.facts.length || out.address ? out : null;
+}
+
 export async function extractDetails(page, key) {
   const text = await page.locator("body").innerText({ timeout: 5000 }).catch(() => "");
   if (!text) return null;
+  if (key === "xe") return xeDetails(text);
   const lines = text.split("\n").map(clean).filter(Boolean);
   const idx = (re, from = 0) => { for (let i = from; i < lines.length; i++) if (re.test(lines[i])) return i; return -1; };
   const flat = lines.join("\n");

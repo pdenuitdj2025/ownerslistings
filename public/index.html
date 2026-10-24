@@ -296,7 +296,7 @@ function rowEl(x){
   const m = document.createElement("span"); m.textContent = [x.posted ? `δημοσιεύτηκε ${x.posted.toLowerCase()}` : "", ago(x.firstSeen)].filter(Boolean).join(" · "); meta.appendChild(m);
   const dt = x.details, det = d.querySelector(".det");
   if (dt) {
-    const MAIN = ["Όροφος","Έτος κατασκευής","Θέρμανση","Σύστημα θέρμανσης","Ενεργειακή κλάση","Μπάνια","Κατάσταση","Κατασκευή","Πάρκινγκ","Εμβαδόν οικοπέδου"];
+    const MAIN = ["Όροφος","Έτος κατασκευής","Έτος ανακαίνισης","Θέρμανση","Σύστημα θέρμανσης","Ενεργειακή κλάση","Μπάνια","Κατάσταση","Κατασκευή","Πάρκινγκ","Εμβαδόν οικοπέδου"];
     const tile = (k, v, wide) => { if (!v) return; const e = document.createElement("div"); e.className = "tile" + (wide === "full" ? " full" : wide ? " wide" : ""); const a = document.createElement("span"); a.textContent = k; const b = document.createElement("b"); b.textContent = v; e.append(a, b); det.appendChild(e); };
     tile("Διεύθυνση", dt.address, "full");
     tile("Δημοσίευση", dt.published); tile("Ενημέρωση", dt.updated);

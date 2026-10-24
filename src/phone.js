@@ -2,6 +2,7 @@
 // Spitogatos and Spiti24 only (xe.gr has no reveal button).
 import { pool } from "./db.js";
 import { extractDetails } from "./details.js";
+import { dismissConsent } from "./scrapers/xe.js";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const GR = /(?:\+?30[\s.-]?)?(69\d[\s.-]?\d{3}[\s.-]?\d{4}|2\d{2,3}[\s.-]?\d{3}[\s.-]?\d{3,4})/;
 
@@ -24,7 +25,7 @@ export async function revealPhone(page) {
       if (await c.isVisible().catch(() => false)) { await c.click({ timeout: 3000 }).catch(() => {}); await page.waitForTimeout(800); break; }
     }
     const already = await grab(); if (already) return already;
-    const btns = page.getByText("Εμφάνιση τηλεφώνου");
+    const btns = page.getByText(/Εμφάνιση τηλεφώνου|Προβολή τηλεφώνου/);
     const n = await btns.count();
     for (let i = 0; i < n; i++) {
       const b = btns.nth(i);
@@ -46,7 +47,6 @@ export async function revealPhone(page) {
 // Fill in numbers for listed ads that have none yet. Gentle: small pauses, capped per run.
 export async function phoneSite(page, key, { limit = 60, maxMs = 0 } = {}) {
   const t0 = Date.now();
-  if (key === "xe") return { checked: 0, found: 0 };
   const { rows } = await pool.query(
     `SELECT id, url, phone FROM listings WHERE source=$1 AND gone_at IS NULL AND img IS NOT FALSE AND ((phone IS NULL AND phone_checked IS NULL) OR details_checked IS NULL)
       ORDER BY first_seen DESC LIMIT $2`, [key, limit]);
@@ -57,6 +57,7 @@ export async function phoneSite(page, key, { limit = 60, maxMs = 0 } = {}) {
       const resp = await page.goto(r.url, { waitUntil: "domcontentloaded", timeout: 30000 });
       if (!resp || resp.status() !== 200) { checked++; await pool.query("UPDATE listings SET phone_checked=now(), details_checked=now() WHERE id=$1", [r.id]); continue; }
       await page.waitForTimeout(1500);
+      if (key === "xe") await dismissConsent(page).catch(() => {});
       const det = await extractDetails(page, key).catch(() => null);
       await pool.query("UPDATE listings SET details=$2, details_checked=now() WHERE id=$1", [r.id, det ? JSON.stringify(det) : null]);
       if (r.phone) { checked++; continue; }

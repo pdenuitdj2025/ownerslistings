@@ -119,7 +119,7 @@ setInterval(async () => {
     if (isRunning()) return;
     const last = await kvGet("lastPhonePass");
     if (last && Date.now() - Date.parse(last) < 10 * 60 * 1000) return;
-    const { rows } = await pool.query(`SELECT count(*)::int AS n FROM listings WHERE source <> 'xe' AND gone_at IS NULL AND img IS NOT FALSE AND ((phone IS NULL AND phone_checked IS NULL) OR details_checked IS NULL)`);
+    const { rows } = await pool.query(`SELECT count(*)::int AS n FROM listings WHERE gone_at IS NULL AND img IS NOT FALSE AND ((phone IS NULL AND phone_checked IS NULL) OR details_checked IS NULL)`);
     if (!rows[0].n) return;
     await kvSet("lastPhonePass", new Date().toISOString());
     console.log("phone/details pass, pending", rows[0].n);
