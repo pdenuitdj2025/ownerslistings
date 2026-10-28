@@ -96,7 +96,7 @@ await init();
 await fixXe1().catch((e) => console.error(e));
 app.listen(process.env.PORT || 3000, () => console.log("listening"));
 
-// Schedule: one run at each hour in RUN_HOURS (Athens time), 10:00, 16:00 and 22:00 by default. The first run of the day also re-checks which listed ads are still online.
+// Schedule: one run at each hour in RUN_HOURS (Athens time), 10:00, 16:00 and 22:00 by default. Every run also re-checks which listed ads are still online.
 const athensKey = () => new Date().toLocaleString("sv-SE", { timeZone: "Europe/Athens" });   // "YYYY-MM-DD HH:MM:SS"
 function dueSlot() {
   const k = athensKey(), hour = +k.slice(11, 13);
@@ -113,7 +113,7 @@ setInterval(async () => {
   if ((await kvGet("lastScheduledSlot")) === slot) return;
   await kvSet("lastScheduledSlot", slot);
   console.log("scheduled run", k);
-  runAll({ verify: due === RUN_HOURS[0] }).catch((e) => console.error(e));
+  runAll({ verify: true }).catch((e) => console.error(e));
 }, 5 * 60 * 1000);
 // Phones + details for ads that don't have them yet: starts by itself whenever nothing else is running (after every run, after a deploy).
 setInterval(async () => {

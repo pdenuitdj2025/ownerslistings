@@ -1,5 +1,5 @@
 // Daily "is this ad still on the market?" check for homes already in the list.
-// Polite by design: at most LIMIT ads per site per day, each ad re-checked at most every 2 days, random pauses between requests.
+// Polite by design: at most LIMIT ads per site per day, each ad re-checked at most every 20 hours, random pauses between requests.
 import { pool } from "./db.js";
 
 const HOST = { spiti24: "www.spiti24.gr", xe: "www.xe.gr", spitogatos: "www.spitogatos.gr" };
@@ -23,7 +23,7 @@ export async function verifySite(page, key, { mode, since } = {}) {
       WHERE source=$1 AND gone_at IS NULL AND status IN ('new','contacted')
         AND (also_on IS NULL OR also_on='[]'::jsonb)
         AND first_seen < now() - interval '1 day'
-        AND (checked_at IS NULL OR checked_at < now() - interval '2 days' OR img IS NULL)
+        AND (checked_at IS NULL OR checked_at < now() - interval '20 hours' OR img IS NULL)
       ORDER BY (img IS NULL) DESC, checked_at NULLS FIRST, first_seen LIMIT $2`, [key, LIMIT[key] || 100]);
   if (!rows.length) return { checked: 0, gone: 0 };
   if (new URL(page.url()).host !== HOST[key]) await page.goto("https://" + HOST[key] + "/", { waitUntil: "domcontentloaded", timeout: 30000 });
