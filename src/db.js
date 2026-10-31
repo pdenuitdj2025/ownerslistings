@@ -47,6 +47,10 @@ export async function fixPrice1() {
   await pool.query("UPDATE listings SET checked_at=NULL WHERE gone_at IS NULL AND sqm>0 AND price < sqm*500");
   await kvSet("fixPrice1", true);
 }
+// a "previous price" lower than the current one is not a drop (left over from a repaired wrong price)
+export async function fixPrice2() {
+  await pool.query("UPDATE listings SET prev_price=NULL WHERE prev_price IS NOT NULL AND prev_price<=price");
+}
 
 export async function kvGet(k) {
   const r = await pool.query("SELECT v FROM kv WHERE k=$1", [k]);
