@@ -6,11 +6,12 @@ const HOST = { spiti24: "www.spiti24.gr", xe: "www.xe.gr", spitogatos: "www.spit
 const LIMIT = { spiti24: 200, spitogatos: 200, xe: 150 };
 const PHOTO = { spiti24: /spitogatos\.gr\/\d{5,}_/, spitogatos: /spitogatos\.gr\/\d{5,}_/, xe: /blob\.cdn\.xe\.gr/ };   // what a real ad photo URL looks like (og:image)
 // Current asking price as shown on the ad page (visible text). Only trusted if it is in a sane range around the stored price.
-function priceOf(key, text, stored) {
+function priceOf(key, text, stored, sqm) {
   const t = String(text || "").replace(/\s+/g, " ");
   const m = key === "xe" ? t.match(/(\d{1,3}(?:\.\d{3})+) ?€/) : t.match(/€\s?(\d{1,3}(?:\.\d{3})+)/);
   const p = m ? Number(m[1].replace(/\./g, "")) : null;
-  return p && stored && p >= stored * 0.4 && p <= stored * 2.5 ? p : null;
+  const bogus = sqm && stored < sqm * 500;   // implausible stored €/m² (card showed a truncated price): trust the ad page across a wide band
+  return p && stored && p >= stored * (bogus ? 1 : 0.4) && p <= stored * (bogus ? 30 : 2.5) ? p : null;
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -19,14 +20,14 @@ export async function verifySite(page, key, { mode, since } = {}) {
   const photos = mode === "photos";   // backfill: every listed ad that has no photo link yet, all statuses, no daily cap
   const { rows } = scan
     ? await pool.query(
-        `SELECT id, url, price, (also_on IS NULL OR also_on='[]'::jsonb) AS solo FROM listings
+        `SELECT id, url, price, sqm, (also_on IS NULL OR also_on='[]'::jsonb) AS solo FROM listings
           WHERE source=$1 AND gone_at IS NULL AND (checked_at IS NULL OR checked_at < $2) ORDER BY first_seen DESC LIMIT 3000`, [key, since])
     : photos
     ? await pool.query(
-        `SELECT id, url, price, (also_on IS NULL OR also_on='[]'::jsonb) AS solo FROM listings
+        `SELECT id, url, price, sqm, (also_on IS NULL OR also_on='[]'::jsonb) AS solo FROM listings
           WHERE source=$1 AND gone_at IS NULL AND img IS NOT FALSE AND photo IS NULL ORDER BY first_seen DESC LIMIT 2000`, [key])
     : await pool.query(
-    `SELECT id, url, price, true AS solo FROM listings
+    `SELECT id, url, price, sqm, true AS solo FROM listings
       WHERE source=$1 AND gone_at IS NULL AND status IN ('new','contacted')
         AND (also_on IS NULL OR also_on='[]'::jsonb)
         AND first_seen < now() - interval '1 day'
@@ -95,7 +96,7 @@ export async function verifySite(page, key, { mode, since } = {}) {
     if (verdict === "gone") gone.push(r.id);
     else if (verdict === "alive") {
       alive.push(r.id);
-      if (v.page) { const np = priceOf(key, v.text, r.price); if (np && np !== r.price) priceUpd[r.id] = [r.price, np]; }
+      if (v.page) { const np = priceOf(key, v.text, r.price, r.sqm); if (np && np !== r.price) priceUpd[r.id] = [r.price, np]; }
       if (v.page) (PHOTO[key].test(v.og || "") ? withPhoto : noPhoto).push(r.id);
       if (PHOTO[key].test(v.og || "")) photoUrl[r.id] = v.og.replace(/^http:/, "https:");   // only judged when the ad page really loaded
     }

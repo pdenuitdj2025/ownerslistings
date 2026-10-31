@@ -41,6 +41,13 @@ export async function fixXe1() {
   await kvSet("fixXe1", true);
 }
 
+// one-time: re-read the price from the ad page of every home whose price looks truncated (< 500 €/m²)
+export async function fixPrice1() {
+  if (await kvGet("fixPrice1")) return;
+  await pool.query("UPDATE listings SET checked_at=NULL WHERE gone_at IS NULL AND sqm>0 AND price < sqm*500");
+  await kvSet("fixPrice1", true);
+}
+
 export async function kvGet(k) {
   const r = await pool.query("SELECT v FROM kv WHERE k=$1", [k]);
   return r.rows[0]?.v ?? null;

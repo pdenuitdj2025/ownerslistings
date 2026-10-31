@@ -39,7 +39,7 @@ export async function mergeAds(ads) {
       if (e && ad.photo && !e.photo) { await pool.query("UPDATE listings SET photo=$2 WHERE id=$1", [e.id, ad.photo]); e.photo = ad.photo; }
       if (e && ad.img === true && e.img !== true) await pool.query("UPDATE listings SET img=true WHERE id=$1", [e.id]);
       if (e && e.gone_at) { await pool.query("UPDATE listings SET gone_at=NULL, checked_at=now() WHERE id=$1", [e.id]); e.gone_at = null; }   // it is back on the market
-      if (e && e.price && ad.price < e.price * 0.99) {
+      if (e && e.price && ad.price < e.price * 0.99 && ad.price >= e.price * 0.4) {   // a card price far below the stored one is a mis-shown/truncated price, not a drop
         await pool.query(`UPDATE listings SET prev_price=$2, price=$3, status=CASE WHEN status='skip' THEN 'new' ELSE status END WHERE id=$1`, [e.id, e.price, ad.price]);
         e.price = ad.price; dropped++;
       }
