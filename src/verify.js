@@ -30,7 +30,7 @@ export async function verifySite(page, key, { mode, since } = {}) {
     `SELECT id, url, price, sqm, (also_on IS NULL OR also_on='[]'::jsonb) AS solo FROM listings
       WHERE source=$1 AND gone_at IS NULL AND status IN ('new','contacted')
         AND ((also_on IS NULL OR also_on='[]'::jsonb) OR (sqm>0 AND price < sqm*500))
-        AND first_seen < now() - interval '1 day'
+        AND (first_seen < now() - interval '1 day' OR (sqm>0 AND price < sqm*500))
         AND (checked_at IS NULL OR checked_at < now() - interval '20 hours' OR img IS NULL)
       ORDER BY (img IS NULL) DESC, checked_at NULLS FIRST, first_seen LIMIT $2`, [key, LIMIT[key] || 100]);
   if (!rows.length) return { checked: 0, gone: 0 };
