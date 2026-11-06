@@ -38,7 +38,7 @@ export async function verifySite(page, key, { mode, since } = {}) {
       `SELECT id, url, price, CASE WHEN category='home' THEN sqm END AS sqm, (also_on IS NULL OR also_on='[]'::jsonb) AS solo FROM listings
         WHERE source=$1 AND gone_at IS NULL AND seller='agency' AND (also_on IS NULL OR also_on='[]'::jsonb)
           AND first_seen < now() - interval '1 day' AND (checked_at IS NULL OR checked_at < now() - interval '20 hours' OR img IS NULL)
-        ORDER BY (img IS NULL) DESC, checked_at NULLS FIRST, first_seen LIMIT 150`, [key]);
+        ORDER BY (img IS NULL) DESC, checked_at NULLS FIRST, first_seen LIMIT 400`, [key]);
     rows.push(...ag.rows);
   }
   if (!rows.length) return { checked: 0, gone: 0 };
