@@ -14,7 +14,7 @@ const pageGallery = {
     return [];
   },
   gep: () => {
-    const u = [...document.querySelectorAll("img, a")].map((e) => e.getAttribute("data-src") || e.getAttribute("data-large") || e.currentSrc || e.src || e.getAttribute("href") || "").filter((x) => /wp-content\/uploads\/.+\.(jpe?g|webp|png)$/i.test(x) && !/-\d+x\d+\./.test(x) && !/logo|icon|avatar/i.test(x));
+    const u = [...document.querySelectorAll("img, a")].map((e) => e.getAttribute("data-src") || e.getAttribute("data-large") || e.currentSrc || e.src || e.getAttribute("href") || "").filter((x) => /wp-content\/uploads\/.+\.(jpe?g|webp|png)$/i.test(x) && !/-\d+x\d+\./.test(x) && !/logo|icon|avatar|footer|banner|grex-|favicon/i.test(x));
     return [...new Set(u)];
   },
   spiti24: () => {

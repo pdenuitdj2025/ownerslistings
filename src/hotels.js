@@ -53,6 +53,32 @@ async function gep() {
   return out;
 }
 
+// Fills m², rooms, year and a clean location from each hotel's own page (once per hotel; 80 per run)
+async function enrichHotels() {
+  const { rows } = await pool.query("SELECT id, source, url FROM listings WHERE category='hotel' AND source IN ('ktimato','gep') AND details_checked IS NULL ORDER BY first_seen DESC LIMIT 80");
+  let done = 0;
+  for (const r of rows) {
+    try {
+      const html = await get(r.url); let sqm = null, beds = null, year = null, loc = "";
+      if (r.source === "ktimato") {
+        const j = ldBlocks(html).find((b) => b["@type"] === "RealEstateListing");
+        sqm = Math.round(num(j?.floorSize?.value ?? j?.floorSize ?? "")) || null; beds = j?.numberOfBedrooms || null;
+        loc = [j?.address?.addressLocality].filter(Boolean).join(", ");
+      } else {
+        const txt = html.replace(/<(script|style)[\s\S]*?<\/\1>/g, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+        const meta = txt.match(/GREX\w+\s+(.{0,160})/)?.[1] || "";
+        sqm = Math.round(num((meta.match(/([\d.,]+)\s*m2/i) || [])[1] || "")) || null; beds = +(meta.match(/(\d+)\s*Bedrooms/i) || [])[1] || null; year = +(meta.match(/(\d{4})\s*Year Built/i) || [])[1] || null;
+        const cities = [...html.matchAll(/property-city\/[a-z0-9-]+\/?"[^>]*>([^<]+)</g)].map((m) => m[1].trim()).filter((c) => c && !/^greece$/i.test(c));
+        loc = cities.length ? cities[cities.length - 1].toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase()) : "";
+      }
+      await pool.query("UPDATE listings SET sqm=COALESCE($2,sqm), beds=COALESCE($3,beds), year=COALESCE($4,year), location=CASE WHEN $5<>'' THEN $5 ELSE location END, details_checked=now() WHERE id=$1", [r.id, sqm, beds, year && year > 1800 && year < 2100 ? year : null, loc]);
+      done++;
+    } catch (e) { await pool.query("UPDATE listings SET details_checked=now() WHERE id=$1", [r.id]); }
+    await new Promise((z) => setTimeout(z, 500));
+  }
+  return done;
+}
+
 const SOURCES = [{ key: "ktimato", label: "Ktimatoemporiki", run: ktimato }, { key: "gep", label: "Greek Exclusive Properties", run: gep }];
 
 export async function runHotelSources(sites) {
@@ -66,6 +92,7 @@ export async function runHotelSources(sites) {
         const keep = new Set(ads.map((a) => a.id)), dead = rows.filter((r) => !keep.has(r.id)).map((r) => r.id);
         if (dead.length) { await pool.query("DELETE FROM listings WHERE id = ANY($1)", [dead]); removed = dead.length; }
       }
+      try { await enrichHotels(); } catch (e) { console.error("hotel enrich", e.message); }
       sites[s.key] = { status: "ok", at: new Date().toISOString(), scraped: ads.length, created, merged, removed };
       console.log(`[${s.label}] hotels: scraped ${ads.length}, new ${created}, removed ${removed}`);
     } catch (e) { console.error(`[${s.label}] ${e.message}`); sites[s.key] = { status: "error", message: String(e.message).slice(0, 200), at: new Date().toISOString() }; }

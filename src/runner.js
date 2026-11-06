@@ -6,7 +6,7 @@ import { ensureLogin, loadState, saveState } from "./auth.js";
 import { scrapeSpiti24, scrapeSpiti24Land } from "./scrapers/spiti24.js";
 // import { scrapePlot } from "./scrapers/plot.js";
 import { scrapeXe, dismissConsent, XE_LAND_URL, scrapeXeAgency } from "./scrapers/xe.js";
-import { scrapeSpitogatos, readPages, AREAS as SG_AREAS } from "./scrapers/spitogatos.js";
+import { scrapeSpitogatos, scrapeSpitogatosLand, readPages, AREAS as SG_AREAS } from "./scrapers/spitogatos.js";
 import { verifySite } from "./verify.js";
 import { runHotelSources } from "./hotels.js";
 import { phoneSite, revealPhone } from "./phone.js";
@@ -21,7 +21,7 @@ const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 const SITES = [
   { key: "spiti24", label: "Spiti24", run: scrapeSpiti24, land: scrapeSpiti24Land, landAgency: (page, o) => scrapeSpiti24Land(page, { agency: true, cat: o.cat || "land", maxPages: o.maxPages, start: o.start, maxMs: 10 * 60 * 1000 }) },
   { key: "xe", label: "xe.gr", run: scrapeXe, land: (page, o) => scrapeXe(page, { url: XE_LAND_URL, category: "land", backfill: o.maxPages > 3, maxPages: o.maxPages > 3 ? 260 : 6 }), agencyNew: (page, cat) => scrapeXeAgency(page, { category: cat, maxPages: 8 }), login: { home: "https://www.xe.gr/", preflight: dismissConsent, loggedOutText: /Συνδέσου για να τις δεις/, probe: "https://www.xe.gr/property/results?item_type=residence&transaction_name=buy&publication_origins%5B%5D=false&country=GR&geo_place_ids%5B%5D=ChIJUwsYu2cPnxQRkIC54iy9AAE&sorting=publication_date_desc" } },
-  { key: "spitogatos", label: "Spitogatos", run: scrapeSpitogatos, login: { home: "https://www.spitogatos.gr/", probe: "https://www.spitogatos.gr/pwliseis-katoikies/athina-kentro/prwti_dimosieusi_24wres/order_datemodified_desc" } },
+  { key: "spitogatos", label: "Spitogatos", run: scrapeSpitogatos, landNew: scrapeSpitogatosLand, login: { home: "https://www.spitogatos.gr/", probe: "https://www.spitogatos.gr/pwliseis-katoikies/athina-kentro/prwti_dimosieusi_24wres/order_datemodified_desc" } },
 ];
 
 let running = false;
@@ -81,6 +81,11 @@ export async function runAll({ verify = true, enrich = false, phones = false, sc
           sites[s.key + "_land"] = { at: new Date().toISOString(), scraped: land.length, created: lm.created, merged: lm.merged };
           console.log(`[${s.label}] land: scraped ${land.length}, new ${lm.created}`);
         } catch (e) { console.error(`[${s.label}] land failed: ${e.message}`); }
+        if (s.landNew) for (const mode of ["owner", "agency"]) try {   // newest land ads (last 24 h) of Spitogatos
+          const ld = await s.landNew(page, { mode }); const lm = await mergeAds(ld);
+          sites[`${s.key}_land_${mode}`] = { at: new Date().toISOString(), scraped: ld.length, created: lm.created, merged: lm.merged };
+          console.log(`[${s.label}] land ${mode}: scraped ${ld.length}, new ${lm.created}`);
+        } catch (e) { console.error(`[${s.label}] land ${mode} failed: ${e.message}`); }
         if (s.agencyNew) for (const cat of ["land", "home"]) try {   // newest agency ads only (no backfill: ~90k land ads on this site)
           const ag = await s.agencyNew(page, cat); const am = await mergeAds(ag);
           sites[`${s.key}_agency_${cat}`] = { at: new Date().toISOString(), scraped: ag.length, created: am.created, merged: am.merged };
