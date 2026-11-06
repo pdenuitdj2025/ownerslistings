@@ -69,13 +69,13 @@ app.post("/api/run", async (_q, res) => {
 });
 
 // ZIP for presentations: listing text/CSV + the owners' photos in the best size the sites offer
-const PHOTO_OK = /^https:\/\/([a-z0-9-]+\.)*(spitogatos\.gr|xe\.gr|b-cdn\.net|greekexclusiveproperties\.com)\//i;
+const PHOTO_OK = /^https:\/\/([a-z0-9-]+\.)*(spitogatos\.gr|xe\.gr|b-cdn\.net|greekexclusiveproperties\.com|realting\.com)\//i;
 const bigPhoto = (u) => /spitogatos\.gr\//.test(u) ? u.replace(/_\d+x\d+\.jpg.*$/, "_1600x1200.jpg") : /blob\.cdn\.xe\.gr\//.test(u) ? u.replace(/\?.*$/, "") : u;
 async function getImg(u) { try { const r = await fetch(u, { headers: { "user-agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(20000) }); if (!r.ok || !/^image\//.test(r.headers.get("content-type") || "")) return null; const b = Buffer.from(await r.arrayBuffer()); return b.length > 2000 ? b : null; } catch { return null; } }
 const exportJobs = new Map();   // id -> {state, done, total, zip, photos, error, at}
 app.post("/api/export-zip", (req, res) => {
   const { md = "", csv = "", items = [] } = req.body || {};
-  const list = (Array.isArray(items) ? items : []).slice(0, 120).filter((x) => x && typeof x.id === "string" && typeof x.url === "string" && /^https:\/\/(www\.)?(xe\.gr|spitogatos\.gr|spiti24\.gr|ktimatoemporiki\.gr|greekexclusiveproperties\.com)\//.test(x.url));
+  const list = (Array.isArray(items) ? items : []).slice(0, 120).filter((x) => x && typeof x.id === "string" && typeof x.url === "string" && /^https:\/\/(www\.)?(xe\.gr|spitogatos\.gr|spiti24\.gr|ktimatoemporiki\.gr|greekexclusiveproperties\.com|realting\.com)\//.test(x.url));
   if ([...exportJobs.values()].some((j) => j.state === "running")) return res.status(429).json({ error: "busy" });
   for (const [k, j] of exportJobs) if (Date.now() - j.at > 20 * 60e3) exportJobs.delete(k);
   const id = Math.random().toString(36).slice(2, 10), job = { state: "running", done: 0, total: list.length, at: Date.now() }; exportJobs.set(id, job);

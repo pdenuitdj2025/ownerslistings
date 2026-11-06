@@ -2,7 +2,7 @@
 // (same sqm exactly, price within 1 %, and the location agrees).
 import { pool } from "./db.js";
 
-const SITE_LABEL = { ktimato: "Ktimatoemporiki", gep: "Greek Exclusive Properties", xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
+const SITE_LABEL = { realting: "Realting", ktimato: "Ktimatoemporiki", gep: "Greek Exclusive Properties", xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
 const GENERIC = new Set(["αθηνα", "πειραιας"]);
 const norm = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/ς/g, "σ");
 const muni = (loc) => norm((loc || "").split("(")[0]).trim();
@@ -16,7 +16,7 @@ function locAgree(a, b) {
   for (const w of words(b)) if (wa.has(w)) return true;
   return false;
 }
-const sameHome = (x, y) => x.category === "hotel" && y.category === "hotel" ? !!(x.source !== y.source && x.price && y.price && Math.abs(x.price - y.price) <= 0.01 * Math.max(x.price, y.price) && locAgree(x.location, y.location) && (!x.sqm || !y.sqm || x.sqm === y.sqm)) :
+const sameHome = (x, y) => x.category === "hotel" && y.category === "hotel" ? !!(x.source !== y.source && (x.currency || "EUR") === (y.currency || "EUR") && x.price && y.price && Math.abs(x.price - y.price) <= 0.01 * Math.max(x.price, y.price) && locAgree(x.location, y.location) && (!x.sqm || !y.sqm || x.sqm === y.sqm)) :
   (x.category || "home") === (y.category || "home") && (x.seller || "owner") === (y.seller || "owner") &&
   x.sqm && y.sqm && x.sqm === y.sqm && x.price && y.price &&
   Math.abs(x.price - y.price) <= 0.01 * Math.max(x.price, y.price) && locAgree(x.location, y.location);
@@ -60,9 +60,9 @@ export async function mergeAds(ads) {
       continue;
     }
     await pool.query(
-      `INSERT INTO listings(id,source,url,type,sqm,price,floor,beds,year,location,multi,posted,img,photo,category,seller)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) ON CONFLICT DO NOTHING`,
-      [ad.id, ad.source, ad.url, ad.type, ad.sqm, ad.price, ad.floor || "", ad.beds || null, ad.year || null, ad.location || "", !!ad.multi, ad.posted || "", ad.img === true ? true : null, ad.photo || null, ad.category || "home", ad.seller || "owner"]
+      `INSERT INTO listings(id,source,url,type,sqm,price,floor,beds,year,location,multi,posted,img,photo,category,seller,currency)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) ON CONFLICT DO NOTHING`,
+      [ad.id, ad.source, ad.url, ad.type, ad.sqm, ad.price, ad.floor || "", ad.beds || null, ad.year || null, ad.location || "", !!ad.multi, ad.posted || "", ad.img === true ? true : null, ad.photo || null, ad.category || "home", ad.seller || "owner", ad.currency || "EUR"]
     );
     existing.push({ ...ad, alsoOn: [] }); ids.add(ad.id); urls.add(ad.url); created++;
     createdList.push(ad);

@@ -165,7 +165,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
         <div class="pop" id="floorPop" hidden><div class="pa"><button type="button" id="floorClear">Καθαρισμός</button><button type="button" id="floorClose">Κλείσιμο</button></div><div id="floorList"></div></div></div>
     </div>
     <label for="src">Ιστότοπος
-      <select id="src"><option value="">Όλοι οι ιστότοποι</option><option value="xe">xe.gr</option><option value="spitogatos">Spitogatos</option><option value="spiti24">Spiti24</option><option value="ktimato">Ktimatoemporiki</option><option value="gep">Greek Exclusive Properties</option></select>
+      <select id="src"><option value="">Όλοι οι ιστότοποι</option><option value="xe">xe.gr</option><option value="spitogatos">Spitogatos</option><option value="spiti24">Spiti24</option><option value="ktimato">Ktimatoemporiki</option><option value="gep">Greek Exclusive Properties</option><option value="realting">Realting (σε $)</option></select>
     </label>
     <label for="sort">Ταξινόμηση
       <select id="sort">
@@ -201,7 +201,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 const $ = s => document.querySelector(s);
 const els = { list:$("#list"), empty:$("#empty"), more:$("#more"), counts:$("#counts"), sub:$("#sub"),
   q:$("#q"), type:$("#type"), pmin:$("#pmin"), pmax:$("#pmax"), smin:$("#smin"), smax:$("#smax"), src:$("#src"), sort:$("#sort"), solo:$("#solo"), toast:$("#toast") };
-const SITE = { ktimato: "Ktimatoemporiki", gep: "Greek Exclusive Properties", xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
+const SITE = { realting: "Realting", ktimato: "Ktimatoemporiki", gep: "Greek Exclusive Properties", xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
 const srcOf = x => SITE[x.source] ? x.source : "xe";
 const sitesOf = x => [SITE[srcOf(x)], ...(x.alsoOn || []).map(a => a.site)];
 let counts = {};
@@ -211,6 +211,7 @@ let picked = new Set(); try { picked = new Set(JSON.parse(localStorage.getItem('
 const savePicked = () => { try { localStorage.setItem('owner-listings-picked', JSON.stringify([...picked])); } catch (e) {} };
 let rows = [], tab = "new", shown = 60, canWrite = true;
 const PAGE = 60;
+const cur = x => (x && x.currency === "USD") ? "$" : "€";
 const fmt = n => n == null ? "" : n.toLocaleString("el-GR");
 const muniOf = loc => (loc || "").split("(")[0].trim();
 const norm = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -321,7 +322,7 @@ function rowEl(x){
     </div>
     <div class="pw">${img}<label class="pick"><input type="checkbox" class="pk" ${picked.has(x.id) ? "checked" : ""}> Για εξαγωγή</label></div>
     <div class="side">
-      <div><div class="price">${fmt(x.price)} €</div>${x.prevPrice ? `<div class="ppm" style="color:#2f7d4f;font-weight:600">↓ από ${fmt(x.prevPrice)} €</div>` : ""}${ppm ? `<div class="ppm">${fmt(ppm)} €/τ.μ.</div>` : ""}</div>
+      <div><div class="price">${fmt(x.price)} ${cur(x)}</div>${x.prevPrice ? `<div class="ppm" style="color:#2f7d4f;font-weight:600">↓ από ${fmt(x.prevPrice)} ${cur(x)}</div>` : ""}${ppm ? `<div class="ppm">${fmt(ppm)} ${cur(x)}/τ.μ.</div>` : ""}</div>
       <div class="status">
         <button class="st" data-s="new" aria-pressed="${st==="new"}">Προς έλεγχο</button>
         <button class="st" data-s="contacted" aria-pressed="${st==="contacted"}">Επικοινωνήσαμε</button>
@@ -432,7 +433,7 @@ function updExpCount(){ $("#expCount").textContent = picked.size ? `επιλεγ
 function expObj(x){
   const dt = x.details || {}, f = Object.fromEntries((dt.facts || []).filter(a => Array.isArray(a)));
   const ppm = x.price && x.sqm ? Math.round(x.price / x.sqm) : null;
-  return { περιοχή: x.location || "", τύπος: x.type || "", τμ: x.sqm ?? "", τιμή: x.price ?? "", "τιμή_ανά_τμ": ppm ?? "", προηγούμενη_τιμή: x.prevPrice ?? "",
+  return { περιοχή: x.location || "", τύπος: x.type || "", τμ: x.sqm ?? "", τιμή: x.price ?? "", "τιμή_ανά_τμ": ppm ?? "", νόμισμα: x.currency === "USD" ? "USD" : "EUR", προηγούμενη_τιμή: x.prevPrice ?? "",
     όροφος: x.floor || f["Όροφος"] || "", υπνοδωμάτια: x.beds ?? f["Υπνοδωμάτια"] ?? "", μπάνια: f["Μπάνια"] || "", έτος_κατασκευής: x.year ?? f["Έτος κατασκευής"] ?? "",
     θέρμανση: f["Θέρμανση"] || f["Σύστημα θέρμανσης"] || "", ενεργειακή_κλάση: f["Ενεργειακή κλάση"] || "", δημοσίευση: dt.published || "", ενημέρωση: dt.updated || "",
     ιστότοπος: SITE[srcOf(x)], σύνδεσμος: x.url, και_σε: (x.alsoOn || []).map(a => a.url).join(" "), φωτογραφία: x.photo || "", κατάσταση: ({new:"Προς έλεγχο",contacted:"Επικοινωνήσαμε",skip:"Δεν ενδιαφέρει"})[x.status || "new"],
@@ -459,7 +460,7 @@ function exportMarkdown(r, files){
     `Στοιχεία: ${n} ακίνητα${prices.length ? ` · τιμές από ${fmt(Math.min(...prices))} € έως ${fmt(Math.max(...prices))} €` : ""} · Φίλτρα: ${filterSummary()} · Ημερομηνία: ${stamp()}`];
   r.forEach((x, i) => { const o = expObj(x);
     L.push("", `## ${i + 1}. ${o.περιοχή}${o.τύπος ? " — " + o.τύπος : ""}`);
-    const rows2 = [["Τιμή", o.τιμή !== "" ? fmt(o.τιμή) + " €" + (o.προηγούμενη_τιμή ? ` (μειώθηκε από ${fmt(o.προηγούμενη_τιμή)} €)` : "") : ""], ["Εμβαδόν", o.τμ ? o.τμ + " τ.μ." : ""], ["Τιμή/τ.μ.", o.τιμή_ανά_τμ ? fmt(o.τιμή_ανά_τμ) + " €" : ""], ["Όροφος", o.όροφος], ["Υπνοδωμάτια", o.υπνοδωμάτια], ["Μπάνια", o.μπάνια], ["Έτος κατασκευής", o.έτος_κατασκευής], ["Θέρμανση", o.θέρμανση], ["Ενεργειακή κλάση", o.ενεργειακή_κλάση], ["Δημοσίευση", o.δημοσίευση], ["Αγγελία", o.σύνδεσμος], ["Φωτογραφίες", files ? `{{PH:${x.id}}}` : o.φωτογραφία], ];
+    const rows2 = [["Τιμή", o.τιμή !== "" ? fmt(o.τιμή) + (o.νόμισμα === "USD" ? " $" : " €") + (o.προηγούμενη_τιμή ? ` (μειώθηκε από ${fmt(o.προηγούμενη_τιμή)} ${o.νόμισμα === "USD" ? "$" : "€"})` : "") : ""], ["Εμβαδόν", o.τμ ? o.τμ + " τ.μ." : ""], ["Τιμή/τ.μ.", o.τιμή_ανά_τμ ? fmt(o.τιμή_ανά_τμ) + (o.νόμισμα === "USD" ? " $" : " €") : ""], ["Όροφος", o.όροφος], ["Υπνοδωμάτια", o.υπνοδωμάτια], ["Μπάνια", o.μπάνια], ["Έτος κατασκευής", o.έτος_κατασκευής], ["Θέρμανση", o.θέρμανση], ["Ενεργειακή κλάση", o.ενεργειακή_κλάση], ["Δημοσίευση", o.δημοσίευση], ["Αγγελία", o.σύνδεσμος], ["Φωτογραφίες", files ? `{{PH:${x.id}}}` : o.φωτογραφία], ];
     rows2.filter(([, v]) => v !== "" && v != null).forEach(([k, v]) => L.push(`- ${k}: ${v}`)); });
   return L.join("\n");
 }

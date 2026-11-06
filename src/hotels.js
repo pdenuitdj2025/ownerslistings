@@ -30,6 +30,29 @@ async function ktimato() {
   return out;
 }
 
+// realting.com — /greece/commercial/hotels?page=N (30 per page); prices are listed in USD and kept in USD
+async function realting() {
+  const base = "https://realting.com", out = []; let prev = "";
+  const usd = (t) => { const m = String(t || "").match(/\$\s*([\d\s.,]+?)\s*([MK]?)\s*$/i); if (!m) return null; const n = m[2] ? parseFloat(m[1].replace(/\s/g, "").replace(",", ".")) * (m[2].toUpperCase() === "M" ? 1e6 : 1e3) : Number(m[1].replace(/[\s.,]/g, "")); return Math.round(n) || null; };
+  for (let p = 1; p <= 20; p++) {
+    const html = await get(`${base}/greece/commercial/hotels` + (p > 1 ? `?page=${p}` : ""));
+    const blocks = html.split('<a class="flex-grow-1" href="').slice(1);
+    if (!blocks.length) break;
+    const first = blocks[0].slice(0, 80); if (first === prev) break; prev = first;
+    for (const b of blocks) {
+      const url = (b.match(/^(https:\/\/realting\.com\/greece\/commercial\/\d+)/) || [])[1]; if (!url) continue;
+      const price = usd((b.match(/data-price-usd="([^"]+)"/) || [])[1]); if (!price) continue;
+      const title = (b.match(/class="teaser-title[^>]*>([^<]+)</) || [])[1] || "", route = (b.match(/class="route">([^<]+)</) || [])[1] || "";
+      const sq = (title + " " + (b.match(/title="Area"[\s\S]{0,300}?<span>([^<]+)</) || [])[1]).match(/([\d\s.,]+)\s*m²/);
+      const img = (b.match(/itemprop="contentUrl" content="([^"]+)"/) || [])[1] || (b.match(/<img class="w-100p" src="([^"]+)"/) || [])[1] || "";
+      out.push({ id: "rt-" + url.replace(/^.*\//, ""), source: "realting", url, category: "hotel", seller: "agency", currency: "USD", type: "Ξενοδοχείο", sqm: sq ? Math.round(num(sq[1].replace(/\s/g, ""))) : null,
+        price, floor: "", beds: null, year: null, location: route.replace(/,\s*Greece$/, "").trim(), multi: false, posted: "", img: !!img, photo: img });
+    }
+    await new Promise((r) => setTimeout(r, 800));
+  }
+  return out;
+}
+
 // greekexclusiveproperties.com — WordPress archive /property-type/hotel-sales/page/N/ (article.property-item)
 async function gep() {
   const base = "https://www.greekexclusiveproperties.com", out = []; let prev = "";
@@ -79,7 +102,7 @@ async function enrichHotels() {
   return done;
 }
 
-const SOURCES = [{ key: "ktimato", label: "Ktimatoemporiki", run: ktimato }, { key: "gep", label: "Greek Exclusive Properties", run: gep }];
+const SOURCES = [{ key: "ktimato", label: "Ktimatoemporiki", run: ktimato }, { key: "gep", label: "Greek Exclusive Properties", run: gep }, { key: "realting", label: "Realting", run: realting }];
 
 export async function runHotelSources(sites) {
   for (const s of SOURCES) {
