@@ -111,13 +111,45 @@ async function enrichHotels() {
   return done;
 }
 
-const SOURCES = [{ key: "ktimato", label: "Ktimatoemporiki", run: ktimato }, { key: "gep", label: "Greek Exclusive Properties", run: gep }, { key: "realting", label: "Realting", run: realting }];
+// Sabbianco's own listings — the company's CMS feed (the same public feed the website uses)
+const SB_API = "https://cms.sabbiancoproperties.com/api/public";
+export async function sabbianco() {
+  const out = [], galleries = {};
+  const tok = process.env.SABBIANCO_TOKEN || "XIZSiqNDTh9xXfD7zZSIe89HCMXYgLI1oK4HKWbkX9DLtrMZnkxqDRjas2c5gVzF";   // public key shipped in the website's own JS
+  let last = 1;
+  for (let p = 1; p <= last && p <= 80; p++) {
+    const r = await fetch(`${SB_API}/properties?country=greece&page=${p}`, { headers: { Authorization: "Bearer " + tok, Accept: "application/json", "User-Agent": UA }, signal: AbortSignal.timeout(30000) });
+    if (!r.ok) throw new Error(`sabbianco page ${p} → ${r.status}`);
+    const j = await r.json(); last = j.meta?.last_page || 1;
+    for (const x of j.data || []) {
+      const at = {}; for (const g of Object.values(x.attributes || {})) for (const a of g) if (a.value !== undefined && a.format !== "boolean") at[a.key] = a.value;
+      const key = x.property_type?.key || "";
+      const category = key === "land" || key === "plot" ? "land" : "home";
+      const el = (o) => o?.translates?.el?.name || o?.name || "";
+      const area = el(x.area), town = el(x.address) || el(x.city);
+      const imgs = [x.main_image?.url, ...(x.gallery || []).map((g) => g.url)].filter(Boolean);
+      const price = Math.round(Number(x.discount_price || x.price)) || null;
+      const sqm = Math.round(num(at["square-meters"] || at["plot-size"] || "") || 0) || null;
+      const lvl = at["apartment-level"];
+      out.push({ id: "sb-" + x.id, source: "sabbianco", url: "https://sabbiancoproperties.com/property/" + x.path, category, seller: "owner", currency: "EUR",
+        type: el(x.property_type) || key, sqm: category === "land" ? Math.round(num(at["plot-size"] || at["square-meters"] || "") || 0) || null : sqm, price, floor: lvl !== undefined && lvl !== "" ? String(lvl) : "",
+        beds: Number(at["bedrooms"]) || null, year: Number(at["year-built"]) || null, location: [town, area].filter(Boolean).join(", "), multi: false, posted: "", img: imgs.length ? true : false, photo: imgs[0] || "" });
+      galleries["sb-" + x.id] = imgs;
+    }
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  out.galleries = galleries;
+  return out;
+}
+
+const SOURCES = [{ key: "ktimato", label: "Ktimatoemporiki", run: ktimato }, { key: "gep", label: "Greek Exclusive Properties", run: gep }, { key: "realting", label: "Realting", run: realting }, { key: "sabbianco", label: "Sabbianco", run: sabbianco }];
 
 export async function runHotelSources(sites) {
   for (const s of SOURCES) {
     try {
-      const ads = (await s.run()).filter((a) => a.price);
+      const raw = await s.run(); const ads = raw.filter((a) => a.price); ads.galleries = raw.galleries;
       const { created, merged } = await mergeAds(ads);
+      if (ads.galleries) for (const [id, urls] of Object.entries(ads.galleries)) if (urls.length > 1) await pool.query("UPDATE listings SET gallery=$2::jsonb, gallery_at=now() WHERE id=$1", [id, JSON.stringify(urls)]);
       let removed = 0;
       const { rows } = await pool.query("SELECT id FROM listings WHERE source=$1 AND gone_at IS NULL", [s.key]);
       if (ads.length >= 50 && ads.length >= rows.length * 0.7) {   // complete list read: ads that are no longer on the site are removed
