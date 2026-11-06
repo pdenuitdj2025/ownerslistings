@@ -2,6 +2,7 @@ import express from "express";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { makeZip } from "./zip.js";
+import { collectGalleries } from "./gallery.js";
 import { init, fixXe1, fixPrice1, fixPrice2, pool, kvGet, kvSet, toApi } from "./db.js";
 import { mergeAds } from "./merge.js";
 import { runAll, runSweep, isRunning, debugPage } from "./runner.js";
@@ -66,17 +67,35 @@ app.post("/api/run", async (_q, res) => {
 const PHOTO_OK = /^https:\/\/([a-z0-9-]+\.)*(spitogatos\.gr|xe\.gr)\//i;
 const bigPhoto = (u) => /spitogatos\.gr\//.test(u) ? u.replace(/_\d+x\d+\.jpg.*$/, "_1600x1200.jpg") : /blob\.cdn\.xe\.gr\//.test(u) ? u.replace(/\?.*$/, "") : u;
 async function getImg(u) { try { const r = await fetch(u, { headers: { "user-agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(20000) }); if (!r.ok || !/^image\//.test(r.headers.get("content-type") || "")) return null; const b = Buffer.from(await r.arrayBuffer()); return b.length > 2000 ? b : null; } catch { return null; } }
-app.post("/api/export-zip", async (req, res) => {
-  try {
-    const { md = "", csv = "", photos = [] } = req.body || {};
-    const list = (Array.isArray(photos) ? photos : []).slice(0, 300).filter((p) => p && typeof p.name === "string" && typeof p.url === "string" && PHOTO_OK.test(p.url));
-    const out = new Array(list.length); let next = 0;
-    await Promise.all(Array.from({ length: 6 }, async () => { for (;;) { const i = next++; if (i >= list.length) return; const p = list[i];
-      const b = (await getImg(bigPhoto(p.url))) || (await getImg(p.url)); if (b) out[i] = { name: "photos/" + p.name.replace(/[\\/:*?"<>|]/g, "-"), data: b }; } }));
-    const entries = [{ name: "listings.md", data: Buffer.from(String(md), "utf8") }, { name: "listings.csv", data: Buffer.from("\ufeff" + String(csv), "utf8") }, ...out.filter(Boolean)];
-    const zip = makeZip(entries);
-    res.set({ "content-type": "application/zip", "content-disposition": 'attachment; filename="listings.zip"', "x-photos": `${out.filter(Boolean).length}/${list.length}` }).send(zip);
-  } catch (e) { console.error(e); res.status(500).json({ error: String(e) }); }
+const exportJobs = new Map();   // id -> {state, done, total, zip, photos, error, at}
+app.post("/api/export-zip", (req, res) => {
+  const { md = "", csv = "", items = [] } = req.body || {};
+  const list = (Array.isArray(items) ? items : []).slice(0, 120).filter((x) => x && typeof x.id === "string" && typeof x.url === "string" && /^https:\/\/(www\.)?(xe|spitogatos|spiti24)\.gr\//.test(x.url));
+  if ([...exportJobs.values()].some((j) => j.state === "running")) return res.status(429).json({ error: "busy" });
+  for (const [k, j] of exportJobs) if (Date.now() - j.at > 20 * 60e3) exportJobs.delete(k);
+  const id = Math.random().toString(36).slice(2, 10), job = { state: "running", done: 0, total: list.length, at: Date.now() }; exportJobs.set(id, job);
+  (async () => {
+    const gal = await collectGalleries(list.map((x) => ({ id: x.id, url: x.url, source: x.source })), (d) => { job.done = d; });
+    const files = [], per = []; let total = 0, ok = 0;
+    for (const x of list) { const urls = (gal.get(x.id) || (x.photo ? [x.photo] : [])).filter((u) => PHOTO_OK.test(u)); per.push({ x, urls }); total += urls.length; }
+    job.total = total; job.done = 0;
+    const names = new Map();
+    const tasks = []; per.forEach(({ x, urls }) => urls.forEach((u, k) => tasks.push({ x, u, k })));
+    let next = 0;
+    await Promise.all(Array.from({ length: 6 }, async () => { for (;;) { const t = tasks[next++]; if (!t) return;
+      const b = (await getImg(bigPhoto(t.u))) || (await getImg(t.u));
+      if (b) { const nm = `photos/${t.x.name}/${String(t.k + 1).padStart(2, "0")}.${b[0] === 0x89 ? "png" : b[0] === 0x52 ? "webp" : "jpg"}`; files.push({ name: nm, data: b }); (names.get(t.x.id) || names.set(t.x.id, []).get(t.x.id)).push(nm); ok++; }
+      job.done++; } }));
+    let text = String(md); for (const x of list) text = text.split(`{{PH:${x.id}}}`).join((names.get(x.id) || []).sort().join(", ") || "—");
+    job.zip = makeZip([{ name: "listings.md", data: Buffer.from(text, "utf8") }, { name: "listings.csv", data: Buffer.from("\ufeff" + String(csv), "utf8") }, ...files.sort((a, b) => a.name.localeCompare(b.name))]);
+    job.photos = `${ok}/${total}`; job.state = "done";
+  })().catch((e) => { console.error(e); job.state = "error"; job.error = String(e); });
+  res.json({ job: id, total: list.length });
+});
+app.get("/api/export-zip/:id", (req, res) => {
+  const j = exportJobs.get(req.params.id); if (!j) return res.status(404).json({ error: "gone" });
+  if (req.query.download && j.state === "done") return res.set({ "content-type": "application/zip", "content-disposition": 'attachment; filename="listings.zip"' }).send(j.zip);
+  res.json({ state: j.state, done: j.done, total: j.total, photos: j.photos, error: j.error });
 });
 app.get("/api/debug", async (req, res) => { try { res.json(await debugPage(String(req.query.site || "xe"), String(req.query.url), req.query.click ? String(req.query.click) : undefined, req.query.sel ? String(req.query.sel) : undefined, req.query.find ? String(req.query.find) : undefined, req.query.dump ? String(req.query.dump) : undefined, !!req.query.phone)); } catch (e) { res.status(500).json({ error: String(e) }); } });
 
