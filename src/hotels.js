@@ -18,7 +18,8 @@ async function ktimato() {
       if (!it?.url) continue;
       const slug = it.url.replace(/^.*\//, "");
       const at = html.indexOf(`href="${it.url}"`);
-      const chunk = at >= 0 ? html.slice(at, at + 1500).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ") : "";
+      let chunk = "";
+      if (at >= 0) { const re = /href="(\/property\/[^"]+)"/g; re.lastIndex = at + 10; let end = at + 6000, m2; while ((m2 = re.exec(html)) && m2.index < at + 6000) if (m2[1] !== it.url) { end = m2.index; break; } chunk = html.slice(at, end).replace(/<(script|style)[\s\S]*?<\/\1>/g, " ").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " "); }
       const m = chunk.match(/([\d.,]+)\s*m²/);
       const img = String(it.image || "").replace(/\?.*$/, "");
       out.push({ id: "kt-" + slug, source: "ktimato", url: base + it.url, category: "hotel", seller: "agency", type: "Ξενοδοχείο", sqm: m ? Math.round(num(m[1])) : null,
