@@ -44,6 +44,15 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 .ms .pop .pa button,.exp button{font:inherit;font-size:.8rem;border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:999px;padding:3px 10px;cursor:pointer}
 .ms .pop label{display:flex;flex-direction:row;gap:8px;align-items:center;font-size:.9rem;color:var(--fg);text-transform:none;letter-spacing:0;padding:3px 2px;cursor:pointer}
 .ms .pop label input{width:auto}
+.floorbox.off{opacity:.35;pointer-events:none}
+.mode{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface)}
+.seg button{font:inherit;font-weight:600;font-size:.95rem;border:0;background:transparent;color:var(--fg);padding:8px 20px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--surface)}
+.cats{display:flex;gap:6px;flex-wrap:wrap}
+.cats button{font:inherit;font-size:.88rem;border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:8px;padding:6px 12px;cursor:pointer}
+.cats button[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);font-weight:600}
+.cats small{color:var(--muted);margin-left:4px}
 .pw{position:relative;min-width:0}
 .pick{position:absolute;left:8px;top:8px;z-index:3;display:flex;gap:6px;align-items:center;background:#000b;color:#fff;font-size:.8rem;padding:4px 9px;border-radius:6px;cursor:pointer;text-transform:none;letter-spacing:0}
 .pick input{width:auto;margin:0;accent-color:var(--accent)}
@@ -123,6 +132,11 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
     <div class="counts" id="counts"></div>
   </header>
 
+  <div class="mode" id="mode">
+    <div class="seg" role="group" aria-label="Πωλητής"><button data-seller="owner" aria-pressed="true">Ιδιώτες</button><button data-seller="agency" aria-pressed="false">Μεσίτες</button></div>
+    <div class="cats" role="group" aria-label="Κατηγορία"><button data-cat="home" aria-pressed="true">Κατοικίες<small></small></button><button data-cat="land" aria-pressed="false">Οικόπεδα<small></small></button><button data-cat="hotel" aria-pressed="false">Ξενοδοχεία<small></small></button></div>
+  </div>
+
   <section class="filters" aria-label="Φίλτρα">
     <label class="wide" for="q">Περιοχή ή γειτονιά <span class="hint">(πολλές, χωρισμένες με κόμμα)</span>
       <input id="q" type="search" placeholder="π.χ. Γλυφάδα, Βούλα, Βάρη, Κυψέλη" autocomplete="off">
@@ -146,7 +160,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
     <label for="smax">Μέγ. τ.μ.
       <input id="smax" type="number" inputmode="numeric" min="0" step="5" placeholder="χωρίς όριο">
     </label>
-    <div class="fl" style="display:grid;gap:3px;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);min-width:0">Όροφοι
+    <div class="fl floorbox" style="display:grid;gap:3px;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);min-width:0">Όροφοι
       <div class="ms" id="floorBox"><button type="button" id="floorBtn">Όλοι οι όροφοι</button>
         <div class="pop" id="floorPop" hidden><div class="pa"><button type="button" id="floorClear">Καθαρισμός</button><button type="button" id="floorClose">Κλείσιμο</button></div><div id="floorList"></div></div></div>
     </div>
@@ -190,7 +204,8 @@ const els = { list:$("#list"), empty:$("#empty"), more:$("#more"), counts:$("#co
 const SITE = { xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
 const srcOf = x => SITE[x.source] ? x.source : "xe";
 const sitesOf = x => [SITE[srcOf(x)], ...(x.alsoOn || []).map(a => a.site)];
-let muniSel = new Set(), floorSel = new Set();
+let muniSel = new Set(), floorSel = new Set(), sellerSel = "owner", catSel = "home";
+const inMode = x => (x.seller || "owner") === sellerSel && (x.category || "home") === catSel;
 let picked = new Set(); try { picked = new Set(JSON.parse(localStorage.getItem('owner-listings-picked') || '[]')); } catch (e) {}
 const savePicked = () => { try { localStorage.setItem('owner-listings-picked', JSON.stringify([...picked])); } catch (e) {} };
 let rows = [], tab = "new", shown = 60, canWrite = true;
@@ -200,12 +215,13 @@ const muniOf = loc => (loc || "").split("(")[0].trim();
 const norm = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 function prefs(){ try{ const p = JSON.parse(localStorage.getItem("owner-listings-filters")||"{}");
+  if (p.seller) sellerSel = p.seller; if (p.cat) catSel = p.cat;
   if (Array.isArray(p.floors)) floorSel = new Set(p.floors);
   if (Array.isArray(p.munis)) muniSel = new Set(p.munis);
   for (const k of ["q","type","pmin","pmax","smin","smax","src","sort"]) if (p[k]!=null) els[k].value = p[k];
   if (p.solo!=null) els.solo.checked = p.solo; if (p.tab) setTab(p.tab, true); }catch(e){} }
 function savePrefs(){ try{ localStorage.setItem("owner-listings-filters", JSON.stringify({
-  q:els.q.value, munis:[...muniSel], type:els.type.value, pmin:els.pmin.value, pmax:els.pmax.value, smin:els.smin.value, smax:els.smax.value, floors:[...floorSel], src:els.src.value, sort:els.sort.value, solo:els.solo.checked, tab})); }catch(e){} }
+  q:els.q.value, munis:[...muniSel], type:els.type.value, pmin:els.pmin.value, pmax:els.pmax.value, smin:els.smin.value, smax:els.smax.value, floors:[...floorSel], seller:sellerSel, cat:catSel, src:els.src.value, sort:els.sort.value, solo:els.solo.checked, tab})); }catch(e){} }
 
 function toast(msg){ els.toast.textContent = msg; els.toast.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(()=>els.toast.hidden = true, 2200); }
 
@@ -229,7 +245,7 @@ function filtered(){
   const qs = els.q.value.split(/[,;\n]/).map(t => norm(t.trim())).filter(Boolean), type = els.type.value;
   const pmin = +els.pmin.value || 0, pmax = +els.pmax.value || Infinity;
   const smin = +els.smin.value || 0, smax = +els.smax.value || Infinity;
-  let r = rows.filter(x =>
+  let r = rows.filter(x => inMode(x) &&
     (tab === "all" || (x.status || "new") === tab) &&
     (!els.solo.checked || !x.multi) &&
     (!qs.length || qs.some(t => norm(x.location).includes(t))) &&
@@ -238,7 +254,7 @@ function filtered(){
     (!els.src.value || srcOf(x) === els.src.value) &&
     (x.price == null || (x.price >= pmin && x.price <= pmax)) &&
     (x.sqm == null || (x.sqm >= smin && x.sqm <= smax)) &&
-    (!floorSel.size || floorsOf(x.floor).some(n => floorSel.has(n))));
+    (!floorSel.size || catSel !== "home" || floorsOf(x.floor).some(n => floorSel.has(n))));
   const s = els.sort.value;
   const ppm = x => x.price && x.sqm ? x.price / x.sqm : Infinity;
   r.sort(s === "price_asc" ? (a,b)=>(a.price||0)-(b.price||0)
@@ -270,7 +286,8 @@ function fitTiles(det){
 function fitAll(){ requestAnimationFrame(() => document.querySelectorAll(".det").forEach(fitTiles)); }
 addEventListener("resize", () => { clearTimeout(fitAll.t); fitAll.t = setTimeout(fitAll, 150); });
 function render(){
-  const all = rows.filter(x => (!els.solo.checked || !x.multi));
+  const all = rows.filter(x => inMode(x) && (!els.solo.checked || !x.multi));
+  updateMode();
   const c = s => all.filter(x => (x.status||"new") === s).length;
   const fresh = all.filter(x => (x.status||"new")==="new" && x.firstSeen && Date.now()-Date.parse(x.firstSeen) < 864e5).length;
   els.counts.innerHTML = `<span class="count"><b>${fresh}</b>νέες σήμερα</span><span class="count"><b>${c("new")}</b>προς έλεγχο</span><span class="count"><b>${c("contacted")}</b>επικοινωνήσαμε</span>`;
@@ -278,7 +295,7 @@ function render(){
   els.list.querySelectorAll(".row").forEach(n => n.remove());
   if (!rows.length) { els.empty.hidden = false; els.more.hidden = true; return; }
   els.empty.hidden = r.length > 0;
-  if (!r.length) els.empty.textContent = "Καμία αγγελία δεν ταιριάζει με αυτά τα φίλτρα. Δοκίμασε να καθαρίσεις την περιοχή ή την τιμή.";
+  if (!r.length) els.empty.textContent = rows.some(inMode) ? "Καμία αγγελία δεν ταιριάζει με αυτά τα φίλτρα. Δοκίμασε να καθαρίσεις την περιοχή ή την τιμή." : "Δεν υπάρχουν ακόμα αγγελίες σε αυτή την κατηγορία. Η σάρωση νέων κατηγοριών προστίθεται σταδιακά.";
   const frag = document.createDocumentFragment();
   for (const x of r.slice(0, shown)) frag.appendChild(rowEl(x));
   els.list.appendChild(frag);
@@ -372,6 +389,25 @@ function fillMuni(list){
     c.addEventListener("change", () => { c.checked ? muniSel.add(m) : muniSel.delete(m); muniLabel(); shown = PAGE; savePrefs(); render(); });
     l.append(c, document.createTextNode(` ${m} (${cnt[m] || 0})`)); box.appendChild(l); });
   muniLabel();
+}
+
+// ---- seller switch + category chips
+function updateMode(){
+  document.querySelectorAll("[data-seller]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.seller === sellerSel)));
+  document.querySelectorAll("[data-cat]").forEach(b => { b.setAttribute("aria-pressed", String(b.dataset.cat === catSel));
+    const n = rows.filter(x => (x.seller || "owner") === sellerSel && (x.category || "home") === b.dataset.cat && (!els.solo.checked || !x.multi)).length; b.querySelector("small").textContent = n ? n : "0"; });
+  document.querySelector(".floorbox")?.classList.toggle("off", catSel !== "home");
+}
+function setMode(seller, cat){
+  if (seller) sellerSel = seller; if (cat) catSel = cat; shown = PAGE; muniSel.clear(); floorSel.clear(); floorLabel(); muniLabel();
+  document.querySelectorAll("#floorList input").forEach(c => c.checked = false);
+  fillMuni([...new Set(rows.filter(inMode).map(r => muniOf(r.location)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"el")));
+  fillSelect(els.type, [...new Set(rows.filter(inMode).map(r => r.type).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"el")));
+  els.type.value = ""; savePrefs(); render();
+}
+function setupMode(){
+  document.querySelectorAll("[data-seller]").forEach(b => b.addEventListener("click", () => setMode(b.dataset.seller, null)));
+  document.querySelectorAll("[data-cat]").forEach(b => b.addEventListener("click", () => setMode(null, b.dataset.cat)));
 }
 
 // ---- multi-select floors
@@ -468,7 +504,7 @@ function setupMuni(){
 }
 
 function boot(){
-  prefs(); setupMuni(); setupFloors(); setupExport();
+  prefs(); setupMuni(); setupFloors(); setupExport(); setupMode();
   document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
   ["q","type","pmin","pmax","smin","smax","src","sort","solo"].forEach(k => els[k].addEventListener("input", () => { shown = PAGE; savePrefs(); render(); }));
   els.more.addEventListener("click", () => { shown += PAGE; render(); });
@@ -478,8 +514,8 @@ boot();
 
 function applyRows(list){
   rows = list;
-  fillMuni([...new Set(rows.map(r => muniOf(r.location)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"el")));
-  fillSelect(els.type, [...new Set(rows.map(r => r.type).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"el")));
+  fillMuni([...new Set(rows.filter(inMode).map(r => muniOf(r.location)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"el")));
+  fillSelect(els.type, [...new Set(rows.filter(inMode).map(r => r.type).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"el")));
   if (!rows.length) els.empty.textContent = "Δεν υπάρχουν αγγελίες ακόμα. Ο πρώτος ημερήσιος έλεγχος θα γεμίσει τη λίστα με κατοικίες ιδιωτών προς πώληση στην Αττική.";
   render();
 }

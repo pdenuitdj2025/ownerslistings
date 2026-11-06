@@ -17,6 +17,7 @@ function locAgree(a, b) {
   return false;
 }
 const sameHome = (x, y) =>
+  (x.category || "home") === (y.category || "home") && (x.seller || "owner") === (y.seller || "owner") &&
   x.sqm && y.sqm && x.sqm === y.sqm && x.price && y.price &&
   Math.abs(x.price - y.price) <= 0.01 * Math.max(x.price, y.price) && locAgree(x.location, y.location);
 
@@ -28,7 +29,7 @@ export async function mergeAds(ads) {
   let created = 0, merged = 0, dropped = 0;
   const createdList = [];
   for (const ad of ads) { try {
-    if (!ad.sqm || !ad.price || ad.price < 10000 || ad.price > 200_000_000 || ad.sqm > 100000) continue;   // typos / mis-parsed cards
+    if (!ad.sqm || !ad.price || ad.price < ((ad.category || "home") === "home" ? 10000 : 1000) || ad.price > 200_000_000 || ad.sqm > 100000) continue;   // typos / mis-parsed cards
     if (ad.beds > 100) ad.beds = null; if (ad.year && (ad.year < 1800 || ad.year > 2100)) ad.year = null;
     if (ad.img === false) {   // no photo: the team doesn't want these. If it was already listed, remove it.
       await pool.query("DELETE FROM listings WHERE id=$1", [ad.id]);
@@ -59,9 +60,9 @@ export async function mergeAds(ads) {
       continue;
     }
     await pool.query(
-      `INSERT INTO listings(id,source,url,type,sqm,price,floor,beds,year,location,multi,posted,img,photo)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) ON CONFLICT DO NOTHING`,
-      [ad.id, ad.source, ad.url, ad.type, ad.sqm, ad.price, ad.floor || "", ad.beds || null, ad.year || null, ad.location || "", !!ad.multi, ad.posted || "", ad.img === true ? true : null, ad.photo || null]
+      `INSERT INTO listings(id,source,url,type,sqm,price,floor,beds,year,location,multi,posted,img,photo,category,seller)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) ON CONFLICT DO NOTHING`,
+      [ad.id, ad.source, ad.url, ad.type, ad.sqm, ad.price, ad.floor || "", ad.beds || null, ad.year || null, ad.location || "", !!ad.multi, ad.posted || "", ad.img === true ? true : null, ad.photo || null, ad.category || "home", ad.seller || "owner"]
     );
     existing.push({ ...ad, alsoOn: [] }); ids.add(ad.id); urls.add(ad.url); created++;
     createdList.push(ad);
