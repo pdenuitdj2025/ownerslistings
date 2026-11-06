@@ -2,7 +2,7 @@
 // (same sqm exactly, price within 1 %, and the location agrees).
 import { pool } from "./db.js";
 
-const SITE_LABEL = { xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
+const SITE_LABEL = { ktimato: "Ktimatoemporiki", xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
 const GENERIC = new Set(["αθηνα", "πειραιας"]);
 const norm = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/ς/g, "σ");
 const muni = (loc) => norm((loc || "").split("(")[0]).trim();
@@ -16,7 +16,7 @@ function locAgree(a, b) {
   for (const w of words(b)) if (wa.has(w)) return true;
   return false;
 }
-const sameHome = (x, y) =>
+const sameHome = (x, y) => x.category === "hotel" && y.category === "hotel" ? !!(x.price && y.price && Math.abs(x.price - y.price) <= 0.01 * Math.max(x.price, y.price) && locAgree(x.location, y.location) && (!x.sqm || !y.sqm || x.sqm === y.sqm)) :
   (x.category || "home") === (y.category || "home") && (x.seller || "owner") === (y.seller || "owner") &&
   x.sqm && y.sqm && x.sqm === y.sqm && x.price && y.price &&
   Math.abs(x.price - y.price) <= 0.01 * Math.max(x.price, y.price) && locAgree(x.location, y.location);
@@ -29,7 +29,7 @@ export async function mergeAds(ads) {
   let created = 0, merged = 0, dropped = 0;
   const createdList = [];
   for (const ad of ads) { try {
-    if (!ad.sqm || !ad.price || ad.price < ((ad.category || "home") === "home" ? 10000 : 1000) || ad.price > 200_000_000 || ad.sqm > 100000) continue;   // typos / mis-parsed cards
+    if ((!ad.sqm && ad.category !== "hotel") || !ad.price || ad.price < ((ad.category || "home") === "home" ? 10000 : 1000) || ad.price > 200_000_000 || ad.sqm > 100000) continue;   // typos / mis-parsed cards
     if (ad.beds > 100) ad.beds = null; if (ad.year && (ad.year < 1800 || ad.year > 2100)) ad.year = null;
     if (ad.img === false) {   // no photo: the team doesn't want these. If it was already listed, remove it.
       await pool.query("DELETE FROM listings WHERE id=$1", [ad.id]);

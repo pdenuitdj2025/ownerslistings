@@ -8,6 +8,7 @@ import { scrapeSpiti24, scrapeSpiti24Land } from "./scrapers/spiti24.js";
 import { scrapeXe, dismissConsent, XE_LAND_URL, scrapeXeAgency } from "./scrapers/xe.js";
 import { scrapeSpitogatos, readPages, AREAS as SG_AREAS } from "./scrapers/spitogatos.js";
 import { verifySite } from "./verify.js";
+import { runHotelSources } from "./hotels.js";
 import { phoneSite, revealPhone } from "./phone.js";
 
 // Optional proxy (env PROXY_URL, e.g. http://user:pass@host:port) used ONLY for sites that block datacenter addresses.
@@ -110,6 +111,7 @@ export async function runAll({ verify = true, enrich = false, phones = false, sc
     await browser.close().catch(() => {});
     running = false;
   }
+  if (!enrich && !phones && !scan) { try { await runHotelSources(sites); } catch (e) { console.error("hotel sources", e.message); } }
   if (!enrich) await kvSet("run", { lastCheck: new Date().toISOString(), lastNew: totalNew, lastMerged: totalMerged, started });
   return { totalNew, totalMerged };
 }

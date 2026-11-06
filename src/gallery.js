@@ -41,7 +41,8 @@ export async function collectGalleries(items, onProgress = () => {}) {
   try {
     const ctxs = {};
     for (const it of todo) {
-      const key = pageGallery[it.source] ? it.source : "xe";
+      const key = it.source;
+      if (!pageGallery[key]) { onProgress(++done, items.length); continue; }   // other sources: the listing photo only
       try {
         ctxs[key] ||= await browser.newContext({ userAgent: UA, locale: "el-GR", timezoneId: "Europe/Athens", viewport: { width: 1280, height: 900 }, storageState: LOGIN[key] ? await loadState(key) : undefined });
         const page = await ctxs[key].newPage();
