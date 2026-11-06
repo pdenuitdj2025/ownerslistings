@@ -36,6 +36,17 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 .tab{font:inherit;font-size:.85rem;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:5px 12px;cursor:pointer}
 .tab[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
 .tabs .spacer{flex:1}
+.ms{position:relative}
+.ms>button{width:100%;text-align:left;font:inherit;font-size:.95rem;text-transform:none;letter-spacing:0;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg,var(--surface));color:var(--fg);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ms .pop{position:absolute;z-index:30;left:0;top:calc(100% + 4px);width:max(100%,280px);max-height:340px;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:8px;text-transform:none;letter-spacing:0}
+.ms .pop[hidden]{display:none}
+.ms .pop .pa{display:flex;justify-content:space-between;gap:8px;margin-bottom:6px}
+.ms .pop .pa button,.exp button{font:inherit;font-size:.8rem;border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:999px;padding:3px 10px;cursor:pointer}
+.ms .pop label{display:flex;flex-direction:row;gap:8px;align-items:center;font-size:.9rem;color:var(--fg);text-transform:none;letter-spacing:0;padding:3px 2px;cursor:pointer}
+.ms .pop label input{width:auto}
+.exp{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.exp .go{background:var(--accent);border-color:var(--accent);color:var(--surface);font-weight:600}
+.hint{font-size:.7rem;color:var(--muted);text-transform:none;letter-spacing:0}
 .check{display:flex;gap:6px;align-items:center;font-size:.85rem;color:var(--muted)}
 .check input{width:auto}
 .list{display:grid;gap:8px}
@@ -109,12 +120,13 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
   </header>
 
   <section class="filters" aria-label="Φίλτρα">
-    <label class="wide" for="q">Περιοχή ή γειτονιά
-      <input id="q" type="search" placeholder="π.χ. Γλυφάδα, Κυψέλη, Πειραιάς" autocomplete="off">
+    <label class="wide" for="q">Περιοχή ή γειτονιά <span class="hint">(πολλές, χωρισμένες με κόμμα)</span>
+      <input id="q" type="search" placeholder="π.χ. Γλυφάδα, Βούλα, Βάρη, Κυψέλη" autocomplete="off">
     </label>
-    <label class="wide" for="muni">Δήμος
-      <select id="muni"><option value="">Όλη η Αττική</option></select>
-    </label>
+    <div class="wide" style="display:grid;gap:3px;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);min-width:0">Δήμος <span class="hint" style="display:none"></span>
+      <div class="ms" id="muniBox"><button type="button" id="muniBtn">Όλη η Αττική</button>
+        <div class="pop" id="muniPop" hidden><div class="pa"><button type="button" id="muniClear">Καθαρισμός</button><button type="button" id="muniClose">Κλείσιμο</button></div><div id="muniList"></div></div></div>
+    </div>
     <label for="type">Τύπος
       <select id="type"><option value="">Όλοι</option></select>
     </label>
@@ -155,6 +167,9 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
     <button class="tab" data-tab="skip" aria-pressed="false">Δεν ενδιαφέρει</button>
     <button class="tab" data-tab="all" aria-pressed="false">Όλες</button>
     <span class="spacer"></span>
+    <span class="exp"><span id="expCount" class="hint"></span>
+      <button type="button" class="go" id="expCopy" title="Αντιγραφή της λίστας (με τα τρέχοντα φίλτρα) για επικόλληση στο Claude">Αντιγραφή για Claude</button>
+      <button type="button" id="expCsv">CSV</button><button type="button" id="expJson">JSON</button></span>
     <label class="check" for="solo"><input id="solo" type="checkbox" checked> Μόνο ιδιώτες (απόκρυψη ομαδοποιημένων αγγελιών με μεσίτες)</label>
   </div>
 
@@ -168,10 +183,11 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 <script>
 const $ = s => document.querySelector(s);
 const els = { list:$("#list"), empty:$("#empty"), more:$("#more"), counts:$("#counts"), sub:$("#sub"),
-  q:$("#q"), muni:$("#muni"), type:$("#type"), pmin:$("#pmin"), pmax:$("#pmax"), smin:$("#smin"), smax:$("#smax"), fmin:$("#fmin"), fmax:$("#fmax"), src:$("#src"), sort:$("#sort"), solo:$("#solo"), toast:$("#toast") };
+  q:$("#q"), type:$("#type"), pmin:$("#pmin"), pmax:$("#pmax"), smin:$("#smin"), smax:$("#smax"), fmin:$("#fmin"), fmax:$("#fmax"), src:$("#src"), sort:$("#sort"), solo:$("#solo"), toast:$("#toast") };
 const SITE = { xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
 const srcOf = x => SITE[x.source] ? x.source : "xe";
 const sitesOf = x => [SITE[srcOf(x)], ...(x.alsoOn || []).map(a => a.site)];
+let muniSel = new Set();
 let rows = [], tab = "new", shown = 60, canWrite = true;
 const PAGE = 60;
 const fmt = n => n == null ? "" : n.toLocaleString("el-GR");
@@ -179,10 +195,11 @@ const muniOf = loc => (loc || "").split("(")[0].trim();
 const norm = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 function prefs(){ try{ const p = JSON.parse(localStorage.getItem("owner-listings-filters")||"{}");
-  for (const k of ["q","muni","type","pmin","pmax","smin","smax","fmin","fmax","src","sort"]) if (p[k]!=null) els[k].value = p[k];
+  if (Array.isArray(p.munis)) muniSel = new Set(p.munis);
+  for (const k of ["q","type","pmin","pmax","smin","smax","fmin","fmax","src","sort"]) if (p[k]!=null) els[k].value = p[k];
   if (p.solo!=null) els.solo.checked = p.solo; if (p.tab) setTab(p.tab, true); }catch(e){} }
 function savePrefs(){ try{ localStorage.setItem("owner-listings-filters", JSON.stringify({
-  q:els.q.value, muni:els.muni.value, type:els.type.value, pmin:els.pmin.value, pmax:els.pmax.value, smin:els.smin.value, smax:els.smax.value, fmin:els.fmin.value, fmax:els.fmax.value, src:els.src.value, sort:els.sort.value, solo:els.solo.checked, tab})); }catch(e){} }
+  q:els.q.value, munis:[...muniSel], type:els.type.value, pmin:els.pmin.value, pmax:els.pmax.value, smin:els.smin.value, smax:els.smax.value, fmin:els.fmin.value, fmax:els.fmax.value, src:els.src.value, sort:els.sort.value, solo:els.solo.checked, tab})); }catch(e){} }
 
 function toast(msg){ els.toast.textContent = msg; els.toast.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(()=>els.toast.hidden = true, 2200); }
 
@@ -203,7 +220,7 @@ function floorsOf(f){ const out = []; for (const t of String(f||"").split(",")) 
   return out; }
 
 function filtered(){
-  const q = norm(els.q.value.trim()), muni = els.muni.value, type = els.type.value;
+  const qs = els.q.value.split(/[,;\n]/).map(t => norm(t.trim())).filter(Boolean), type = els.type.value;
   const pmin = +els.pmin.value || 0, pmax = +els.pmax.value || Infinity;
   const smin = +els.smin.value || 0, smax = +els.smax.value || Infinity;
   const fOn = els.fmin.value !== "" || els.fmax.value !== "";
@@ -211,8 +228,8 @@ function filtered(){
   let r = rows.filter(x =>
     (tab === "all" || (x.status || "new") === tab) &&
     (!els.solo.checked || !x.multi) &&
-    (!q || norm(x.location).includes(q)) &&
-    (!muni || muniOf(x.location) === muni) &&
+    (!qs.length || qs.some(t => norm(x.location).includes(t))) &&
+    (!muniSel.size || muniSel.has(muniOf(x.location))) &&
     (!type || x.type === type) &&
     (!els.src.value || srcOf(x) === els.src.value) &&
     (x.price == null || (x.price >= pmin && x.price <= pmax)) &&
@@ -340,10 +357,66 @@ async function save(id, patch, msg){
   } catch (e) { toast("Δεν αποθηκεύτηκε. Έλεγξε τη σύνδεσή σου και ξαναδοκίμασε."); }
 }
 
+// ---- multi-select municipalities
+function muniLabel(){ const n = muniSel.size; $("#muniBtn").textContent = !n ? "Όλη η Αττική" : n <= 2 ? [...muniSel].join(", ") : `${n} δήμοι επιλεγμένοι`; }
+function fillMuni(list){
+  const box = $("#muniList"); const cnt = {}; rows.forEach(r => { const m = muniOf(r.location); if (m) cnt[m] = (cnt[m] || 0) + 1; });
+  box.innerHTML = "";
+  list.forEach(m => { const l = document.createElement("label"); const c = document.createElement("input"); c.type = "checkbox"; c.checked = muniSel.has(m);
+    c.addEventListener("change", () => { c.checked ? muniSel.add(m) : muniSel.delete(m); muniLabel(); shown = PAGE; savePrefs(); render(); });
+    l.append(c, document.createTextNode(` ${m} (${cnt[m] || 0})`)); box.appendChild(l); });
+  muniLabel();
+}
+
+// ---- export of the currently filtered list
+function expRows(){ return filtered(); }
+function expObj(x){
+  const dt = x.details || {}, f = Object.fromEntries((dt.facts || []).filter(a => Array.isArray(a)));
+  const ppm = x.price && x.sqm ? Math.round(x.price / x.sqm) : null;
+  return { περιοχή: x.location || "", διεύθυνση: dt.address || "", τύπος: x.type || "", τμ: x.sqm ?? "", τιμή: x.price ?? "", "τιμή_ανά_τμ": ppm ?? "", προηγούμενη_τιμή: x.prevPrice ?? "",
+    όροφος: x.floor || f["Όροφος"] || "", υπνοδωμάτια: x.beds ?? f["Υπνοδωμάτια"] ?? "", μπάνια: f["Μπάνια"] || "", έτος_κατασκευής: x.year ?? f["Έτος κατασκευής"] ?? "",
+    θέρμανση: f["Θέρμανση"] || f["Σύστημα θέρμανσης"] || "", ενεργειακή_κλάση: f["Ενεργειακή κλάση"] || "", δημοσίευση: dt.published || "", ενημέρωση: dt.updated || "",
+    ιστότοπος: SITE[srcOf(x)], σύνδεσμος: x.url, και_σε: (x.alsoOn || []).map(a => a.url).join(" "), φωτογραφία: x.photo || "", κατάσταση: ({new:"Προς έλεγχο",contacted:"Επικοινωνήσαμε",skip:"Δεν ενδιαφέρει"})[x.status || "new"],
+    σημείωση: x.note || "", τηλέφωνο: x.phone ? x.phone.replace(/^30/, "") : "" };
+}
+function filterSummary(){ const p = [];
+  if (muniSel.size) p.push("Δήμοι: " + [...muniSel].join(", ")); if (els.q.value.trim()) p.push("Περιοχές: " + els.q.value.trim());
+  if (els.type.value) p.push("Τύπος: " + els.type.value); if (els.pmin.value || els.pmax.value) p.push(`Τιμή: ${els.pmin.value || 0}–${els.pmax.value || "∞"} €`);
+  if (els.smin.value || els.smax.value) p.push(`Εμβαδόν: ${els.smin.value || 0}–${els.smax.value || "∞"} τ.μ.`); if (els.src.value) p.push("Ιστότοπος: " + SITE[els.src.value]);
+  return p.join(" · ") || "χωρίς φίλτρα"; }
+function download(name, mime, text){ const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: mime })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+const stamp = () => new Date().toISOString().slice(0, 10);
+function exportMarkdown(r){
+  const L = [`# Αγγελίες ιδιωτών Αττικής — ${r.length} ακίνητα`, `Φίλτρα: ${filterSummary()} · Εξαγωγή: ${stamp()}`, "", "Κατοικίες προς πώληση από ιδιώτες. Χρησιμοποίησε αυτά τα δεδομένα για παρουσίαση προς πελάτη (οι φωτογραφίες είναι συνδέσμοι)."];
+  r.forEach((x, i) => { const o = expObj(x);
+    L.push("", `## ${i + 1}. ${o.περιοχή}${o.τύπος ? " — " + o.τύπος : ""}`);
+    const rows2 = [["Τιμή", o.τιμή !== "" ? fmt(o.τιμή) + " €" + (o.προηγούμενη_τιμή ? ` (μειώθηκε από ${fmt(o.προηγούμενη_τιμή)} €)` : "") : ""], ["Εμβαδόν", o.τμ ? o.τμ + " τ.μ." : ""], ["Τιμή/τ.μ.", o.τιμή_ανά_τμ ? fmt(o.τιμή_ανά_τμ) + " €" : ""], ["Διεύθυνση", o.διεύθυνση], ["Όροφος", o.όροφος], ["Υπνοδωμάτια", o.υπνοδωμάτια], ["Μπάνια", o.μπάνια], ["Έτος κατασκευής", o.έτος_κατασκευής], ["Θέρμανση", o.θέρμανση], ["Ενεργειακή κλάση", o.ενεργειακή_κλάση], ["Δημοσίευση", o.δημοσίευση], ["Αγγελία", o.σύνδεσμος], ["Φωτογραφία", o.φωτογραφία], ["Τηλέφωνο ιδιοκτήτη", o.τηλέφωνο], ["Σημείωση", o.σημείωση]];
+    rows2.filter(([, v]) => v !== "" && v != null).forEach(([k, v]) => L.push(`- ${k}: ${v}`)); });
+  return L.join("\n");
+}
+const csvCell = v => { v = String(v ?? ""); return /[",\n;]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+function setupExport(){
+  const upd = () => { $("#expCount").textContent = `εξαγωγή: ${filtered().length} ακίνητα`; };
+  $("#expCopy").addEventListener("click", async () => { const r = expRows(); const txt = exportMarkdown(r);
+    try { await navigator.clipboard.writeText(txt); toast(`Αντιγράφηκαν ${r.length} ακίνητα — επικόλλησέ τα στο Claude`); }
+    catch (e) { download(`ακίνητα-${stamp()}.md`, "text/markdown;charset=utf-8", txt); toast("Η αντιγραφή δεν επιτράπηκε — κατέβηκε αρχείο .md"); } });
+  $("#expCsv").addEventListener("click", () => { const r = expRows().map(expObj); if (!r.length) return toast("Δεν υπάρχουν αγγελίες για εξαγωγή"); const h = Object.keys(r[0]);
+    download(`ακίνητα-${stamp()}.csv`, "text/csv;charset=utf-8", "\ufeff" + [h.join(","), ...r.map(o => h.map(k => csvCell(o[k])).join(","))].join("\r\n")); toast(`Κατέβηκε CSV με ${r.length} ακίνητα`); });
+  $("#expJson").addEventListener("click", () => { const r = expRows().map(expObj); download(`ακίνητα-${stamp()}.json`, "application/json", JSON.stringify({ εξαγωγή: stamp(), φίλτρα: filterSummary(), σύνολο: r.length, ακίνητα: r }, null, 1)); toast(`Κατέβηκε JSON με ${r.length} ακίνητα`); });
+  const orig = render; render = function(){ orig(); upd(); };
+}
+function setupMuni(){
+  const pop = $("#muniPop");
+  $("#muniBtn").addEventListener("click", () => { pop.hidden = !pop.hidden; });
+  $("#muniClose").addEventListener("click", () => { pop.hidden = true; });
+  $("#muniClear").addEventListener("click", () => { muniSel.clear(); pop.querySelectorAll("input").forEach(c => c.checked = false); muniLabel(); shown = PAGE; savePrefs(); render(); });
+  document.addEventListener("click", e => { if (!pop.hidden && !$("#muniBox").contains(e.target)) pop.hidden = true; });
+}
+
 function boot(){
-  prefs();
+  prefs(); setupMuni(); setupExport();
   document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
-  ["q","muni","type","pmin","pmax","smin","smax","fmin","fmax","src","sort","solo"].forEach(k => els[k].addEventListener("input", () => { shown = PAGE; savePrefs(); render(); }));
+  ["q","type","pmin","pmax","smin","smax","fmin","fmax","src","sort","solo"].forEach(k => els[k].addEventListener("input", () => { shown = PAGE; savePrefs(); render(); }));
   els.more.addEventListener("click", () => { shown += PAGE; render(); });
 }
 boot();
@@ -351,7 +424,7 @@ boot();
 
 function applyRows(list){
   rows = list;
-  fillSelect(els.muni, [...new Set(rows.map(r => muniOf(r.location)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"el")));
+  fillMuni([...new Set(rows.map(r => muniOf(r.location)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"el")));
   fillSelect(els.type, [...new Set(rows.map(r => r.type).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"el")));
   if (!rows.length) els.empty.textContent = "Δεν υπάρχουν αγγελίες ακόμα. Ο πρώτος ημερήσιος έλεγχος θα γεμίσει τη λίστα με κατοικίες ιδιωτών προς πώληση στην Αττική.";
   render();
