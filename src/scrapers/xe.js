@@ -27,12 +27,14 @@ export async function dismissConsent(page) {
 }
 // Needs the paid login. publication_origins[]=false is xe.gr's "Ιδιώτες" filter.
 const URL = "https://www.xe.gr/property/results?item_type=residence&transaction_name=buy&publication_origins%5B%5D=false&country=GR&geo_place_ids%5B%5D=ChIJUwsYu2cPnxQRkIC54iy9AAE&sorting=publication_date_desc";
-export async function scrapeXe(page) {
-  const out = [];
+export const XE_LAND_URL = "https://www.xe.gr/property/results?item_type=land&transaction_name=buy&publication_origins%5B%5D=false&country=GR&sorting=publication_date_desc";
+export async function scrapeXe(page, { url = URL, category = "home", backfill = false, maxPages = 20, maxMs = 20 * 60 * 1000 } = {}) {
+  const out = []; const t0 = Date.now(); out.complete = false;
   const ageDays = (t) => /Σήμερα|λεπτ|ώρ/.test(t) ? 0 : /Χθες/.test(t) ? 1 : (t.match(/Πριν\s+(\d+)\s+(ημέρ|μέρ)/) ? +t.match(/Πριν\s+(\d+)/)[1] : /εβδομ|μήν|μην|έτ/.test(t) ? 99 : 0);
   const days = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Athens" })).getHours() < 16 ? 2 : 1;
-  for (let p = 1; p <= 20; p++) {
-    await page.goto(URL + "&page=" + p, { waitUntil: "domcontentloaded" });
+  for (let p = 1; p <= maxPages; p++) {
+    if (Date.now() - t0 > maxMs) return out;
+    await page.goto(url + "&page=" + p, { waitUntil: "domcontentloaded" });
     await guardCaptcha(page, "xe.gr");
     await dismissConsent(page);
     await page.waitForSelector(".common-ad", { timeout: 20000 }).catch(() => {});
@@ -58,9 +60,11 @@ export async function scrapeXe(page) {
         img: !!c.querySelector('img[src*="blob.cdn.xe.gr"]'), photo: c.querySelector('img[src*="blob.cdn.xe.gr"]')?.getAttribute("src") || "",
       };
     }).filter((x) => x.id && x.price));
+    ads.forEach((x) => { x.category = category; x.seller = "owner"; });
     out.push(...ads);
-    if (!ads.length) break;
-    const last = ads[ads.length - 1]; if (p >= 3 && ageDays(last.posted || "") > days) break;   // gone back far enough: older ads were handled by earlier runs
+    if (!ads.length) { out.complete = true; break; }
+    const last = ads[ads.length - 1]; if (!backfill && p >= 3 && ageDays(last.posted || "") > days) break;   // gone back far enough: older ads were handled by earlier runs
   }
+  if (!out.complete && !backfill) out.complete = true;
   return out;
 }
