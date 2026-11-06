@@ -18,7 +18,7 @@ function proxyOpt() {
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
 const SITES = [
-  { key: "spiti24", label: "Spiti24", run: scrapeSpiti24, land: scrapeSpiti24Land },
+  { key: "spiti24", label: "Spiti24", run: scrapeSpiti24, land: scrapeSpiti24Land, landAgency: (page, o) => scrapeSpiti24Land(page, { agency: true, maxPages: o.maxPages, start: o.start, maxMs: 12 * 60 * 1000 }) },
   { key: "xe", label: "xe.gr", run: scrapeXe, land: (page, o) => scrapeXe(page, { url: XE_LAND_URL, category: "land", backfill: o.maxPages > 3, maxPages: o.maxPages > 3 ? 260 : 6 }), login: { home: "https://www.xe.gr/", preflight: dismissConsent, loggedOutText: /Συνδέσου για να τις δεις/, probe: "https://www.xe.gr/property/results?item_type=residence&transaction_name=buy&publication_origins%5B%5D=false&country=GR&geo_place_ids%5B%5D=ChIJUwsYu2cPnxQRkIC54iy9AAE&sorting=publication_date_desc" } },
   { key: "spitogatos", label: "Spitogatos", run: scrapeSpitogatos, login: { home: "https://www.spitogatos.gr/", probe: "https://www.spitogatos.gr/pwliseis-katoikies/athina-kentro/prwti_dimosieusi_24wres/order_datemodified_desc" } },
 ];
@@ -79,6 +79,14 @@ export async function runAll({ verify = true, enrich = false, phones = false, sc
           sites[s.key + "_land"] = { at: new Date().toISOString(), scraped: land.length, created: lm.created, merged: lm.merged };
           console.log(`[${s.label}] land: scraped ${land.length}, new ${lm.created}`);
         } catch (e) { console.error(`[${s.label}] land failed: ${e.message}`); }
+        if (s.landAgency) try {   // agency land: resumable backfill (a region cursor is kept), then only the newest pages
+          const cur = (await kvGet("landAgencyCursor:" + s.key)) ?? 0, back = cur !== "done";
+          const ag = await s.landAgency(page, { maxPages: back ? 40 : 3, start: back ? cur : 0 });
+          const am = await mergeAds(ag);
+          if (back) await kvSet("landAgencyCursor:" + s.key, ag.complete ? "done" : ag.next);
+          sites[s.key + "_land_agency"] = { at: new Date().toISOString(), scraped: ag.length, created: am.created, merged: am.merged, cursor: back ? (ag.complete ? "done" : ag.next) : "done" };
+          console.log(`[${s.label}] agency land: scraped ${ag.length}, new ${am.created}`);
+        } catch (e) { console.error(`[${s.label}] agency land failed: ${e.message}`); }
         sites[s.key] = { status: "ok", at: new Date().toISOString(), scraped: ads.length, created, merged, dropped };
         if (verify) try { sites[s.key].verified = await verifySite(page, s.key); } catch (e) { console.error(`[${s.label}] verify failed: ${e.message}`); sites[s.key].verified = { error: e.message.slice(0, 120) }; }
         try { sites[s.key].phones = { ...(await phoneSite(page, s.key, { limit: 40 })), at: new Date().toISOString() }; } catch (e) { console.error(`[${s.label}] phones failed: ${e.message}`); }

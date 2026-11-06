@@ -28,7 +28,7 @@ export async function verifySite(page, key, { mode, since } = {}) {
           WHERE source=$1 AND gone_at IS NULL AND img IS NOT FALSE AND photo IS NULL ORDER BY first_seen DESC LIMIT 2000`, [key])
     : await pool.query(
     `SELECT id, url, price, CASE WHEN category='home' THEN sqm END AS sqm, (also_on IS NULL OR also_on='[]'::jsonb) AS solo FROM listings
-      WHERE source=$1 AND gone_at IS NULL AND status IN ('new','contacted')
+      WHERE source=$1 AND gone_at IS NULL AND status IN ('new','contacted') AND seller='owner'
         AND ((also_on IS NULL OR also_on='[]'::jsonb) OR (category='home' AND sqm>0 AND price < sqm*500))
         AND (first_seen < now() - interval '1 day' OR (category='home' AND sqm>0 AND price < sqm*500))
         AND (checked_at IS NULL OR checked_at < now() - interval '20 hours' OR img IS NULL)
