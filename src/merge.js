@@ -2,7 +2,7 @@
 // (same sqm exactly, price within 1 %, and the location agrees).
 import { pool } from "./db.js";
 
-const SITE_LABEL = { ktimato: "Ktimatoemporiki", xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
+const SITE_LABEL = { ktimato: "Ktimatoemporiki", gep: "Greek Exclusive Properties", xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
 const GENERIC = new Set(["αθηνα", "πειραιας"]);
 const norm = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/ς/g, "σ");
 const muni = (loc) => norm((loc || "").split("(")[0]).trim();

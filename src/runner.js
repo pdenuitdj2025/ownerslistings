@@ -33,6 +33,7 @@ export async function runAll({ verify = true, enrich = false, phones = false, sc
   const started = new Date().toISOString();
   const sites = (await kvGet("sites")) || {};
   let totalNew = 0, totalMerged = 0;
+  if (!enrich && !phones && !scan) { try { await runHotelSources(sites); } catch (e) { console.error("hotel sources", e.message); } }   // plain HTTP, ~2 min
   const browser = await chromium.launch({ headless: true, args: ["--no-sandbox", "--disable-blink-features=AutomationControlled"] });
   try {
     for (const s of SITES) {
@@ -111,7 +112,6 @@ export async function runAll({ verify = true, enrich = false, phones = false, sc
     await browser.close().catch(() => {});
     running = false;
   }
-  if (!enrich && !phones && !scan) { try { await runHotelSources(sites); } catch (e) { console.error("hotel sources", e.message); } }
   if (!enrich) await kvSet("run", { lastCheck: new Date().toISOString(), lastNew: totalNew, lastMerged: totalMerged, started });
   return { totalNew, totalMerged };
 }

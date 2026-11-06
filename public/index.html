@@ -165,7 +165,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
         <div class="pop" id="floorPop" hidden><div class="pa"><button type="button" id="floorClear">Καθαρισμός</button><button type="button" id="floorClose">Κλείσιμο</button></div><div id="floorList"></div></div></div>
     </div>
     <label for="src">Ιστότοπος
-      <select id="src"><option value="">Όλοι οι ιστότοποι</option><option value="xe">xe.gr</option><option value="spitogatos">Spitogatos</option><option value="spiti24">Spiti24</option><option value="ktimato">Ktimatoemporiki</option></select>
+      <select id="src"><option value="">Όλοι οι ιστότοποι</option><option value="xe">xe.gr</option><option value="spitogatos">Spitogatos</option><option value="spiti24">Spiti24</option><option value="ktimato">Ktimatoemporiki</option><option value="gep">Greek Exclusive Properties</option></select>
     </label>
     <label for="sort">Ταξινόμηση
       <select id="sort">
@@ -201,7 +201,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 const $ = s => document.querySelector(s);
 const els = { list:$("#list"), empty:$("#empty"), more:$("#more"), counts:$("#counts"), sub:$("#sub"),
   q:$("#q"), type:$("#type"), pmin:$("#pmin"), pmax:$("#pmax"), smin:$("#smin"), smax:$("#smax"), src:$("#src"), sort:$("#sort"), solo:$("#solo"), toast:$("#toast") };
-const SITE = { ktimato: "Ktimatoemporiki", xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
+const SITE = { ktimato: "Ktimatoemporiki", gep: "Greek Exclusive Properties", xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
 const srcOf = x => SITE[x.source] ? x.source : "xe";
 const sitesOf = x => [SITE[srcOf(x)], ...(x.alsoOn || []).map(a => a.site)];
 let counts = {};

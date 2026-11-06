@@ -7,6 +7,16 @@ const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 const LOGIN = { xe: true, spitogatos: true };
 
 const pageGallery = {
+  ktimato: () => {
+    for (const sc of document.querySelectorAll('script[type="application/ld+json"]')) {
+      try { const j = JSON.parse(sc.textContent); if (j && j.image) return (Array.isArray(j.image) ? j.image : [j.image]).map((u) => String(u).replace(/\?.*$/, "")); } catch {}
+    }
+    return [];
+  },
+  gep: () => {
+    const u = [...document.querySelectorAll("img, a")].map((e) => e.getAttribute("data-src") || e.getAttribute("data-large") || e.currentSrc || e.src || e.getAttribute("href") || "").filter((x) => /wp-content\/uploads\/.+\.(jpe?g|webp|png)$/i.test(x) && !/-\d+x\d+\./.test(x) && !/logo|icon|avatar/i.test(x));
+    return [...new Set(u)];
+  },
   spiti24: () => {
     const h = document.documentElement.outerHTML, seen = new Map();
     for (const m of h.matchAll(/https?:\/\/(m\d\.spitogatos\.gr)\/(\d{6,})_(?:900x675|1600x1200)\.jpg/g)) if (!seen.has(m[2])) seen.set(m[2], `https://${m[1]}/${m[2]}_1600x1200.jpg`);
