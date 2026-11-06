@@ -168,8 +168,9 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
     <button class="tab" data-tab="all" aria-pressed="false">Όλες</button>
     <span class="spacer"></span>
     <span class="exp"><span id="expCount" class="hint"></span>
+      <label class="check" style="margin:0"><input type="checkbox" id="expPh" checked> με τηλέφωνα</label>
       <button type="button" class="go" id="expCopy" title="Αντιγραφή της λίστας (με τα τρέχοντα φίλτρα) για επικόλληση στο Claude">Αντιγραφή για Claude</button>
-      <button type="button" id="expCsv">CSV</button><button type="button" id="expJson">JSON</button></span>
+      <button type="button" class="go" id="expZip" title="ZIP με κείμενο και φωτογραφίες υψηλής ανάλυσης, για παρουσίαση">Λήψη ZIP (με φωτογραφίες)</button><button type="button" id="expCsv">CSV</button><button type="button" id="expJson">JSON</button></span>
     <label class="check" for="solo"><input id="solo" type="checkbox" checked> Μόνο ιδιώτες (απόκρυψη ομαδοποιημένων αγγελιών με μεσίτες)</label>
   </div>
 
@@ -377,7 +378,7 @@ function expObj(x){
     όροφος: x.floor || f["Όροφος"] || "", υπνοδωμάτια: x.beds ?? f["Υπνοδωμάτια"] ?? "", μπάνια: f["Μπάνια"] || "", έτος_κατασκευής: x.year ?? f["Έτος κατασκευής"] ?? "",
     θέρμανση: f["Θέρμανση"] || f["Σύστημα θέρμανσης"] || "", ενεργειακή_κλάση: f["Ενεργειακή κλάση"] || "", δημοσίευση: dt.published || "", ενημέρωση: dt.updated || "",
     ιστότοπος: SITE[srcOf(x)], σύνδεσμος: x.url, και_σε: (x.alsoOn || []).map(a => a.url).join(" "), φωτογραφία: x.photo || "", κατάσταση: ({new:"Προς έλεγχο",contacted:"Επικοινωνήσαμε",skip:"Δεν ενδιαφέρει"})[x.status || "new"],
-    σημείωση: x.note || "", τηλέφωνο: x.phone ? x.phone.replace(/^30/, "") : "" };
+    σημείωση: x.note || "", τηλέφωνο: x.phone && $("#expPh").checked ? x.phone.replace(/^30/, "") : "" };
 }
 function filterSummary(){ const p = [];
   if (muniSel.size) p.push("Δήμοι: " + [...muniSel].join(", ")); if (els.q.value.trim()) p.push("Περιοχές: " + els.q.value.trim());
@@ -386,11 +387,11 @@ function filterSummary(){ const p = [];
   return p.join(" · ") || "χωρίς φίλτρα"; }
 function download(name, mime, text){ const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: mime })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
 const stamp = () => new Date().toISOString().slice(0, 10);
-function exportMarkdown(r){
+function exportMarkdown(r, files){
   const L = [`# Αγγελίες ιδιωτών Αττικής — ${r.length} ακίνητα`, `Φίλτρα: ${filterSummary()} · Εξαγωγή: ${stamp()}`, "", "Κατοικίες προς πώληση από ιδιώτες. Χρησιμοποίησε αυτά τα δεδομένα για παρουσίαση προς πελάτη (οι φωτογραφίες είναι συνδέσμοι)."];
   r.forEach((x, i) => { const o = expObj(x);
     L.push("", `## ${i + 1}. ${o.περιοχή}${o.τύπος ? " — " + o.τύπος : ""}`);
-    const rows2 = [["Τιμή", o.τιμή !== "" ? fmt(o.τιμή) + " €" + (o.προηγούμενη_τιμή ? ` (μειώθηκε από ${fmt(o.προηγούμενη_τιμή)} €)` : "") : ""], ["Εμβαδόν", o.τμ ? o.τμ + " τ.μ." : ""], ["Τιμή/τ.μ.", o.τιμή_ανά_τμ ? fmt(o.τιμή_ανά_τμ) + " €" : ""], ["Διεύθυνση", o.διεύθυνση], ["Όροφος", o.όροφος], ["Υπνοδωμάτια", o.υπνοδωμάτια], ["Μπάνια", o.μπάνια], ["Έτος κατασκευής", o.έτος_κατασκευής], ["Θέρμανση", o.θέρμανση], ["Ενεργειακή κλάση", o.ενεργειακή_κλάση], ["Δημοσίευση", o.δημοσίευση], ["Αγγελία", o.σύνδεσμος], ["Φωτογραφία", o.φωτογραφία], ["Τηλέφωνο ιδιοκτήτη", o.τηλέφωνο], ["Σημείωση", o.σημείωση]];
+    const rows2 = [["Τιμή", o.τιμή !== "" ? fmt(o.τιμή) + " €" + (o.προηγούμενη_τιμή ? ` (μειώθηκε από ${fmt(o.προηγούμενη_τιμή)} €)` : "") : ""], ["Εμβαδόν", o.τμ ? o.τμ + " τ.μ." : ""], ["Τιμή/τ.μ.", o.τιμή_ανά_τμ ? fmt(o.τιμή_ανά_τμ) + " €" : ""], ["Διεύθυνση", o.διεύθυνση], ["Όροφος", o.όροφος], ["Υπνοδωμάτια", o.υπνοδωμάτια], ["Μπάνια", o.μπάνια], ["Έτος κατασκευής", o.έτος_κατασκευής], ["Θέρμανση", o.θέρμανση], ["Ενεργειακή κλάση", o.ενεργειακή_κλάση], ["Δημοσίευση", o.δημοσίευση], ["Αγγελία", o.σύνδεσμος], ["Φωτογραφία", files ? (files[i] ? "photos/" + files[i] : "") : o.φωτογραφία], ["Τηλέφωνο ιδιοκτήτη", o.τηλέφωνο], ["Σημείωση", o.σημείωση]];
     rows2.filter(([, v]) => v !== "" && v != null).forEach(([k, v]) => L.push(`- ${k}: ${v}`)); });
   return L.join("\n");
 }
@@ -400,6 +401,17 @@ function setupExport(){
   $("#expCopy").addEventListener("click", async () => { const r = expRows(); const txt = exportMarkdown(r);
     try { await navigator.clipboard.writeText(txt); toast(`Αντιγράφηκαν ${r.length} ακίνητα — επικόλλησέ τα στο Claude`); }
     catch (e) { download(`ακίνητα-${stamp()}.md`, "text/markdown;charset=utf-8", txt); toast("Η αντιγραφή δεν επιτράπηκε — κατέβηκε αρχείο .md"); } });
+  $("#expZip").addEventListener("click", async () => { const r = expRows(); if (!r.length) return toast("Δεν υπάρχουν αγγελίες για εξαγωγή");
+    const btn = $("#expZip"), old = btn.textContent; btn.disabled = true; btn.textContent = "Προετοιμασία…"; toast(`Ετοιμάζω ${r.length} ακίνητα με φωτογραφίες… (έως 1-2 λεπτά)`);
+    const files = r.map((x, i) => x.photo ? `${String(i + 1).padStart(2, "0")}-${(x.location || "akinito").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "").slice(0, 40)}.jpg` : "");
+    const photos = r.map((x, i) => files[i] ? { name: files[i], url: x.photo } : null).filter(Boolean);
+    const o = r.map(expObj), h = Object.keys(o[0] || {});
+    const csv = [h.join(","), ...o.map(a => h.map(k => csvCell(a[k])).join(","))].join("\r\n");
+    try { const resp = await fetch("/api/export-zip", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ md: exportMarkdown(r, files), csv, photos }) });
+      if (!resp.ok) throw new Error(resp.status); const blob = await resp.blob(); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `ακίνητα-${stamp()}.zip`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
+      toast(`Κατέβηκε ZIP — φωτογραφίες: ${resp.headers.get("x-photos") || "?"}`); }
+    catch (e) { toast("Η δημιουργία του ZIP απέτυχε. Δοκίμασε ξανά με λιγότερα ακίνητα."); }
+    btn.disabled = false; btn.textContent = old; });
   $("#expCsv").addEventListener("click", () => { const r = expRows().map(expObj); if (!r.length) return toast("Δεν υπάρχουν αγγελίες για εξαγωγή"); const h = Object.keys(r[0]);
     download(`ακίνητα-${stamp()}.csv`, "text/csv;charset=utf-8", "\ufeff" + [h.join(","), ...r.map(o => h.map(k => csvCell(o[k])).join(","))].join("\r\n")); toast(`Κατέβηκε CSV με ${r.length} ακίνητα`); });
   $("#expJson").addEventListener("click", () => { const r = expRows().map(expObj); download(`ακίνητα-${stamp()}.json`, "application/json", JSON.stringify({ εξαγωγή: stamp(), φίλτρα: filterSummary(), σύνολο: r.length, ακίνητα: r }, null, 1)); toast(`Κατέβηκε JSON με ${r.length} ακίνητα`); });
