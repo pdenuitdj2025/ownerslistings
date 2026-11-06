@@ -16,7 +16,7 @@ function locAgree(a, b) {
   for (const w of words(b)) if (wa.has(w)) return true;
   return false;
 }
-const sameHome = (x, y) => x.category === "hotel" && y.category === "hotel" ? !!(x.price && y.price && Math.abs(x.price - y.price) <= 0.01 * Math.max(x.price, y.price) && locAgree(x.location, y.location) && (!x.sqm || !y.sqm || x.sqm === y.sqm)) :
+const sameHome = (x, y) => x.category === "hotel" && y.category === "hotel" ? !!(x.source !== y.source && x.price && y.price && Math.abs(x.price - y.price) <= 0.01 * Math.max(x.price, y.price) && locAgree(x.location, y.location) && (!x.sqm || !y.sqm || x.sqm === y.sqm)) :
   (x.category || "home") === (y.category || "home") && (x.seller || "owner") === (y.seller || "owner") &&
   x.sqm && y.sqm && x.sqm === y.sqm && x.price && y.price &&
   Math.abs(x.price - y.price) <= 0.01 * Math.max(x.price, y.price) && locAgree(x.location, y.location);

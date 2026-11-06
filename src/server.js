@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { makeZip } from "./zip.js";
 import { collectGalleries } from "./gallery.js";
-import { init, fixXe1, fixPrice1, fixPrice2, pool, kvGet, kvSet, toApi } from "./db.js";
+import { init, fixXe1, fixPrice1, fixPrice2, fixHotel1, pool, kvGet, kvSet, toApi } from "./db.js";
 import { mergeAds } from "./merge.js";
 import { runAll, runSweep, isRunning, debugPage } from "./runner.js";
 
@@ -137,6 +137,7 @@ await init();
 await fixXe1().catch((e) => console.error(e));
 await fixPrice1().catch((e) => console.error(e));
 await fixPrice2().catch((e) => console.error(e));
+await fixHotel1().catch((e) => console.error(e));
 app.listen(process.env.PORT || 3000, () => console.log("listening"));
 
 // Schedule: one run at each hour in RUN_HOURS (Athens time), 10:00, 16:00 and 22:00 by default. Every run also re-checks which listed ads are still online.

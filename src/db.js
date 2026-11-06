@@ -56,6 +56,13 @@ export async function fixPrice2() {
   await pool.query("UPDATE listings SET prev_price=NULL WHERE prev_price IS NOT NULL AND prev_price<=price");
 }
 
+// one-time: hotel rows were merged within the same site by mistake; clear them so the next run re-reads every hotel
+export async function fixHotel1() {
+  if (await kvGet("fixHotel1")) return;
+  await pool.query("DELETE FROM listings WHERE category='hotel'");
+  await kvSet("fixHotel1", true);
+}
+
 export async function kvGet(k) {
   const r = await pool.query("SELECT v FROM kv WHERE k=$1", [k]);
   return r.rows[0]?.v ?? null;
