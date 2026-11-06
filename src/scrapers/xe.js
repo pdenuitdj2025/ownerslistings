@@ -68,3 +68,34 @@ export async function scrapeXe(page, { url = URL, category = "home", backfill = 
   if (!out.complete && !backfill) out.complete = true;
   return out;
 }
+
+// Agency ads (xe.gr "Επαγγελματίες" filter). There are ~90k land ads alone, so this only follows the NEWEST pages each run (no backfill).
+export const XE_AGENCY_URL = { land: "https://www.xe.gr/property/results?item_type=land&transaction_name=buy&publication_origins%5B%5D=true&country=GR&sorting=publication_date_desc",
+  home: "https://www.xe.gr/property/results?item_type=residence&transaction_name=buy&publication_origins%5B%5D=true&country=GR&sorting=publication_date_desc" };
+export async function scrapeXeAgency(page, { category = "land", maxPages = 8 } = {}) {
+  const out = [];
+  for (let p = 1; p <= maxPages; p++) {
+    await page.goto(XE_AGENCY_URL[category] + "&page=" + p, { waitUntil: "domcontentloaded" });
+    await guardCaptcha(page, "xe.gr");
+    await dismissConsent(page);
+    await page.waitForSelector(".common-ad", { timeout: 20000 }).catch(() => {});
+    for (let i = 0; i < 12; i++) { await page.mouse.wheel(0, 1500); await page.waitForTimeout(300); }
+    const ads = await page.evaluate((category) => [...document.querySelectorAll(".common-ad")].map((c) => {
+      const t = (id) => (c.querySelector(`[data-testid="${id}"]`)?.textContent || "").replace(/\s+/g, " ").trim();
+      const a = c.querySelector('a[data-testid="property-ad-url"]');
+      const title = t("property_ad_title"), lines = c.innerText.split("\n").map((s) => s.trim()).filter(Boolean);
+      const img = c.querySelector('img[src*="blob.cdn.xe.gr"]');
+      return {
+        id: c.id, source: "xe", category, seller: "agency", url: a ? new window.URL(a.getAttribute("href"), location.origin).href.split("?")[0] : "",
+        type: title.replace(/\s*[\d.,]+\s*τ\.μ\./, "").trim(), sqm: Math.round(+((title.match(/([\d.]+(?:,\d+)?)\s*τ\.μ\./) || [])[1] || "").replace(/\./g, "").replace(",", ".")) || null,
+        price: +t("property_ad_price").replace(/[^\d]/g, "") || null,
+        floor: lines.find((l) => /^(\d+ος|Ισόγ\.|Υπόγ\.|Ημιυπ\.|Ημιόρ\.)/.test(l)) || "", beds: +(lines.find((l) => /υ\/δ/.test(l)) || "").replace(/\D/g, "") || null,
+        year: +(lines.find((l) => /^(19|20)\d\d$/.test(l)) || 0) || null, location: t("property_ad_address"), multi: false,
+        posted: (c.querySelector(".tile-date")?.textContent || "").trim(), img: !!img, photo: img?.getAttribute("src") || "",
+      };
+    }).filter((x) => x.id && x.price && x.url), category);
+    out.push(...ads);
+    if (!ads.length) break;
+  }
+  return out;
+}

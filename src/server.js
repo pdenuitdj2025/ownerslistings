@@ -39,9 +39,14 @@ app.use((req, res, next) => {
   res.redirect("/login");
 });
 
-app.get("/api/listings", async (_q, res) => {
-  const { rows } = await pool.query("SELECT * FROM listings WHERE img IS NOT FALSE ORDER BY first_seen DESC");
+app.get("/api/listings", async (req, res) => {
+  const seller = ["owner", "agency"].includes(req.query.seller) ? req.query.seller : null, cat = ["home", "land", "hotel"].includes(req.query.category) ? req.query.category : null;
+  const { rows } = await pool.query("SELECT * FROM listings WHERE img IS NOT FALSE AND ($1::text IS NULL OR seller=$1) AND ($2::text IS NULL OR category=$2) ORDER BY first_seen DESC LIMIT 8000", [seller, cat]);
   res.json(rows.map(toApi));
+});
+app.get("/api/counts", async (_q, res) => {
+  const { rows } = await pool.query("SELECT seller, category, count(*)::int AS n FROM listings WHERE img IS NOT FALSE AND gone_at IS NULL GROUP BY 1,2");
+  res.json(Object.fromEntries(rows.map((r) => [r.seller + "/" + r.category, r.n])));
 });
 app.patch("/api/listings/:id", async (req, res) => {
   const { status, note } = req.body || {};

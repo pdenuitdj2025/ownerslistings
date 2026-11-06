@@ -204,6 +204,7 @@ const els = { list:$("#list"), empty:$("#empty"), more:$("#more"), counts:$("#co
 const SITE = { xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
 const srcOf = x => SITE[x.source] ? x.source : "xe";
 const sitesOf = x => [SITE[srcOf(x)], ...(x.alsoOn || []).map(a => a.site)];
+let counts = {};
 let muniSel = new Set(), floorSel = new Set(), sellerSel = "owner", catSel = "home";
 const inMode = x => (x.seller || "owner") === sellerSel && (x.category || "home") === catSel;
 let picked = new Set(); try { picked = new Set(JSON.parse(localStorage.getItem('owner-listings-picked') || '[]')); } catch (e) {}
@@ -395,7 +396,7 @@ function fillMuni(list){
 function updateMode(){
   document.querySelectorAll("[data-seller]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.seller === sellerSel)));
   document.querySelectorAll("[data-cat]").forEach(b => { b.setAttribute("aria-pressed", String(b.dataset.cat === catSel));
-    const n = rows.filter(x => (x.seller || "owner") === sellerSel && (x.category || "home") === b.dataset.cat && (!els.solo.checked || !x.multi)).length; b.querySelector("small").textContent = n ? n : "0"; });
+    const n = counts[sellerSel + "/" + b.dataset.cat] ?? 0; b.querySelector("small").textContent = n.toLocaleString("el-GR"); });
   document.querySelector(".floorbox")?.classList.toggle("off", catSel !== "home");
 }
 function setMode(seller, cat){
@@ -403,7 +404,7 @@ function setMode(seller, cat){
   document.querySelectorAll("#floorList input").forEach(c => c.checked = false);
   fillMuni([...new Set(rows.filter(inMode).map(r => muniOf(r.location)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"el")));
   fillSelect(els.type, [...new Set(rows.filter(inMode).map(r => r.type).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"el")));
-  els.type.value = ""; savePrefs(); render();
+  els.type.value = ""; savePrefs(); rows = []; render(); load();
 }
 function setupMode(){
   document.querySelectorAll("[data-seller]").forEach(b => b.addEventListener("click", () => setMode(b.dataset.seller, null)));
@@ -523,7 +524,8 @@ async function load(){
   try {
     const a = document.activeElement;
     if (a && a.classList && a.classList.contains("note")) return;   // don't redraw while someone is typing a note
-    const [l, m] = await Promise.all([fetch("/api/listings").then(r => r.json()), fetch("/api/meta").then(r => r.json())]);
+    const [l, m, cn] = await Promise.all([fetch(`/api/listings?seller=${sellerSel}&category=${catSel}`).then(r => r.json()), fetch("/api/meta").then(r => r.json()), fetch("/api/counts").then(r => r.json()).catch(() => ({}))]);
+    counts = cn;
     applyRows(l);
     const run = m.run || {};
     const NAME = { xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
