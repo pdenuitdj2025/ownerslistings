@@ -44,6 +44,10 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 .ms .pop .pa button,.exp button{font:inherit;font-size:.8rem;border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:999px;padding:3px 10px;cursor:pointer}
 .ms .pop label{display:flex;flex-direction:row;gap:8px;align-items:center;font-size:.9rem;color:var(--fg);text-transform:none;letter-spacing:0;padding:3px 2px;cursor:pointer}
 .ms .pop label input{width:auto}
+.pw{position:relative;min-width:0}
+.pick{position:absolute;left:8px;top:8px;z-index:3;display:flex;gap:6px;align-items:center;background:#000b;color:#fff;font-size:.8rem;padding:4px 9px;border-radius:6px;cursor:pointer;text-transform:none;letter-spacing:0}
+.pick input{width:auto;margin:0;accent-color:var(--accent)}
+.row.picked{outline:2px solid var(--accent);outline-offset:-1px}
 .exp{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .exp .go{background:var(--accent);border-color:var(--accent);color:var(--surface);font-weight:600}
 .hint{font-size:.7rem;color:var(--muted);text-transform:none;letter-spacing:0}
@@ -142,12 +146,10 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
     <label for="smax">Μέγ. τ.μ.
       <input id="smax" type="number" inputmode="numeric" min="0" step="5" placeholder="χωρίς όριο">
     </label>
-    <label for="fmin">Από όροφο
-      <select id="fmin"><option value="">Οποιοσδήποτε</option><option value="-1">Υπόγειο</option><option value="-0.5">Ημιυπόγειο</option><option value="0">Ισόγειο</option><option value="1">1ος όροφος</option><option value="2">2ος όροφος</option><option value="3">3ος όροφος</option><option value="4">4ος όροφος</option><option value="5">5ος όροφος</option><option value="6">6ος όροφος</option><option value="7">7ος όροφος</option><option value="8">8ος όροφος</option><option value="9">9ος όροφος</option><option value="10">10ος όροφος</option></select>
-    </label>
-    <label for="fmax">Έως όροφο
-      <select id="fmax"><option value="">Οποιοσδήποτε</option><option value="-1">Υπόγειο</option><option value="-0.5">Ημιυπόγειο</option><option value="0">Ισόγειο</option><option value="1">1ος όροφος</option><option value="2">2ος όροφος</option><option value="3">3ος όροφος</option><option value="4">4ος όροφος</option><option value="5">5ος όροφος</option><option value="6">6ος όροφος</option><option value="7">7ος όροφος</option><option value="8">8ος όροφος</option><option value="9">9ος όροφος</option><option value="10">10ος όροφος</option></select>
-    </label>
+    <div class="fl" style="display:grid;gap:3px;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);min-width:0">Όροφοι
+      <div class="ms" id="floorBox"><button type="button" id="floorBtn">Όλοι οι όροφοι</button>
+        <div class="pop" id="floorPop" hidden><div class="pa"><button type="button" id="floorClear">Καθαρισμός</button><button type="button" id="floorClose">Κλείσιμο</button></div><div id="floorList"></div></div></div>
+    </div>
     <label for="src">Ιστότοπος
       <select id="src"><option value="">Όλοι οι ιστότοποι</option><option value="xe">xe.gr</option><option value="spitogatos">Spitogatos</option><option value="spiti24">Spiti24</option></select>
     </label>
@@ -169,6 +171,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
     <span class="spacer"></span>
     <span class="exp"><span id="expCount" class="hint"></span>
       <label class="check" style="margin:0"><input type="checkbox" id="expPh" checked> με τηλέφωνα</label>
+      <button type="button" id="pickAll" title="Επιλογή όλων των αγγελιών που φαίνονται με τα τρέχοντα φίλτρα">Επιλογή όλων</button><button type="button" id="pickNone">Καθαρισμός επιλογής</button>
       <button type="button" class="go" id="expCopy" title="Αντιγραφή της λίστας (με τα τρέχοντα φίλτρα) για επικόλληση στο Claude">Αντιγραφή για Claude</button>
       <button type="button" class="go" id="expZip" title="ZIP με κείμενο και φωτογραφίες υψηλής ανάλυσης, για παρουσίαση">Λήψη ZIP (με φωτογραφίες)</button><button type="button" id="expCsv">CSV</button><button type="button" id="expJson">JSON</button></span>
     <label class="check" for="solo"><input id="solo" type="checkbox" checked> Μόνο ιδιώτες (απόκρυψη ομαδοποιημένων αγγελιών με μεσίτες)</label>
@@ -184,11 +187,13 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 <script>
 const $ = s => document.querySelector(s);
 const els = { list:$("#list"), empty:$("#empty"), more:$("#more"), counts:$("#counts"), sub:$("#sub"),
-  q:$("#q"), type:$("#type"), pmin:$("#pmin"), pmax:$("#pmax"), smin:$("#smin"), smax:$("#smax"), fmin:$("#fmin"), fmax:$("#fmax"), src:$("#src"), sort:$("#sort"), solo:$("#solo"), toast:$("#toast") };
+  q:$("#q"), type:$("#type"), pmin:$("#pmin"), pmax:$("#pmax"), smin:$("#smin"), smax:$("#smax"), src:$("#src"), sort:$("#sort"), solo:$("#solo"), toast:$("#toast") };
 const SITE = { xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
 const srcOf = x => SITE[x.source] ? x.source : "xe";
 const sitesOf = x => [SITE[srcOf(x)], ...(x.alsoOn || []).map(a => a.site)];
-let muniSel = new Set();
+let muniSel = new Set(), floorSel = new Set();
+let picked = new Set(); try { picked = new Set(JSON.parse(localStorage.getItem('owner-listings-picked') || '[]')); } catch (e) {}
+const savePicked = () => { try { localStorage.setItem('owner-listings-picked', JSON.stringify([...picked])); } catch (e) {} };
 let rows = [], tab = "new", shown = 60, canWrite = true;
 const PAGE = 60;
 const fmt = n => n == null ? "" : n.toLocaleString("el-GR");
@@ -196,11 +201,12 @@ const muniOf = loc => (loc || "").split("(")[0].trim();
 const norm = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 function prefs(){ try{ const p = JSON.parse(localStorage.getItem("owner-listings-filters")||"{}");
+  if (Array.isArray(p.floors)) floorSel = new Set(p.floors);
   if (Array.isArray(p.munis)) muniSel = new Set(p.munis);
-  for (const k of ["q","type","pmin","pmax","smin","smax","fmin","fmax","src","sort"]) if (p[k]!=null) els[k].value = p[k];
+  for (const k of ["q","type","pmin","pmax","smin","smax","src","sort"]) if (p[k]!=null) els[k].value = p[k];
   if (p.solo!=null) els.solo.checked = p.solo; if (p.tab) setTab(p.tab, true); }catch(e){} }
 function savePrefs(){ try{ localStorage.setItem("owner-listings-filters", JSON.stringify({
-  q:els.q.value, munis:[...muniSel], type:els.type.value, pmin:els.pmin.value, pmax:els.pmax.value, smin:els.smin.value, smax:els.smax.value, fmin:els.fmin.value, fmax:els.fmax.value, src:els.src.value, sort:els.sort.value, solo:els.solo.checked, tab})); }catch(e){} }
+  q:els.q.value, munis:[...muniSel], type:els.type.value, pmin:els.pmin.value, pmax:els.pmax.value, smin:els.smin.value, smax:els.smax.value, floors:[...floorSel], src:els.src.value, sort:els.sort.value, solo:els.solo.checked, tab})); }catch(e){} }
 
 function toast(msg){ els.toast.textContent = msg; els.toast.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(()=>els.toast.hidden = true, 2200); }
 
@@ -224,8 +230,6 @@ function filtered(){
   const qs = els.q.value.split(/[,;\n]/).map(t => norm(t.trim())).filter(Boolean), type = els.type.value;
   const pmin = +els.pmin.value || 0, pmax = +els.pmax.value || Infinity;
   const smin = +els.smin.value || 0, smax = +els.smax.value || Infinity;
-  const fOn = els.fmin.value !== "" || els.fmax.value !== "";
-  const fmin = els.fmin.value === "" ? -Infinity : +els.fmin.value, fmax = els.fmax.value === "" ? Infinity : +els.fmax.value;
   let r = rows.filter(x =>
     (tab === "all" || (x.status || "new") === tab) &&
     (!els.solo.checked || !x.multi) &&
@@ -235,7 +239,7 @@ function filtered(){
     (!els.src.value || srcOf(x) === els.src.value) &&
     (x.price == null || (x.price >= pmin && x.price <= pmax)) &&
     (x.sqm == null || (x.sqm >= smin && x.sqm <= smax)) &&
-    (!fOn || floorsOf(x.floor).some(n => n >= fmin && n <= fmax)));
+    (!floorSel.size || floorsOf(x.floor).some(n => floorSel.has(n))));
   const s = els.sort.value;
   const ppm = x => x.price && x.sqm ? x.price / x.sqm : Infinity;
   r.sort(s === "price_asc" ? (a,b)=>(a.price||0)-(b.price||0)
@@ -298,7 +302,7 @@ function rowEl(x){
       <div class="meta"></div>
       <div class="det"></div>
     </div>
-    ${img}
+    <div class="pw">${img}<label class="pick"><input type="checkbox" class="pk" ${picked.has(x.id) ? "checked" : ""}> Για εξαγωγή</label></div>
     <div class="side">
       <div><div class="price">${fmt(x.price)} €</div>${x.prevPrice ? `<div class="ppm" style="color:#2f7d4f;font-weight:600">↓ από ${fmt(x.prevPrice)} €</div>` : ""}${ppm ? `<div class="ppm">${fmt(ppm)} €/τ.μ.</div>` : ""}</div>
       <div class="status">
@@ -311,6 +315,8 @@ function rowEl(x){
       <div class="agent"></div>
       <input class="note" id="note-${x.id}" placeholder="Σημείωση (τηλέφωνο, αποτέλεσμα κλήσης…)" ${canWrite ? "" : "disabled"}>
     </div>`;
+  const pk = d.querySelector(".pk"); d.classList.toggle("picked", picked.has(x.id));
+  pk.addEventListener("change", () => { pk.checked ? picked.add(x.id) : picked.delete(x.id); d.classList.toggle("picked", pk.checked); savePicked(); updExpCount(); });
   d.querySelector(".loc a").textContent = x.location || "Αττική";
   const spec = [x.type && x.sqm ? `${x.type} ${x.sqm} τ.μ.` : x.type, x.beds ? `${x.beds} υ/δ` : "", x.floor ? `όροφος ${x.floor}` : "", x.year ? `έτος ${x.year}` : ""].filter(Boolean);
   spec.forEach(t => { const s = document.createElement("span"); s.textContent = t; d.querySelector(".spec").appendChild(s); });
@@ -369,8 +375,24 @@ function fillMuni(list){
   muniLabel();
 }
 
+// ---- multi-select floors
+const FLOORS = [[-1, "Υπόγειο"], [-0.5, "Ημιυπόγειο"], [0, "Ισόγειο"], ...Array.from({ length: 10 }, (_, i) => [i + 1, `${i + 1}ος όροφος`])];
+function floorLabel(){ const n = floorSel.size; $("#floorBtn").textContent = !n ? "Όλοι οι όροφοι" : n <= 3 ? FLOORS.filter(([v]) => floorSel.has(v)).map(([, t]) => t.replace(" όροφος", "")).join(", ") : `${n} όροφοι επιλεγμένοι`; }
+function setupFloors(){
+  const box = $("#floorList"), pop = $("#floorPop");
+  FLOORS.forEach(([v, t]) => { const l = document.createElement("label"); const c = document.createElement("input"); c.type = "checkbox"; c.checked = floorSel.has(v);
+    c.addEventListener("change", () => { c.checked ? floorSel.add(v) : floorSel.delete(v); floorLabel(); shown = PAGE; savePrefs(); render(); });
+    l.append(c, document.createTextNode(" " + t)); box.appendChild(l); });
+  floorLabel();
+  $("#floorBtn").addEventListener("click", () => { pop.hidden = !pop.hidden; });
+  $("#floorClose").addEventListener("click", () => { pop.hidden = true; });
+  $("#floorClear").addEventListener("click", () => { floorSel.clear(); pop.querySelectorAll("input").forEach(c => c.checked = false); floorLabel(); shown = PAGE; savePrefs(); render(); });
+  document.addEventListener("click", e => { if (!pop.hidden && !$("#floorBox").contains(e.target)) pop.hidden = true; });
+}
+
 // ---- export of the currently filtered list
-function expRows(){ return filtered(); }
+function expRows(){ if (!picked.size) return filtered(); const f = filtered(); return [...f.filter(x => picked.has(x.id)), ...rows.filter(x => picked.has(x.id) && !f.includes(x))]; }
+function updExpCount(){ $("#expCount").textContent = picked.size ? `επιλεγμένα για εξαγωγή: ${picked.size}` : `εξαγωγή: όλα τα εμφανιζόμενα (${filtered().length})`; }
 function expObj(x){
   const dt = x.details || {}, f = Object.fromEntries((dt.facts || []).filter(a => Array.isArray(a)));
   const ppm = x.price && x.sqm ? Math.round(x.price / x.sqm) : null;
@@ -397,7 +419,9 @@ function exportMarkdown(r, files){
 }
 const csvCell = v => { v = String(v ?? ""); return /[",\n;]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
 function setupExport(){
-  const upd = () => { $("#expCount").textContent = `εξαγωγή: ${filtered().length} ακίνητα`; };
+  const upd = updExpCount;
+  $("#pickAll").addEventListener("click", () => { filtered().forEach(x => picked.add(x.id)); savePicked(); render(); });
+  $("#pickNone").addEventListener("click", () => { picked.clear(); savePicked(); render(); });
   $("#expCopy").addEventListener("click", async () => { const r = expRows(); const txt = exportMarkdown(r);
     try { await navigator.clipboard.writeText(txt); toast(`Αντιγράφηκαν ${r.length} ακίνητα — επικόλλησέ τα στο Claude`); }
     catch (e) { download(`ακίνητα-${stamp()}.md`, "text/markdown;charset=utf-8", txt); toast("Η αντιγραφή δεν επιτράπηκε — κατέβηκε αρχείο .md"); } });
@@ -426,9 +450,9 @@ function setupMuni(){
 }
 
 function boot(){
-  prefs(); setupMuni(); setupExport();
+  prefs(); setupMuni(); setupFloors(); setupExport();
   document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
-  ["q","type","pmin","pmax","smin","smax","fmin","fmax","src","sort","solo"].forEach(k => els[k].addEventListener("input", () => { shown = PAGE; savePrefs(); render(); }));
+  ["q","type","pmin","pmax","smin","smax","src","sort","solo"].forEach(k => els[k].addEventListener("input", () => { shown = PAGE; savePrefs(); render(); }));
   els.more.addEventListener("click", () => { shown += PAGE; render(); });
 }
 boot();
