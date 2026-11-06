@@ -35,7 +35,7 @@ async function realting() {
   const base = "https://realting.com", out = []; let prev = "";
   const usd = (t) => { const m = String(t || "").match(/\$\s*([\d\s.,]+?)\s*([MK]?)\s*$/i); if (!m) return null; const n = m[2] ? parseFloat(m[1].replace(/\s/g, "").replace(",", ".")) * (m[2].toUpperCase() === "M" ? 1e6 : 1e3) : Number(m[1].replace(/[\s.,]/g, "")); return Math.round(n) || null; };
   for (let p = 1; p <= 20; p++) {
-    const html = await get(`${base}/greece/commercial/hotels` + (p > 1 ? `?page=${p}` : ""));
+    let html; try { html = await get(`${base}/greece/commercial/hotels` + (p > 1 ? `?page=${p}` : "")); } catch (e) { if (p > 1 && /→ 404/.test(e.message)) break; throw e; }   // past the last page the site answers 404
     const blocks = html.split('<a class="flex-grow-1" href="').slice(1);
     if (!blocks.length) break;
     const first = blocks[0].slice(0, 80); if (first === prev) break; prev = first;
