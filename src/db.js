@@ -77,10 +77,3 @@ export const toApi = (r) => ({
   beds: r.beds, year: r.year, location: r.location, multi: r.multi, posted: r.posted,
   prevPrice: r.prev_price || undefined, phone: r.phone || undefined, details: r.details || undefined, photo: r.photo || undefined, gone: !!r.gone_at, status: r.status, note: r.note, firstSeen: r.first_seen, alsoOn: r.also_on?.length ? r.also_on : undefined,
 });
-
-export async function dropSabbianco() {   // Sabbianco's own listings are no longer shown in the tool
-  if (await kvGet("dropSabbianco")) return;
-  await pool.query("DELETE FROM listings WHERE source='sabbianco'");
-  const sites = (await kvGet("sites")) || {}; delete sites.sabbianco; await kvSet("sites", sites);
-  await kvSet("dropSabbianco", true);
-}
