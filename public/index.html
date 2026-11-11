@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sabbianco Radar Ακινήτων</title>
+<title>Greek Property Radar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Commissioner:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap">
 <style>
@@ -126,7 +126,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 <div class="wrap">
   <header>
     <div>
-      <h1>Sabbianco Radar Ακινήτων</h1>
+      <h1>Greek Property Radar</h1>
       <p class="sub" id="sub">Ιδιώτες και μεσίτες · κατοικίες, οικόπεδα, ξενοδοχεία · μία γραμμή ανά ακίνητο</p>
     </div>
     <div class="counts" id="counts"></div>
@@ -201,7 +201,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 const $ = s => document.querySelector(s);
 const els = { list:$("#list"), empty:$("#empty"), more:$("#more"), counts:$("#counts"), sub:$("#sub"),
   q:$("#q"), type:$("#type"), pmin:$("#pmin"), pmax:$("#pmax"), smin:$("#smin"), smax:$("#smax"), src:$("#src"), sort:$("#sort"), solo:$("#solo"), toast:$("#toast") };
-const SITE = { sabbianco: "Sabbianco (δικά μας)", realting: "Realting", ktimato: "Ktimatoemporiki", gep: "Greek Exclusive Properties", xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
+const SITE = { realting: "Realting", ktimato: "Ktimatoemporiki", gep: "Greek Exclusive Properties", xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
 const srcOf = x => SITE[x.source] ? x.source : "xe";
 const sitesOf = x => [SITE[srcOf(x)], ...(x.alsoOn || []).map(a => a.site)];
 let counts = {};

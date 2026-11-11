@@ -7,7 +7,6 @@ One row per home (the same home on several portals is merged), status + notes fo
 | Variable | What |
 |---|---|
 | `DATABASE_URL` | reference the Postgres plugin: `${{Postgres.DATABASE_URL}}` |
-| `TEAM_PASSWORD` | shared password for the team page (any username) |
 | `XE_USER` / `XE_PASS` | xe.gr login (optional if you use cookies) |
 | `SPITOGATOS_USER` / `SPITOGATOS_PASS` | Spitogatos login |
 | `RUN_HOUR_ATHENS` | hour of the daily check, default `7` |

@@ -3,41 +3,15 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { makeZip } from "./zip.js";
 import { collectGalleries } from "./gallery.js";
-import { init, fixXe1, fixPrice1, fixPrice2, fixHotel1, pool, kvGet, kvSet, toApi } from "./db.js";
+import { init, fixXe1, fixPrice1, fixPrice2, fixHotel1, dropSabbianco, pool, kvGet, kvSet, toApi } from "./db.js";
 import { mergeAds } from "./merge.js";
 import { runAll, runSweep, isRunning, debugPage } from "./runner.js";
 
-const PASSWORD = process.env.TEAM_PASSWORD;
-if (!PASSWORD) { console.error("Set TEAM_PASSWORD in Railway variables (the shared password for your team)."); process.exit(1); }
 const RUN_HOURS = (process.env.RUN_HOURS_ATHENS || "10,16,22").split(",").map(Number).filter((n) => n >= 0 && n < 24).sort((a, b) => a - b);   // scrape three times a day, Athens time
 
 const app = express();
 app.use(express.json({ limit: "10mb" }));
 app.get("/healthz", (_q, r) => r.send("ok"));
-
-// One shared password for the team: login form + signed cookie (API clients may also send Basic auth).
-import crypto from "node:crypto";
-const sign = (v) => crypto.createHmac("sha256", PASSWORD).update(v).digest("hex");
-const TOKEN = sign("owner-listings-session");
-const eq = (a, b) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
-const cookieOf = (req, name) => (req.headers.cookie || "").split(/;\s*/).map((c) => c.split("=")).find(([k]) => k === name)?.[1] || "";
-const LOGIN = (msg = "") => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sabbianco Radar Ακινήτων</title>
-<style>body{font-family:system-ui,sans-serif;background:#f5f6f4;display:grid;place-items:center;min-height:100vh;margin:0}form{background:#fff;padding:28px;border-radius:12px;box-shadow:0 2px 14px #0001;width:min(340px,90vw)}
-h1{font-size:18px;margin:0 0 14px}input,button{width:100%;padding:11px;font-size:16px;margin-top:10px;box-sizing:border-box;border-radius:8px;border:1px solid #ccd}button{background:#1f5f8b;color:#fff;border:0;cursor:pointer}p{color:#b3261e;margin:8px 0 0}</style>
-<form method="post" action="/login"><h1>Sabbianco Radar Ακινήτων</h1><input type="password" name="password" placeholder="Κωδικός ομάδας" autofocus required><button>Σύνδεση</button>${msg ? `<p>${msg}</p>` : ""}</form>`;
-app.use(express.urlencoded({ extended: false }));
-app.get("/login", (_q, r) => r.send(LOGIN()));
-app.post("/login", (req, res) => {
-  if (!eq(String(req.body.password || ""), PASSWORD)) return res.status(401).send(LOGIN("Λάθος κωδικός"));
-  res.set("Set-Cookie", `auth=${TOKEN}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 90}`).redirect("/");
-});
-app.use((req, res, next) => {
-  if (eq(cookieOf(req, "auth"), TOKEN)) return next();
-  const [, p] = Buffer.from((req.headers.authorization || "").replace(/^Basic /, ""), "base64").toString().split(/:(.*)/s);
-  if (p && eq(p, PASSWORD)) return next();
-  if (req.path.startsWith("/api/")) return res.status(401).json({ error: "auth" });
-  res.redirect("/login");
-});
 
 app.get("/api/listings", async (req, res) => {
   const seller = ["owner", "agency"].includes(req.query.seller) ? req.query.seller : null, cat = ["home", "land", "hotel"].includes(req.query.category) ? req.query.category : null;
@@ -69,13 +43,13 @@ app.post("/api/run", async (_q, res) => {
 });
 
 // ZIP for presentations: listing text/CSV + the owners' photos in the best size the sites offer
-const PHOTO_OK = /^https:\/\/([a-z0-9-]+\.)*(spitogatos\.gr|xe\.gr|b-cdn\.net|greekexclusiveproperties\.com|realting\.com|cms\.sabbiancoproperties\.com)\//i;
+const PHOTO_OK = /^https:\/\/([a-z0-9-]+\.)*(spitogatos\.gr|xe\.gr|b-cdn\.net|greekexclusiveproperties\.com|realting\.com)\//i;
 const bigPhoto = (u) => /spitogatos\.gr\//.test(u) ? u.replace(/_\d+x\d+\.jpg.*$/, "_1600x1200.jpg") : /blob\.cdn\.xe\.gr\//.test(u) ? u.replace(/\?.*$/, "") : u;
 async function getImg(u) { try { const r = await fetch(u, { headers: { "user-agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(20000) }); if (!r.ok || !/^image\//.test(r.headers.get("content-type") || "")) return null; const b = Buffer.from(await r.arrayBuffer()); return b.length > 2000 ? b : null; } catch { return null; } }
 const exportJobs = new Map();   // id -> {state, done, total, zip, photos, error, at}
 app.post("/api/export-zip", (req, res) => {
   const { md = "", csv = "", items = [] } = req.body || {};
-  const list = (Array.isArray(items) ? items : []).slice(0, 120).filter((x) => x && typeof x.id === "string" && typeof x.url === "string" && /^https:\/\/(www\.)?(xe\.gr|spitogatos\.gr|spiti24\.gr|ktimatoemporiki\.gr|greekexclusiveproperties\.com|realting\.com|sabbiancoproperties\.com)\//.test(x.url));
+  const list = (Array.isArray(items) ? items : []).slice(0, 120).filter((x) => x && typeof x.id === "string" && typeof x.url === "string" && /^https:\/\/(www\.)?(xe\.gr|spitogatos\.gr|spiti24\.gr|ktimatoemporiki\.gr|greekexclusiveproperties\.com|realting\.com)\//.test(x.url));
   if ([...exportJobs.values()].some((j) => j.state === "running")) return res.status(429).json({ error: "busy" });
   for (const [k, j] of exportJobs) if (Date.now() - j.at > 20 * 60e3) exportJobs.delete(k);
   const id = Math.random().toString(36).slice(2, 10), job = { state: "running", done: 0, total: list.length, at: Date.now() }; exportJobs.set(id, job);
@@ -138,6 +112,7 @@ await fixXe1().catch((e) => console.error(e));
 await fixPrice1().catch((e) => console.error(e));
 await fixPrice2().catch((e) => console.error(e));
 await fixHotel1().catch((e) => console.error(e));
+await dropSabbianco().catch((e) => console.error(e));
 app.listen(process.env.PORT || 3000, () => console.log("listening"));
 
 // Schedule: one run at each hour in RUN_HOURS (Athens time), 10:00, 16:00 and 22:00 by default. Every run also re-checks which listed ads are still online.
