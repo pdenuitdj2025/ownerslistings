@@ -15,3 +15,4 @@ One row per home (the same home on several portals is merged), status + notes fo
 Sessions are kept in the database, so a login only happens when a session expires.
 If a site shows a CAPTCHA or login code, it is **not** bypassed: the page header shows a warning for that site.
 `POST /api/run` (with the team password) starts a check immediately.
+| `TEAM_PASSWORD` | shared password for the team page (any username) |
