@@ -6,42 +6,21 @@ import { collectGalleries } from "./gallery.js";
 import { init, fixXe1, fixPrice1, fixPrice2, fixHotel1, pool, kvGet, kvSet, toApi } from "./db.js";
 import { mergeAds } from "./merge.js";
 import { runAll, runSweep, isRunning, debugPage } from "./runner.js";
+import { initSaas, mountSaas } from "./saas.js";
 
-const PASSWORD = process.env.TEAM_PASSWORD;
-if (!PASSWORD) { console.error("Set TEAM_PASSWORD in Railway variables (the shared password for your team)."); process.exit(1); }
 const RUN_HOURS = (process.env.RUN_HOURS_ATHENS || "10,16,22").split(",").map(Number).filter((n) => n >= 0 && n < 24).sort((a, b) => a - b);   // scrape three times a day, Athens time
 
 const app = express();
 app.use(express.json({ limit: "10mb" }));
 app.get("/healthz", (_q, r) => r.send("ok"));
 
-// One shared password for the team: login form + signed cookie (API clients may also send Basic auth).
-import crypto from "node:crypto";
-const sign = (v) => crypto.createHmac("sha256", PASSWORD).update(v).digest("hex");
-const TOKEN = sign("owner-listings-session");
-const eq = (a, b) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
-const cookieOf = (req, name) => (req.headers.cookie || "").split(/;\s*/).map((c) => c.split("=")).find(([k]) => k === name)?.[1] || "";
-const LOGIN = (msg = "") => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Greek Property Radar</title>
-<style>body{font-family:system-ui,sans-serif;background:#f5f6f4;display:grid;place-items:center;min-height:100vh;margin:0}form{background:#fff;padding:28px;border-radius:12px;box-shadow:0 2px 14px #0001;width:min(340px,90vw)}
-h1{font-size:18px;margin:0 0 14px}input,button{width:100%;padding:11px;font-size:16px;margin-top:10px;box-sizing:border-box;border-radius:8px;border:1px solid #ccd}button{background:#1f5f8b;color:#fff;border:0;cursor:pointer}p{color:#b3261e;margin:8px 0 0}</style>
-<form method="post" action="/login"><h1>Greek Property Radar</h1><input type="password" name="password" placeholder="Κωδικός ομάδας" autofocus required><button>Σύνδεση</button>${msg ? `<p>${msg}</p>` : ""}</form>`;
-app.use(express.urlencoded({ extended: false }));
-app.get("/login", (_q, r) => r.send(LOGIN()));
-app.post("/login", (req, res) => {
-  if (!eq(String(req.body.password || ""), PASSWORD)) return res.status(401).send(LOGIN("Λάθος κωδικός"));
-  res.set("Set-Cookie", `auth=${TOKEN}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 90}`).redirect("/");
-});
-app.use((req, res, next) => {
-  if (eq(cookieOf(req, "auth"), TOKEN)) return next();
-  const [, p] = Buffer.from((req.headers.authorization || "").replace(/^Basic /, ""), "base64").toString().split(/:(.*)/s);
-  if (p && eq(p, PASSWORD)) return next();
-  if (req.path.startsWith("/api/")) return res.status(401).json({ error: "auth" });
-  res.redirect("/login");
-});
+const PUBLIC = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public");
+mountSaas(app, { appFile: path.join(PUBLIC, "index.html"), publicDir: PUBLIC });   // public pages, accounts, billing; everything under /api needs a paid office or the house team
 
 app.get("/api/listings", async (req, res) => {
   const seller = ["owner", "agency"].includes(req.query.seller) ? req.query.seller : null, cat = ["home", "land", "hotel"].includes(req.query.category) ? req.query.category : null;
-  const { rows } = await pool.query("SELECT * FROM listings WHERE img IS NOT FALSE AND ($1::text IS NULL OR seller=$1) AND ($2::text IS NULL OR category=$2) ORDER BY first_seen DESC LIMIT 8000", [seller, cat]);
+  // each office sees its own statuses and notes
+  const { rows } = await pool.query("SELECT l.*, COALESCE(m.status, 'new') AS status, COALESCE(m.note, '') AS note FROM listings l LEFT JOIN org_marks m ON m.listing_id = l.id AND m.org_id = $3 WHERE l.img IS NOT FALSE AND NOT EXISTS (SELECT 1 FROM blocked b WHERE b.key = l.url OR b.key = l.phone) AND ($1::text IS NULL OR l.seller=$1) AND ($2::text IS NULL OR l.category=$2) ORDER BY l.first_seen DESC LIMIT 8000", [seller, cat, req.who.orgId]);
   res.json(rows.map(toApi));
 });
 app.get("/api/counts", async (_q, res) => {
@@ -51,12 +30,13 @@ app.get("/api/counts", async (_q, res) => {
 app.patch("/api/listings/:id", async (req, res) => {
   const { status, note } = req.body || {};
   if (status !== undefined && !["new", "contacted", "skip"].includes(status)) return res.status(400).end();
+  if (!(await pool.query("SELECT 1 FROM listings WHERE id=$1", [req.params.id])).rowCount) return res.status(404).json({ ok: false });
   const r = await pool.query(
-    "UPDATE listings SET status=COALESCE($2,status), note=COALESCE($3,note) WHERE id=$1",
-    [req.params.id, status ?? null, note === undefined ? null : String(note).slice(0, 2000)]);
+    "INSERT INTO org_marks(org_id, listing_id, status, note) VALUES ($1,$2,COALESCE($3,'new'),COALESCE($4,'')) ON CONFLICT (org_id, listing_id) DO UPDATE SET status=COALESCE($3, org_marks.status), note=COALESCE($4, org_marks.note)",
+    [req.who.orgId, req.params.id, status ?? null, note === undefined ? null : String(note).slice(0, 2000)]);
   res.status(r.rowCount ? 200 : 404).json({ ok: !!r.rowCount });
 });
-app.get("/api/meta", async (_q, res) => res.json({ run: await kvGet("run"), sites: (await kvGet("sites")) || {}, sweep: await kvGet("sweep"), running: isRunning() }));
+app.get("/api/meta", async (req, res) => { const run = (await kvGet("run")) || {}; res.json(req.who.admin ? { run, sites: (await kvGet("sites")) || {}, sweep: await kvGet("sweep"), running: isRunning() } : { run: { lastCheck: run.lastCheck, lastNew: run.lastNew } }); });
 app.get("/api/hidden", async (_q, res) => { const { rows } = await pool.query("SELECT id, source, url, price, sqm, location, checked_at FROM listings WHERE img = false ORDER BY checked_at DESC LIMIT 400"); res.json(rows); });
 app.post("/api/scan", async (_q, res) => { await kvSet("scanStartedAt", new Date().toISOString()); await kvSet("scanPending", true); res.json({ queued: true }); });
 app.post("/api/phones", (_q, res) => { const started = !isRunning(); if (started) runAll({ phones: true }).catch((e) => console.error(e)); res.json({ started }); });
@@ -131,9 +111,10 @@ app.post("/api/import", async (req, res) => {
   res.json({ imported: n });
 });
 
-app.use(express.static(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public")));
+
 
 await init();
+await initSaas();
 await fixXe1().catch((e) => console.error(e));
 await fixPrice1().catch((e) => console.error(e));
 await fixPrice2().catch((e) => console.error(e));

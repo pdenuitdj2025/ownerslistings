@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Greek Property Radar</title>
+<title>Property Radar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Commissioner:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap">
 <style>
@@ -126,10 +126,11 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 <div class="wrap">
   <header>
     <div>
-      <h1>Greek Property Radar</h1>
+      <h1>Property Radar</h1>
       <p class="sub" id="sub">Ιδιώτες και μεσίτες · κατοικίες, οικόπεδα, ξενοδοχεία · μία γραμμή ανά ακίνητο</p>
     </div>
     <div class="counts" id="counts"></div>
+    <a id="acct" href="/account" style="font-size:.85rem;color:var(--muted);white-space:nowrap">Λογαριασμός</a>
   </header>
 
   <div class="mode" id="mode">
@@ -534,11 +535,12 @@ async function load(){
     const warn = Object.entries(m.sites || {}).filter(([, s]) => s.status && s.status !== "ok").map(([k, s]) => `${NAME[k] || k} ${WHY[s.status] || "ο έλεγχος απέτυχε"}`);
     if (run.lastCheck) {
       const t = new Date(run.lastCheck).toLocaleString("el-GR", { weekday:"short", day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit", timeZone:"Europe/Athens" });
-      els.sub.textContent = `Ιδιώτες και μεσίτες · κατοικίες, οικόπεδα, ξενοδοχεία · xe.gr, Spitogatos, Spiti24 · μία γραμμή ανά ακίνητο · τελευταίος έλεγχος ${t}, ${run.lastNew ?? 0} νέες`;
+      els.sub.textContent = `Ιδιώτες και μεσίτες · κατοικίες, οικόπεδα, ξενοδοχεία · μία γραμμή ανά ακίνητο · τελευταίος έλεγχος ${t}, ${run.lastNew ?? 0} νέες`;
       els.sub.title = warn.join(" · ");   // details only on hover, not shown in the header
     }
   } catch (e) { if (!rows.length) els.empty.textContent = "Η λίστα δεν φορτώθηκε. Ξαναφόρτωσε τη σελίδα."; }
 }
 load(); setInterval(load, 60000);
+fetch("/api/me").then(r => r.json()).then(m => { const a = document.getElementById("acct"); if (m.admin) a.remove(); else a.textContent = m.org + " · Λογαριασμός"; }).catch(() => {});
 </script>
 </body></html>

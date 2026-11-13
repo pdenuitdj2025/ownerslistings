@@ -16,3 +16,5 @@ Sessions are kept in the database, so a login only happens when a session expire
 If a site shows a CAPTCHA or login code, it is **not** bypassed: the page header shows a warning for that site.
 `POST /api/run` (with the team password) starts a check immediately.
 | `TEAM_PASSWORD` | shared password for the team page (any username) |
+| `STRIPE_SECRET_KEY` | Stripe secret key (subscriptions). Without it, sign-up works but checkout says payments are not enabled yet |
+| `CONTACT_EMAIL`, `PUBLIC_URL`, `PRICE_MONTH_CENTS`, `PRICE_YEAR_CENTS` | optional: contact address shown on the pages, the public address (https://propertyradar.gr), prices (default 4900 / 49900) |
