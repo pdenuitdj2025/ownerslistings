@@ -215,8 +215,8 @@ details p{color:var(--ink-2);margin:0;padding:0 0 20px;max-width:68ch}
       <h3>Γραφείο</h3>
       <p>Περιλαμβάνει τον υπεύθυνο του γραφείου.</p>
       <p class="amt"><span data-amt>€39,99</span> <small>/ μήνα</small></p>
-      <p data-sub><b>€479,88 με μία χρέωση τον χρόνο.</b></p>
-      <div class="plus"><b>+ <span data-seat>€12,42</span></b><span data-seatsub>τον μήνα για κάθε μεσίτη (€149 τον χρόνο ανά θέση)</span></div>
+      <p data-sub>Με ετήσια συνδρομή · −20% σε σχέση με τη μηνιαία.</p>
+      <div class="plus"><b>+ <span data-seat>€11,99</span></b><span data-seatsub>τον μήνα για κάθε μεσίτη</span></div>
       <ul class="ticks">
         <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Όλες οι λίστες: κατοικίες, οικόπεδα, ξενοδοχεία</li>
         <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Ιδιώτες και μεσίτες, σε όλη την Ελλάδα</li>
@@ -231,13 +231,12 @@ details p{color:var(--ink-2);margin:0;padding:0 0 20px;max-width:68ch}
       <label for="ag">Μεσίτες: <output id="agv" for="ag">3</output></label>
       <input id="ag" type="range" min="0" max="20" step="1" value="3">
       <div class="sum"><dl>
-        <div><dt>Γραφείο</dt><dd id="s-base">€479,88</dd></div>
-        <div><dt id="s-seatl">3 θέσεις μεσιτών</dt><dd id="s-seat">€447</dd></div>
-        <div class="tot"><dt id="s-totl">Σύνολο τον χρόνο</dt><dd id="s-tot">€946</dd></div>
+        <div><dt>Γραφείο</dt><dd id="s-base">€39,99</dd></div>
+        <div><dt id="s-seatl">3 θέσεις μεσιτών</dt><dd id="s-seat">€35,97</dd></div>
+        <div class="tot"><dt id="s-totl">Σύνολο τον μήνα</dt><dd id="s-tot">€75,96</dd></div>
       </dl></div>
     </div>
   </div>
-  <p class="fine">Η πληρωμή γίνεται με ασφάλεια μέσω Stripe. Με τη συνδρομή αποδέχεστε τους <a href="/terms">όρους</a> και την <a href="/privacy">πολιτική απορρήτου</a>.</p>
 </div></div></section>
 
 <section style="padding-top:0"><div class="container">
@@ -280,13 +279,13 @@ function prices() {
   const y = iv === "year", n = Number($("ag").value), save = BASE.month * 12 - BASE.year, pct = Math.round(save / (BASE.month * 12) * 100);
   set("[data-from]", eur(Math.round(BASE.year / 12))); set("[data-maxpct]", "−" + pct + "%");
   set("[data-amt]", eur(y ? Math.round(BASE.year / 12) : BASE.month));
-  document.querySelector("[data-sub]").innerHTML = y ? `<b>${eur(BASE.year)} με μία χρέωση τον χρόνο.</b> Κερδίζετε ${eur(save)}.` : `Χρέωση κάθε μήνα. Με το ετήσιο κερδίζετε ${eur(save)} τον χρόνο.`;
+  document.querySelector("[data-sub]").innerHTML = y ? `Με ετήσια συνδρομή · −${pct}% σε σχέση με τη μηνιαία.` : `Χρέωση κάθε μήνα. Με ετήσια συνδρομή −${pct}%.`;
   set("[data-seat]", eur(y ? Math.round(SEAT.year / 12) : SEAT.month));
-  set("[data-seatsub]", y ? `τον μήνα για κάθε μεσίτη (${eur(SEAT.year)} τον χρόνο ανά θέση)` : "τον μήνα για κάθε μεσίτη");
+  set("[data-seatsub]", "τον μήνα για κάθε μεσίτη");
   document.querySelector("[data-go]").href = "/signup?plan=" + iv;
-  const b = y ? BASE.year : BASE.month, s = (y ? SEAT.year : SEAT.month) * n;
+  const b = y ? Math.round(BASE.year / 12) : BASE.month, s = (y ? Math.round(SEAT.year / 12) : SEAT.month) * n;
   $("agv").textContent = n; $("s-base").textContent = eur(b); $("s-seatl").textContent = n === 1 ? "1 θέση μεσίτη" : n + " θέσεις μεσιτών"; $("s-seat").textContent = eur(s);
-  $("s-totl").textContent = y ? "Σύνολο τον χρόνο" : "Σύνολο τον μήνα"; $("s-tot").textContent = eur(b + s);
+  $("s-totl").textContent = "Σύνολο τον μήνα"; $("s-tot").textContent = eur(b + s);
 }
 document.querySelectorAll(".tog button").forEach(b => b.onclick = () => { iv = b.dataset.i; document.querySelectorAll(".tog button").forEach(x => x.setAttribute("aria-pressed", x === b)); prices(); });
 $("ag").oninput = prices; prices();
