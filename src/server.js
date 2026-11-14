@@ -131,8 +131,8 @@ function dueSlot() {
   const due = RUN_HOURS.filter((h) => h <= hour).pop();
   return due === undefined ? null : `${k.slice(0, 10)} ${due}`;
 }
-// After a restart or deploy, don't "catch up" a slot if a run happened recently.
-(async () => { try { const r = await kvGet("run"); if (r?.lastCheck && Date.now() - Date.parse(r.lastCheck) < 12 * 36e5 && dueSlot()) await kvSet("lastScheduledSlot", dueSlot()); } catch {} })();
+// After a restart or deploy, a slot is only treated as done if its run actually finished; a run cut off by a deploy starts again.
+(async () => { try { const s = dueSlot(); if (s && (await kvGet("lastScheduledSlot")) === s && (await kvGet("lastScheduledDone")) !== s) await kvSet("lastScheduledSlot", null); } catch {} })();
 setInterval(async () => {
   const k = athensKey(), day = k.slice(0, 10), hour = +k.slice(11, 13);
   const due = RUN_HOURS.filter((h) => h <= hour).pop();
@@ -141,12 +141,13 @@ setInterval(async () => {
   if ((await kvGet("lastScheduledSlot")) === slot) return;
   await kvSet("lastScheduledSlot", slot);
   console.log("scheduled run", k);
-  runAll({ verify: true }).catch((e) => console.error(e));
+  runAll({ verify: true }).then(async (r) => { if (!r?.skipped) await kvSet("lastScheduledDone", slot); }).catch((e) => console.error(e));
 }, 5 * 60 * 1000);
 // Phones + details for ads that don't have them yet: starts by itself whenever nothing else is running (after every run, after a deploy).
 setInterval(async () => {
   try {
     if (isRunning()) return;
+    { const due = dueSlot(); if (due && (await kvGet("lastScheduledSlot")) !== due) return; }   // a scheduled run is waiting: let it go first
     const last = await kvGet("lastPhonePass");
     if (last && Date.now() - Date.parse(last) < 10 * 60 * 1000) return;
     const { rows } = await pool.query(`SELECT count(*)::int AS n FROM listings WHERE gone_at IS NULL AND img IS NOT FALSE AND ((phone IS NULL AND phone_checked IS NULL) OR details_checked IS NULL)`);
@@ -164,6 +165,13 @@ setInterval(async () => {
     runAll({ phones: true }).catch((e) => console.error(e));
   } catch (e) { console.error(e); }
 }, 2 * 60 * 1000);
+// One-time repair: ads that were marked "read" while the site was answering with a block page have no details; read them again.
+(async () => { try {
+  if (!(await kvGet("detailsRepair1"))) {
+    const r = await pool.query("UPDATE listings SET details_checked=NULL, phone_checked=CASE WHEN phone IS NULL THEN NULL ELSE phone_checked END WHERE gone_at IS NULL AND details IS NULL AND source IN ('spiti24','spitogatos','xe') AND details_checked IS NOT NULL");
+    console.log("details repair: re-queued", r.rowCount); await kvSet("detailsRepair1", true);
+  }
+} catch (e) { console.error(e); } })();
 // One-time full scan requested for this version: queue it once after deploy.
 (async () => { try {
   if ((await kvGet("scanVersion")) !== "v2" && !(await kvGet("scanPending"))) {   // v2: re-check homes that are listed on several sites (a dead main ad now hands over to its twin)

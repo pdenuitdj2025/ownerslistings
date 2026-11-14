@@ -59,13 +59,17 @@ export async function phoneSite(page, key, { limit = 60, maxMs = 0 } = {}) {
   const { rows } = await pool.query(
     `SELECT id, url, phone FROM listings WHERE source=$1 AND gone_at IS NULL AND img IS NOT FALSE AND ((phone IS NULL AND phone_checked IS NULL) OR details_checked IS NULL)
       ORDER BY first_seen DESC LIMIT $2`, [key, limit]);
-  let found = 0, checked = 0, misses = 0;
+  let found = 0, checked = 0, misses = 0, blocks = 0;
   for (const r of rows) {
     if (maxMs && Date.now() - t0 > maxMs) break;   // long backfills are done in slices so the scheduled runs are never blocked for long
     try {
       const resp = await page.goto(r.url, { waitUntil: "domcontentloaded", timeout: 30000 });
-      if (!resp || resp.status() !== 200) { checked++; await pool.query("UPDATE listings SET phone_checked=now(), details_checked=now() WHERE id=$1", [r.id]); continue; }
+      const st = resp ? resp.status() : 0;
+      if (st === 404 || st === 410) { checked++; await pool.query("UPDATE listings SET phone_checked=now(), details_checked=now() WHERE id=$1", [r.id]); continue; }   // the ad is gone
+      if (st !== 200) { if (++blocks >= 5) { console.log(`[phones ${key}] blocked (${st}), stopping this pass`); break; } await sleep(4000); continue; }   // blocked or temporary error: leave the ad unread so it is tried again
       await page.waitForTimeout(1500);
+      if (/pardon our interruption|access denied|just a moment|blocked/i.test(await page.title().catch(() => ""))) { if (++blocks >= 5) { console.log(`[phones ${key}] bot check, stopping this pass`); break; } await sleep(4000); continue; }
+      blocks = 0;
       if (key === "xe") await dismissConsent(page).catch(() => {});
       const det = await extractDetails(page, key).catch(() => null);
       await pool.query("UPDATE listings SET details=$2, details_checked=now() WHERE id=$1", [r.id, det ? JSON.stringify(det) : null]);
