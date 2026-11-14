@@ -17,9 +17,9 @@ If a site shows a CAPTCHA or login code, it is **not** bypassed: the page header
 `POST /api/run` (with the team password) starts a check immediately.
 | `TEAM_PASSWORD` | shared password for the team page (any username) |
 | `STRIPE_SECRET_KEY` | Stripe secret key (subscriptions). Without it, sign-up works but checkout says payments are not enabled yet |
-| `PUBLIC_URL`, `PRICE_MONTH_CENTS`, `PRICE_YEAR_CENTS` | optional: the public address (https://vresakinita.gr), prices (default 4900 / 46800) |
+| `PUBLIC_URL`, `PRICE_MONTH_CENTS`, `PRICE_YEAR_CENTS` | optional: the public address (https://vresakinita.gr), prices (default 4999 / 47988) |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign-in (redirect: PUBLIC_URL/auth/google/callback) |
 | `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` | Sign in with Apple (Services ID, team, key id, .p8 contents; return URL: PUBLIC_URL/auth/apple/callback) |
 | `PRICE_AGENT_MONTH_CENTS`, `PRICE_AGENT_YEAR_CENTS`, `TRIAL_DAYS` | agent plan prices (default 1900 / 17900) and free-trial days (default 7, 0 = none) |
-| `PRICE_SEAT_MONTH_CENTS`, `PRICE_SEAT_YEAR_CENTS` | price of one agent seat (default 1500 / 14900) |
+| `PRICE_SEAT_MONTH_CENTS`, `PRICE_SEAT_YEAR_CENTS` | price of one agent seat (default 1200 / 14400) |
 | `CONTACT_TO` | inbox that receives contact-form messages (forwarded through FormSubmit, or Resend when `RESEND_API_KEY` is set) |
