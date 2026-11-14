@@ -148,7 +148,7 @@ const hotelQueue = (sources, limit) => pool.query(`SELECT id, source, url FROM l
   AND (details_checked IS NULL OR (details IS NULL AND details_checked < now() - interval '1 day')) ORDER BY details_checked NULLS FIRST, first_seen DESC LIMIT $2`, [sources, limit]);
 
 // Reads each hotel's own page once. A page that cannot be read is tried again the next day.
-async function enrichHotels() {
+export async function enrichHotels() {
   let done = 0, failed = 0;
   for (const r of (await hotelQueue(["ktimato", "gep"], 400)).rows) {
     try {

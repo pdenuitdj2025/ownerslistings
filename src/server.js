@@ -165,6 +165,17 @@ setInterval(async () => {
     runAll({ phones: true }).catch((e) => console.error(e));
   } catch (e) { console.error(e); }
 }, 2 * 60 * 1000);
+// Hotels: read each hotel's own page in the background, a batch at a time, independent of the big runs.
+let hotelBusy = false;
+setInterval(async () => {
+  if (hotelBusy) return;
+  hotelBusy = true;
+  try {
+    const q = await pool.query("SELECT count(*)::int AS n FROM listings WHERE category='hotel' AND gone_at IS NULL AND (details_checked IS NULL OR (details IS NULL AND details_checked < now() - interval '1 day'))");
+    if (q.rows[0].n) { const { enrichHotels } = await import("./hotels.js"); await enrichHotels(); }
+  } catch (e) { console.error("hotel pass", e.message); }
+  hotelBusy = false;
+}, 3 * 60 * 1000);
 // One-time repair: ads that were marked "read" while the site was answering with a block page have no details; read them again.
 (async () => { try {
   if (!(await kvGet("detailsRepair1"))) {
