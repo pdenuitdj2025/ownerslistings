@@ -385,7 +385,6 @@ function rowEl(x){
         <button class="st" data-s="contacted" aria-pressed="${st==="contacted"}">Επικοινωνήσαμε</button>
         <button class="st" data-s="skip" aria-pressed="${st==="skip"}">Παράλειψη</button>
       </div>
-      ${x.phone ? `<a class="tel" href="tel:+30${x.phone.replace(/^30/,"")}">📞 ${x.phone.replace(/^30/,"")}</a>` : ""}
       <a class="open" href="${x.url}" target="_blank" rel="noopener">Άνοιγμα αγγελίας στο ${SITE[srcOf(x)]} ↗</a>
       <div class="agent"></div>
       <input class="note" id="note-${x.id}" placeholder="Σημείωση (τηλέφωνο, αποτέλεσμα κλήσης…)" ${canWrite ? "" : "disabled"}>

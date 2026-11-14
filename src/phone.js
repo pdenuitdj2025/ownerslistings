@@ -57,7 +57,7 @@ export async function revealPhone(page, key) {
 export async function phoneSite(page, key, { limit = 60, maxMs = 0 } = {}) {
   const t0 = Date.now();
   const { rows } = await pool.query(
-    `SELECT id, url, phone FROM listings WHERE source=$1 AND gone_at IS NULL AND img IS NOT FALSE AND ((phone IS NULL AND phone_checked IS NULL) OR details_checked IS NULL)
+    `SELECT id, url, phone FROM listings WHERE source=$1 AND gone_at IS NULL AND img IS NOT FALSE AND details_checked IS NULL
       ORDER BY first_seen DESC LIMIT $2`, [key, limit]);
   let found = 0, checked = 0, misses = 0, blocks = 0;
   for (const r of rows) {
@@ -73,11 +73,7 @@ export async function phoneSite(page, key, { limit = 60, maxMs = 0 } = {}) {
       if (key === "xe") await dismissConsent(page).catch(() => {});
       const det = await extractDetails(page, key).catch(() => null);
       await pool.query("UPDATE listings SET details=$2, details_checked=now() WHERE id=$1", [r.id, det ? JSON.stringify(det) : null]);
-      if (r.phone) { checked++; continue; }
-      const p = await revealPhone(page, key);
-      checked++;
-      if (p) { found++; misses = 0; await pool.query("UPDATE listings SET phone=$2, phone_checked=now() WHERE id=$1", [r.id, p]); }
-      else { misses++; await pool.query("UPDATE listings SET phone_checked=now() WHERE id=$1", [r.id]); if (misses >= 12 && found === 0) break; }   // the button isn't working: stop instead of hammering the site
+      checked++;   // details only: phone numbers are no longer collected
     } catch { /* try again next run */ }
     await sleep(1500 + Math.random() * 1500);
   }
