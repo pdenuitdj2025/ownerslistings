@@ -178,6 +178,8 @@ setInterval(async () => {
 }, 3 * 60 * 1000);
 // Plot.gr and Indomio are not part of the tool: drop their old status entries.
 (async () => { try { const st = (await kvGet("sites")) || {}; if (st.plot || st.indomio) { delete st.plot; delete st.indomio; await kvSet("sites", st); } } catch (e) { console.error(e); } })();
+// One-time: phone numbers are no longer kept anywhere.
+(async () => { try { if (!(await kvGet("phonesCleared"))) { const r = await pool.query("UPDATE listings SET phone=NULL WHERE phone IS NOT NULL"); await kvSet("phonesCleared", true); console.log("phone numbers cleared:", r.rowCount); } } catch (e) { console.error(e); } })();
 // One-time repair: ads that were marked "read" while the site was answering with a block page have no details; read them again.
 (async () => { try {
   if (!(await kvGet("detailsRepair1"))) {
