@@ -312,4 +312,4 @@ document.querySelectorAll("#peek [data-c]").forEach(b => b.onclick = () => { pc 
 peek();
 fetch("/api/public/preview").then(r => r.json()).then(d => { if (d && Object.values(d).some(v => v.length)) { PV = d; peek(); } }).catch(() => {});
 </script>
-</body></html>
+<script src="/i18n.js" defer></script></body></html>

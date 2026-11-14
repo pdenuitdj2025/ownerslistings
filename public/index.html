@@ -581,4 +581,4 @@ async function load(){
 load(); setInterval(load, 60000);
 fetch("/api/me").then(r => r.json()).then(m => { const a = document.getElementById("acct"); if (m.admin) a.remove(); else a.textContent = m.org + " · Λογαριασμός"; }).catch(() => {});
 </script>
-</body></html>
+<script src="/i18n.js" defer></script></body></html>

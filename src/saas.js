@@ -4,7 +4,6 @@ import express from "express";
 import { pool, kvGet, kvSet } from "./db.js";
 
 export const BRAND = process.env.BRAND || "vresakinita";
-export const CONTACT = process.env.CONTACT_EMAIL || "info@vresakinita.gr";
 // Only a brokerage office subscribes (the price covers the office and its lead broker). Each agent is an extra paid seat, added afterwards from the account page.
 const BASE = { month: Number(process.env.PRICE_MONTH_CENTS || 4900), year: Number(process.env.PRICE_YEAR_CENTS || 49900) };
 const SEAT = { month: Number(process.env.PRICE_SEAT_MONTH_CENTS || 1500), year: Number(process.env.PRICE_SEAT_YEAR_CENTS || 14900) };
@@ -141,7 +140,7 @@ input:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(-
 .plans{display:grid;gap:14px;grid-template-columns:1fr 1fr;margin-top:14px}@media(max-width:560px){.plans{grid-template-columns:1fr}}.plan{border:1px solid var(--line);border-radius:16px;padding:20px;background:#fff}.plan.best{border:2px solid var(--blue);background:var(--soft)}.plan form{margin:0}.tag{display:inline-block;background:var(--blue);color:#fff;font-weight:800;font-size:.72rem;letter-spacing:.06em;padding:3px 9px;border-radius:99px}.big{font-size:1.8rem;font-weight:800;margin:6px 0 0}
 .box{background:var(--soft);border-radius:14px;padding:16px 18px;margin-top:10px}.rowf{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}.rowf label{margin:0;flex:1;min-width:150px}.rowf .btn{width:auto;margin:0}
 ul.team{list-style:none;padding:0;margin:10px 0}ul.team li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}ul.team form{margin:0}
-code{background:var(--soft);padding:4px 8px;border-radius:8px;word-break:break-all;font-size:.9rem}footer{max-width:1040px;margin:0 auto;padding:24px;color:var(--mut);font-size:.85rem}footer a{color:var(--mut)}</style></head>
+code{background:var(--soft);padding:4px 8px;border-radius:8px;word-break:break-all;font-size:.9rem}footer{max-width:1040px;margin:0 auto;padding:24px;color:var(--mut);font-size:.85rem}footer a{color:var(--mut)}</style><script src="/i18n.js" defer></script></head>
 <body><div class="top"><a class="logo" href="/"><img src="/logo.png" alt="">${esc(BRAND)}</a><a href="/" class="mut">Αρχική</a></div>${body}
 <footer>© ${new Date().getFullYear()} Touslemonde LLC · <a href="/terms">Όροι</a> · <a href="/privacy">Απόρρητο</a> · <a href="/contact">Επικοινωνία</a></footer></body></html>`;
 
@@ -219,6 +218,7 @@ export function mountSaas(app, { appFile, publicDir }) {
   app.get("/", page("landing.html"));
   app.get("/terms", page("terms.html"));
   app.get("/privacy", page("privacy.html"));
+  app.get("/i18n.js", (_q, res) => res.sendFile("i18n.js", { root: publicDir, maxAge: "1h" }));
   for (const f of ["logo.png", "logo-white.png", "favicon.png"]) app.get("/" + f, (_q, res) => res.sendFile(f, { root: publicDir, maxAge: "7d" }));
   // ---- contact form: every message is kept, then forwarded to the owner's inbox ----
   const sentBy = new Map();
