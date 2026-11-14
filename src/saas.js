@@ -28,6 +28,7 @@ export async function initSaas() {
     CREATE TABLE IF NOT EXISTS sessions (token text PRIMARY KEY, user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires timestamptz NOT NULL);
     CREATE TABLE IF NOT EXISTS resets (token text PRIMARY KEY, user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires timestamptz NOT NULL);
     CREATE TABLE IF NOT EXISTS blocked (key text PRIMARY KEY, created timestamptz NOT NULL DEFAULT now());
+    CREATE TABLE IF NOT EXISTS contact_messages (id serial PRIMARY KEY, name text NOT NULL, email text NOT NULL, message text NOT NULL, forwarded text, created timestamptz NOT NULL DEFAULT now());
     CREATE TABLE IF NOT EXISTS org_marks (org_id integer NOT NULL, listing_id text NOT NULL, status text NOT NULL DEFAULT 'new', note text NOT NULL DEFAULT '', PRIMARY KEY (org_id, listing_id));
   `);
   // Office 1 is the house team (the shared team password); its existing statuses and notes move into its own workspace once.
@@ -142,7 +143,7 @@ input:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(-
 ul.team{list-style:none;padding:0;margin:10px 0}ul.team li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}ul.team form{margin:0}
 code{background:var(--soft);padding:4px 8px;border-radius:8px;word-break:break-all;font-size:.9rem}footer{max-width:1040px;margin:0 auto;padding:24px;color:var(--mut);font-size:.85rem}footer a{color:var(--mut)}</style></head>
 <body><div class="top"><a class="logo" href="/"><img src="/logo.png" alt="">${esc(BRAND)}</a><a href="/" class="mut">Αρχική</a></div>${body}
-<footer>© ${new Date().getFullYear()} Touslemonde LLC · <a href="/terms">Όροι</a> · <a href="/privacy">Απόρρητο</a> · <a href="mailto:${esc(CONTACT)}">${esc(CONTACT)}</a></footer></body></html>`;
+<footer>© ${new Date().getFullYear()} Touslemonde LLC · <a href="/terms">Όροι</a> · <a href="/privacy">Απόρρητο</a> · <a href="/contact">Επικοινωνία</a></footer></body></html>`;
 
 const socialButtons = (q = "") => !SOCIAL.google && !SOCIAL.apple ? "" : `${SOCIAL.google ? `<a class="btn ghost" href="/auth/google${q}">Συνέχεια με Google</a>` : ""}${SOCIAL.apple ? `<a class="btn" href="/auth/apple${q}">Συνέχεια με Apple</a>` : ""}<p class="mut" style="text-align:center;margin:18px 0 0">ή με email</p>`;
 const loginPage = (msg = "", email = "") => shell("Σύνδεση", `<main><div class="card"><h1>Σύνδεση</h1><p class="mut">Συνδεθείτε στον λογαριασμό σας.</p>${socialButtons()}
@@ -150,7 +151,7 @@ const loginPage = (msg = "", email = "") => shell("Σύνδεση", `<main><div 
 <label for="p">Κωδικός</label><input id="p" type="password" name="password" autocomplete="current-password" required>${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}
 <button class="btn alt">Σύνδεση</button></form><p class="mut" style="margin-top:16px">Είστε μεσιτικό γραφείο χωρίς λογαριασμό; <a href="/signup">Εγγραφή γραφείου</a></p>
 <p class="mut">Είστε συνεργάτης; Ζητήστε τον σύνδεσμο πρόσκλησης από το γραφείο σας.</p>
-<p class="mut">Ξεχάσατε τον κωδικό; Γράψτε μας στο <a href="mailto:${esc(CONTACT)}">${esc(CONTACT)}</a>.</p></div></main>`);
+<p class="mut">Ξεχάσατε τον κωδικό; Γράψτε μας από τη <a href="/contact">φόρμα επικοινωνίας</a>.</p></div></main>`);
 
 const signupPage = ({ msg = "", v = {}, invite = "", orgName = "", plan = "", full = false } = {}) => shell(orgName ? "Συμμετοχή" : "Εγγραφή γραφείου", `<main><div class="card"><h1>${orgName ? "Συμμετοχή στο γραφείο " + esc(orgName) : "Εγγραφή γραφείου"}</h1>
 ${full ? `<p class="err" role="alert">Το γραφείο δεν έχει ελεύθερη θέση συνεργάτη αυτή τη στιγμή. Ζητήστε από τον υπεύθυνο του γραφείου να προσθέσει μία θέση και ανοίξτε ξανά τον σύνδεσμο.</p></div></main>` : `
@@ -219,10 +220,55 @@ export function mountSaas(app, { appFile, publicDir }) {
   app.get("/terms", page("terms.html"));
   app.get("/privacy", page("privacy.html"));
   for (const f of ["logo.png", "logo-white.png", "favicon.png"]) app.get("/" + f, (_q, res) => res.sendFile(f, { root: publicDir, maxAge: "7d" }));
+  // ---- contact form: every message is kept, then forwarded to the owner's inbox ----
+  const sentBy = new Map();
+  async function forward(m, site) {
+    const to = process.env.CONTACT_TO; if (!to) return "no-recipient";
+    const subject = `${BRAND}: μήνυμα από ${m.name}`;
+    if (process.env.RESEND_API_KEY) {
+      const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: "Bearer " + process.env.RESEND_API_KEY, "content-type": "application/json" }, signal: AbortSignal.timeout(15000),
+        body: JSON.stringify({ from: process.env.CONTACT_FROM || `${BRAND} <onboarding@resend.dev>`, to: [to], reply_to: m.email, subject, text: `${m.name} <${m.email}>\n\n${m.message}` }) });
+      return r.ok ? "sent" : "resend " + r.status;
+    }
+    const r = await fetch("https://formsubmit.co/ajax/" + encodeURIComponent(to), { method: "POST", headers: { "content-type": "application/json", Accept: "application/json", Origin: site, Referer: site + "/contact" }, signal: AbortSignal.timeout(15000),
+      body: JSON.stringify({ name: m.name, email: m.email, message: m.message, _subject: subject, _replyto: m.email, _template: "table", _captcha: "false" }) });
+    const j = await r.json().catch(() => ({}));
+    return r.ok && String(j.success) === "true" ? "sent" : "formsubmit " + r.status + " " + String(j.message || "").slice(0, 120);
+  }
+  app.post("/api/contact", async (req, res) => {
+    const b = req.body || {}, name = String(b.name || "").trim().slice(0, 120), email = String(b.email || "").trim().slice(0, 200), message = String(b.message || "").trim().slice(0, 4000);
+    if (b.website) return res.json({ ok: true });   // the hidden field only robots fill in
+    if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || message.length < 10) return res.status(400).json({ ok: false, error: "invalid" });
+    const t = sentBy.get(req.ip) || [], recent = t.filter((x) => Date.now() - x < 36e5);
+    if (recent.length >= 5) return res.status(429).json({ ok: false, error: "many" });
+    sentBy.set(req.ip, [...recent, Date.now()]);
+    try {
+      const { rows } = await pool.query("INSERT INTO contact_messages(name, email, message) VALUES ($1,$2,$3) RETURNING id", [name, email, message]);
+      const state = await forward({ name, email, message }, origin(req)).catch((e) => "error " + e.message);
+      if (state !== "sent") console.error("contact forward:", state);
+      await pool.query("UPDATE contact_messages SET forwarded=$2 WHERE id=$1", [rows[0].id, state]);
+      res.json({ ok: true });
+    } catch (e) { console.error("contact", e.message); res.status(500).json({ ok: false, error: "server" }); }
+  });
+  app.get("/contact", (_q, res) => res.send(shell("Επικοινωνία", `<main><div class="card"><h1>Επικοινωνία</h1><p class="mut">Απαντάμε με email. Έχετε ερώτηση για τη συνδρομή σας, μια πληρωμή, τα δεδομένα σας ή το εργαλείο; Γράψτε μας εδώ.</p>
+<form id="cf" novalidate><label for="cn">Το όνομά σας</label><input id="cn" type="text" name="name" autocomplete="name" maxlength="120" required>
+<label for="ce">Το email σας</label><input id="ce" type="email" name="email" autocomplete="email" maxlength="200" required>
+<label for="cm">Το μήνυμά σας</label><textarea id="cm" name="message" maxlength="4000" rows="6" required style="width:100%;padding:12px;font:inherit;border:1px solid #c5d2e2;border-radius:10px;background:#fff;margin-top:6px;resize:vertical"></textarea>
+<label style="position:absolute;left:-9999px" aria-hidden="true">Αφήστε αυτό το πεδίο κενό<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+<p id="cmsg" role="status" hidden></p><button class="btn">Αποστολή μηνύματος</button></form></div></main>
+<script>(function(){var f=document.getElementById("cf"),m=document.getElementById("cmsg"),b=f.querySelector("button");function say(k,t){m.hidden=false;m.className=k;m.textContent=t}
+f.addEventListener("submit",function(e){e.preventDefault();var n=f.elements.name.value.trim(),em=f.elements.email.value.trim(),ms=f.elements.message.value.trim();
+if(!n||!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(em)||ms.length<10){say("err","Συμπληρώστε όνομα, έγκυρο email και μήνυμα τουλάχιστον 10 χαρακτήρων.");return}
+b.disabled=true;b.textContent="Αποστολή…";m.hidden=true;
+fetch("/api/contact",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:n,email:em,message:ms,website:f.elements.website.value})})
+.then(function(r){return r.json().then(function(j){j.status=r.status;return j})}).then(function(j){b.disabled=false;b.textContent="Αποστολή μηνύματος";
+if(j.ok){f.reset();say("ok","Το μήνυμά σας στάλθηκε. Θα σας απαντήσουμε με email.")}else say("err",j.status===429?"Στείλατε πολλά μηνύματα. Δοκιμάστε ξανά αργότερα.":j.error==="invalid"?"Ελέγξτε τα πεδία και δοκιμάστε ξανά.":"Το μήνυμα δεν στάλθηκε. Δοκιμάστε ξανά σε λίγο.")})
+.catch(function(){b.disabled=false;b.textContent="Αποστολή μηνύματος";say("err","Το μήνυμα δεν στάλθηκε. Δοκιμάστε ξανά σε λίγο.")})})})();</script>`)));
+
   app.get("/api/public", async (_q, res) => {
     const { rows } = await pool.query("SELECT seller, category, count(*)::int AS n FROM listings WHERE img IS NOT FALSE AND gone_at IS NULL GROUP BY 1,2");
     const run = (await kvGet("run")) || {};
-    res.set("Cache-Control", "public, max-age=600").json({ counts: Object.fromEntries(rows.map((r) => [r.seller + "/" + r.category, r.n])), lastCheck: run.lastCheck || null, base: BASE, seat: SEAT, contact: CONTACT });
+    res.set("Cache-Control", "public, max-age=600").json({ counts: Object.fromEntries(rows.map((r) => [r.seller + "/" + r.category, r.n])), lastCheck: run.lastCheck || null, base: BASE, seat: SEAT });
   });
 
   // A small, anonymised taste of the real list for the landing page: area, size and price only. No links, photos, sources or contact details.
@@ -303,7 +349,7 @@ export function mountSaas(app, { appFile, publicDir }) {
 
   // Password reset: the house team creates a one-time link and sends it to the person who asked.
   const resetPage = (token, msg = "") => shell("Νέος κωδικός", `<main><div class="card"><h1>Νέος κωδικός</h1><form method="post" action="/reset/${esc(token)}"><label for="p">Νέος κωδικός (τουλάχιστον 8 χαρακτήρες)</label><input id="p" type="password" name="password" minlength="8" autocomplete="new-password" required autofocus>${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}<button class="btn">Αποθήκευση</button></form></div></main>`);
-  app.get("/reset/:token", async (req, res) => { const ok = (await pool.query("SELECT 1 FROM resets WHERE token=$1 AND expires > now()", [req.params.token])).rowCount; res.status(ok ? 200 : 404).send(ok ? resetPage(req.params.token) : shell("Νέος κωδικός", `<main><div class="card"><h1>Ο σύνδεσμος έληξε</h1><p>Ζητήστε νέο σύνδεσμο στο <a href="mailto:${esc(CONTACT)}">${esc(CONTACT)}</a>.</p></div></main>`)); });
+  app.get("/reset/:token", async (req, res) => { const ok = (await pool.query("SELECT 1 FROM resets WHERE token=$1 AND expires > now()", [req.params.token])).rowCount; res.status(ok ? 200 : 404).send(ok ? resetPage(req.params.token) : shell("Νέος κωδικός", `<main><div class="card"><h1>Ο σύνδεσμος έληξε</h1><p>Ζητήστε νέο σύνδεσμο από τη <a href="/contact">φόρμα επικοινωνίας</a>.</p></div></main>`)); });
   app.post("/reset/:token", async (req, res) => {
     const pw = String(req.body.password || "");
     if (pw.length < 8) return res.status(400).send(resetPage(req.params.token, "Ο κωδικός χρειάζεται τουλάχιστον 8 χαρακτήρες."));
@@ -376,6 +422,7 @@ export function mountSaas(app, { appFile, publicDir }) {
   const adminOnly = (req, res, next) => (req.who.admin ? next() : res.status(403).json({ error: "forbidden" }));
   for (const p of ["/api/hidden", "/api/scan", "/api/phones", "/api/enrich", "/api/sweep", "/api/run", "/api/debug", "/api/ingest", "/api/import", "/api/admin"]) app.use(p, adminOnly);
   app.get("/api/me", (req, res) => res.json(req.who.admin ? { admin: true, org: "Team" } : { admin: false, org: req.who.org.name, name: req.who.user.name }));
+  app.get("/api/admin/messages", async (_q, res) => res.json((await pool.query("SELECT * FROM contact_messages ORDER BY id DESC LIMIT 200")).rows));
   app.get("/api/admin/orgs", async (_q, res) => res.json((await pool.query("SELECT o.id, o.name, o.comp, o.plan, o.sub_status, o.sub_until, o.created, (SELECT json_agg(json_build_object('email', u.email, 'name', u.name, 'role', u.role)) FROM users u WHERE u.org_id=o.id) AS users FROM orgs o ORDER BY o.id")).rows));
   app.post("/api/admin/comp", async (req, res) => { const r = await pool.query("UPDATE orgs SET comp=$2 WHERE id=$1 AND id <> 1", [Number(req.body.org), !!req.body.comp]); res.json({ ok: !!r.rowCount }); });
   // Removal request from an advertiser: the ad (by link) or every ad with that phone number stops showing, and stays hidden if it is read again.

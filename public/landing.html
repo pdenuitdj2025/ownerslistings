@@ -262,7 +262,7 @@ details p{color:var(--ink-2);margin:0;padding:0 0 20px;max-width:68ch}
 
 <footer class="footer"><div class="container">
   <div class="top"><a class="brand" href="/"><img src="/logo.png" alt="" width="46" height="36" style="height:36px">vresakinita</a>
-  <div class="links"><a href="/privacy">Πολιτική απορρήτου</a><a href="/terms">Νομικές πληροφορίες &amp; όροι</a><a href="/login">Σύνδεση</a><a id="mail" href="mailto:info@vresakinita.gr">info@vresakinita.gr</a></div></div>
+  <div class="links"><a href="/privacy">Πολιτική απορρήτου</a><a href="/terms">Νομικές πληροφορίες &amp; όροι</a><a href="/login">Σύνδεση</a><a href="/contact">Επικοινωνία</a></div></div>
   <p>Το vresakinita είναι εργαλείο αναζήτησης και οργάνωσης δημόσια δημοσιευμένων αγγελιών. Οι αγγελίες, οι φωτογραφίες και τα στοιχεία τους ανήκουν σε όσους τις δημοσίευσαν. Δεν συνδεόμαστε με τις ιστοσελίδες όπου δημοσιεύονται.</p>
   <p>© <span id="yr">2026</span> Touslemonde LLC</p>
 </div></footer>
@@ -294,7 +294,6 @@ fetch("/api/public").then(r => r.json()).then(d => {
   if (d.base && d.seat) { BASE = d.base; SEAT = d.seat; prices(); }
   const c = d.counts || {}, n = k => c[k] || 0, fmt = v => v.toLocaleString("el-GR"), round = v => v >= 1000 ? fmt(Math.floor(v / 100) * 100) + "+" : fmt(v);
   if (Object.keys(c).length) { $("n-own").textContent = round(n("owner/home") + n("owner/land")); $("n-ag").textContent = round(n("agency/home") + n("agency/land")); $("n-hot").textContent = fmt(n("agency/hotel") + n("owner/hotel")); }
-  if (d.contact) { $("mail").textContent = d.contact; $("mail").href = "mailto:" + d.contact; }
 }).catch(() => {});
 
 // Live sample: a few real rows from today's list (area, size, rounded price only).

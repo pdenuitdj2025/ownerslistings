@@ -22,3 +22,4 @@ If a site shows a CAPTCHA or login code, it is **not** bypassed: the page header
 | `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` | Sign in with Apple (Services ID, team, key id, .p8 contents; return URL: PUBLIC_URL/auth/apple/callback) |
 | `PRICE_AGENT_MONTH_CENTS`, `PRICE_AGENT_YEAR_CENTS`, `TRIAL_DAYS` | agent plan prices (default 1900 / 17900) and free-trial days (default 7, 0 = none) |
 | `PRICE_SEAT_MONTH_CENTS`, `PRICE_SEAT_YEAR_CENTS` | price of one agent seat (default 1500 / 14900) |
+| `CONTACT_TO` | inbox that receives contact-form messages (forwarded through FormSubmit, or Resend when `RESEND_API_KEY` is set) |
