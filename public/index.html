@@ -164,12 +164,31 @@ input,select{border-radius:10px;padding:9px 11px;background:var(--bg)}
 .tel{border-radius:12px}.note{border-radius:10px}.agent{border-radius:12px;background:var(--bg);border-color:transparent}
 .pill{font-weight:700}.empty{border-radius:18px}.more{border-radius:999px;padding:10px 20px;font-weight:700;box-shadow:var(--sh)}
 .toast{border-radius:12px;font-weight:600}
+
+/* ---- same look as the landing page: navy hero, white rounded cards, blue actions ---- */
+.topbar{background:#0E2C52;border-bottom:0;backdrop-filter:none;-webkit-backdrop-filter:none}
+.brandmark{color:#fff}.topbar .count{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:#C9DDF2;box-shadow:none}
+.topbar .count b{color:#fff}
+#acct{background:rgba(255,255,255,.12)!important;border-color:rgba(255,255,255,.22)!important;color:#fff!important;box-shadow:none}
+#acct:hover{background:rgba(255,255,255,.2)!important}
+.topbar .vk-lang{background:rgba(255,255,255,.12);color:#fff}.topbar .vk-lang button[aria-pressed=true]{background:#fff;color:#0E2C52}
+.tool-hero{position:relative;overflow:hidden;background:radial-gradient(800px 300px at 88% 70%,rgba(124,196,242,.28),transparent 62%),linear-gradient(180deg,#0E2C52 0%,#0B4379 100%);
+  padding:clamp(18px,3vw,34px) clamp(12px,2vw,32px) clamp(44px,5vw,64px);border-radius:0 0 28px 28px;color:#fff}
+.tool-hero h1{font:800 clamp(1.9rem,3.6vw,2.9rem)/1.05 var(--f-display);letter-spacing:-.035em;margin:0;color:#fff}
+.tool-hero h1 span{color:#7CC4F2}
+.tool-hero .sub{color:rgba(255,255,255,.78);margin:10px 0 0;max-width:62ch}
+.wrap{position:relative;margin-top:-34px}
+.filters,.row,.empty{border:1px solid var(--line);box-shadow:var(--sh-lg)}
+.row{border-radius:22px}.filters{border-radius:22px}
+.exp .go,.open{background:linear-gradient(135deg,#0B5C9B,#0C3F78);border-color:transparent;color:#fff}
+.tab[aria-pressed="true"],.seg button[aria-pressed="true"]{background:linear-gradient(135deg,#0E2C52,#12427A);border-color:transparent;color:#fff}
+.price{color:var(--fg)}
 </style>
 </head><body>
 
-<div class="topbar"><div><a class="brandmark" href="/app"><img src="/logo.png" alt="">vresakinita</a><div class="counts" id="counts"></div><a id="acct" href="/account">Λογαριασμός</a></div></div>
+<div class="topbar"><div><a class="brandmark" href="/app"><img src="/logo-white.png" alt="">vresakinita</a><div class="counts" id="counts"></div><a id="acct" href="/account">Λογαριασμός</a></div></div>
+<div class="tool-hero"><h1>Βρες ακίνητα. <span>Πρώτος.</span></h1><p class="sub" id="sub">Ιδιώτες και μεσίτες · κατοικίες, οικόπεδα, ξενοδοχεία · μία γραμμή ανά ακίνητο</p></div>
 <div class="wrap">
-  <p class="sub" id="sub">Ιδιώτες και μεσίτες · κατοικίες, οικόπεδα, ξενοδοχεία · μία γραμμή ανά ακίνητο</p>
 
   <div class="mode" id="mode">
     <div class="seg" role="group" aria-label="Πωλητής"><button data-seller="owner" aria-pressed="true">Ιδιώτες</button><button data-seller="agency" aria-pressed="false">Μεσίτες</button></div>

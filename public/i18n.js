@@ -129,7 +129,7 @@
     "Ενεργειακή κλάση": "Energy class", "Θέρμανση": "Heating", "Σύστημα θέρμανσης": "Heating system", "Διεύθυνση": "Address", "Δημοσίευση": "Published",
     "Ενημέρωση": "Updated", "Τελευταία ενημέρωση": "Last update", "Διαθέσιμο από": "Available from", "Κατασκευή": "Construction", "Επίπεδα": "Levels",
     "Κουζίνες": "Kitchens", "Σαλόνια": "Living rooms", "Καθιστικά": "Sitting rooms", "Πάρκινγκ": "Parking", "Ζώνη": "Zone", "Μεσιτική αμοιβή": "Agent fee",
-    "Στην αγορά": "On the market", "Realting (σε $)": "Realting (in $)", "Χρήση": "Use", "Και σε": "Also on", "Αττική": "Attica", "Στοιχεία:": "Details:", "Οδηγίες:": "Instructions:",
+    "Στην αγορά": "On the market", "vs περιοχή": "vs area", "μέσος": "avg", "βρέθηκε": "found", "δημοσιεύτηκε": "published", "Realting (σε $)": "Realting (in $)", "Χρήση": "Use", "Και σε": "Also on", "Αττική": "Attica", "Στοιχεία:": "Details:", "Οδηγίες:": "Instructions:",
     "Υπόγειο": "Basement", "Ημιυπόγειο": "Semi-basement", "Ισόγειο": "Ground floor",
     "Νέες σήμερα": "New today", "νέες σήμερα": "new today", "προς έλεγχο": "to review", "επικοινωνήσαμε": "contacted", "νέες": "new",
     "σήμερα": "today", "ακίνητα": "properties", "φωτογραφίες": "photos", "χωρίς φίλτρα": "no filters", "δήμοι επιλεγμένοι": "municipalities selected",
@@ -191,12 +191,16 @@
     "Στείλατε πολλά μηνύματα. Δοκιμάστε ξανά αργότερα.": "You have sent many messages. Try again later.", ": μήνυμα από": ": message from"
   };
 
+  var DAYS = { "Κυρ":"Sun","Δευ":"Mon","Τρί":"Tue","Τετ":"Wed","Πέμ":"Thu","Παρ":"Fri","Σάβ":"Sat" };
+  var MON = { "Ιαν":"Jan","Φεβ":"Feb","Μαρ":"Mar","Απρ":"Apr","Μαΐ":"May","Μάι":"May","Ιουν":"Jun","Ιούν":"Jun","Ιουλ":"Jul","Ιούλ":"Jul","Αυγ":"Aug","Αύγ":"Aug","Σεπ":"Sep","Οκτ":"Oct","Νοε":"Nov","Δεκ":"Dec" };
   var RX = [
-    [/^βρέθηκε πριν (\d+) ω\.$/, "found $1 h ago"], [/^βρέθηκε πριν (\d+) ημ\.$/, "found $1 d ago"], [/^πριν (\d+) ημ\.$/, "$1 d ago"],
-    [/^(\d+)ος όροφος$/, "Floor $1"], [/^όροφος (\d+)$/, "floor $1"], [/^έτος (\d+)$/, "built $1"],
+    [/βρέθηκε πριν <1 ώρα/g, "found <1 h ago"], [/βρέθηκε πριν (\d+) ω\./g, "found $1 h ago"], [/βρέθηκε πριν (\d+) ημ\./g, "found $1 d ago"],
+    [/πριν (\d+) (?:ημ\.|μέρες|μέρα)/g, "$1 d ago"], [/πριν (\d+) ω\./g, "$1 h ago"], [/(\d+)ος όροφος/g, "Floor $1"], [/όροφος (\d+)ος?/g, "floor $1"], [/έτος (\d+)/g, "built $1"],
     [/(\d+) υ\/δ/g, "$1 bd"], [/(\d[\d.,]*) τ\.μ\./g, "$1 sqm"], [/\/τ\.μ\./g, "/sqm"],
-    [/^(\d+) θέσεις? μεσιτ(?:ών|η)$/, "$1 agent seat(s)"], [/^(\d+) ώρες?$/, "$1 h"],
-    [/^Ενημερώθηκε (.+)$/, "Updated $1"]
+    [/^(\d+) θέσεις? μεσιτ(?:ών|η)$/, "$1 agent seat(s)"], [/^(\d+) ώρες?$/, "$1 h"], [/^Ενημερώθηκε (.+)$/, "Updated $1"],
+    [/(\s)μ\.μ\./g, "$1PM"], [/(\s)π\.μ\./g, "$1AM"],
+    [/(^|[\s,])(Κυρ|Δευ|Τρί|Τετ|Πέμ|Παρ|Σάβ)(?=[\s,.]|$)\.?/g, function (m, a, d) { return a + DAYS[d]; }],
+    [/(^|[\s,])(Ιαν|Φεβ|Μαρ|Απρ|Μαΐ|Μάι|Ιούν|Ιουν|Ιούλ|Ιουλ|Αύγ|Αυγ|Σεπ|Οκτ|Νοε|Δεκ)(?=[\s,.]|$)\.?/g, function (m, a, d) { return a + MON[d]; }]
   ];
   var keys = Object.keys(D).filter(function (k) { return k.length > 3; }).sort(function (a, b) { return b.length - a.length; });
   var GR = /[Α-Ωα-ωά-ώΐΰ]/;
