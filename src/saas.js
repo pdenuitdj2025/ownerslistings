@@ -5,7 +5,17 @@ import { pool, kvGet, kvSet } from "./db.js";
 
 export const BRAND = process.env.BRAND || "Property Radar";
 export const CONTACT = process.env.CONTACT_EMAIL || "info@propertyradar.gr";
-const PRICE_MONTH = Number(process.env.PRICE_MONTH_CENTS || 4900), PRICE_YEAR = Number(process.env.PRICE_YEAR_CENTS || 49900);
+// Two plans: one agent (a single user) or a whole office (the broker and every agent, shared notes).
+const PRICES = {
+  agent: { month: Number(process.env.PRICE_AGENT_MONTH_CENTS || 1900), year: Number(process.env.PRICE_AGENT_YEAR_CENTS || 17900) },
+  office: { month: Number(process.env.PRICE_MONTH_CENTS || 4900), year: Number(process.env.PRICE_YEAR_CENTS || 49900) },
+};
+const TIER_NAME = { agent: "Μεσίτης", office: "Γραφείο" };
+const TRIAL_DAYS = Number(process.env.TRIAL_DAYS ?? 7);
+const GOOGLE = { id: process.env.GOOGLE_CLIENT_ID || "", secret: process.env.GOOGLE_CLIENT_SECRET || "" };
+const APPLE = { id: process.env.APPLE_CLIENT_ID || "", team: process.env.APPLE_TEAM_ID || "", kid: process.env.APPLE_KEY_ID || "", key: (process.env.APPLE_PRIVATE_KEY || "").replace(/\\n/g, "\n") };
+const SOCIAL = { google: !!(GOOGLE.id && GOOGLE.secret), apple: !!(APPLE.id && APPLE.team && APPLE.kid && APPLE.key) };
+let SECRET = "";
 const STRIPE_KEY = process.env.STRIPE_SECRET_KEY || "";
 const TEAM_PASSWORD = process.env.TEAM_PASSWORD || "";
 const DAY = 864e5;
@@ -32,12 +42,14 @@ export async function initSaas() {
     await kvSet("marksMigrated", true);
   }
   await pool.query("DELETE FROM sessions WHERE expires < now(); DELETE FROM resets WHERE expires < now()");
+  await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub text; ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_sub text; ALTER TABLE orgs ADD COLUMN IF NOT EXISTS tier text NOT NULL DEFAULT 'office'");
+  SECRET = (await kvGet("authSecret")) || rand(32); await kvSet("authSecret", SECRET);
 }
 
 const rand = (n = 32) => crypto.randomBytes(n).toString("base64url");
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const hashPass = (p) => { const salt = crypto.randomBytes(16); return "s1$" + salt.toString("base64url") + "$" + crypto.scryptSync(p, salt, 32).toString("base64url"); };
-const checkPass = (p, stored) => { const [, salt, h] = String(stored).split("$"); if (!salt || !h) return false; const a = crypto.scryptSync(p, Buffer.from(salt, "base64url"), 32), b = Buffer.from(h, "base64url"); return a.length === b.length && crypto.timingSafeEqual(a, b); };
+const checkPass = (p, stored) => { const [, salt, h] = String(stored).split("$"); if (!salt || !h || !p) return false; const a = crypto.scryptSync(p, Buffer.from(salt, "base64url"), 32), b = Buffer.from(h, "base64url"); return a.length === b.length && crypto.timingSafeEqual(a, b); };
 const eq = (a, b) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
 const cookieOf = (req, name) => (req.headers.cookie || "").split(/;\s*/).map((c) => c.split("=")).find(([k]) => k === name)?.[1] || "";
 const setCookie = (res, name, val, days) => res.append("Set-Cookie", `${name}=${val}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${Math.round(days * 86400)}`);
@@ -61,8 +73,8 @@ async function stripe(method, path, params) {
 async function saveSub(orgId, sub, customer) {
   const end = sub.current_period_end || sub.items?.data?.[0]?.current_period_end || null;
   const interval = sub.items?.data?.[0]?.price?.recurring?.interval || sub.plan?.interval || null;
-  await pool.query("UPDATE orgs SET stripe_sub=$2, stripe_customer=COALESCE($3, stripe_customer), sub_status=$4, sub_until=to_timestamp($5), sub_cancels=$6, plan=COALESCE($7, plan), sub_checked=now(), pending_session=NULL WHERE id=$1",
-    [orgId, sub.id, customer || (typeof sub.customer === "string" ? sub.customer : null), sub.status, end, !!sub.cancel_at_period_end, interval]);
+  await pool.query("UPDATE orgs SET stripe_sub=$2, stripe_customer=COALESCE($3, stripe_customer), sub_status=$4, sub_until=to_timestamp($5), sub_cancels=$6, plan=COALESCE($7, plan), tier=COALESCE($8, tier), sub_checked=now(), pending_session=NULL WHERE id=$1",
+    [orgId, sub.id, customer || (typeof sub.customer === "string" ? sub.customer : null), sub.status, end, !!sub.cancel_at_period_end, interval, PRICES[sub.metadata?.tier] ? sub.metadata.tier : null]);
 }
 async function syncOrg(org) {   // ask Stripe where the subscription stands (after checkout, and a few times a day)
   try {
@@ -113,21 +125,23 @@ label{display:block;font-weight:600;font-size:.9rem;margin-top:14px}input[type=t
 input:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
 .btn{display:inline-block;width:100%;padding:13px 18px;font:inherit;font-weight:700;border:0;border-radius:10px;background:var(--ink);color:#F6F4EE;cursor:pointer;text-align:center;text-decoration:none;margin-top:18px}.btn.alt{background:var(--amber);color:var(--ink)}.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--ink)}
 .err{color:var(--err);font-weight:600;margin-top:12px}.ok{color:#1c6b3f;font-weight:600}.chk{display:flex;gap:10px;align-items:flex-start;font-weight:400;font-size:.9rem}.chk input{margin-top:4px}
-.plans{display:grid;gap:14px;grid-template-columns:1fr 1fr;margin-top:14px}@media(max-width:560px){.plans{grid-template-columns:1fr}}.plan{border:1px solid var(--line);border-radius:14px;padding:18px;background:#fff}.plan.best{border:2px solid var(--ink)}.tag{display:inline-block;background:var(--amber);font-weight:800;font-size:.72rem;letter-spacing:.06em;padding:3px 8px;border-radius:99px}.big{font-size:1.7rem;font-weight:800}
+.plans{display:grid;gap:14px;grid-template-columns:1fr 1fr;margin-top:14px}@media(max-width:560px){.plans{grid-template-columns:1fr}}.plan{border:1px solid var(--line);border-radius:14px;padding:18px;background:#fff}.plan.best{border:2px solid var(--ink)}.plan form{margin:0}.tag{display:inline-block;background:var(--amber);font-weight:800;font-size:.72rem;letter-spacing:.06em;padding:3px 8px;border-radius:99px}.big{font-size:1.7rem;font-weight:800}
 code{background:#ece8dc;padding:3px 6px;border-radius:6px;word-break:break-all}ul{padding-left:1.2em}footer{max-width:1040px;margin:0 auto;padding:24px;color:var(--mut);font-size:.85rem}</style></head>
 <body><div class="top"><a class="logo" href="/">PROPERTY<i>RADAR</i></a><a href="/" class="mut">Αρχική</a></div>${body}
 <footer>© ${new Date().getFullYear()} Touslemonde LLC · <a href="/terms">Όροι</a> · <a href="/privacy">Απόρρητο</a> · <a href="mailto:${esc(CONTACT)}">${esc(CONTACT)}</a></footer></body></html>`;
 
-const loginPage = (msg = "", email = "") => shell("Σύνδεση", `<main><div class="card"><h1>Σύνδεση</h1><p class="mut">Συνδεθείτε στον λογαριασμό του γραφείου σας.</p>
+const socialButtons = (q = "") => !SOCIAL.google && !SOCIAL.apple ? "" : `${SOCIAL.google ? `<a class="btn ghost" href="/auth/google${q}">Συνέχεια με Google</a>` : ""}${SOCIAL.apple ? `<a class="btn" href="/auth/apple${q}">Συνέχεια με Apple</a>` : ""}<p class="mut" style="text-align:center;margin:18px 0 0">ή με email</p>`;
+const loginPage = (msg = "", email = "") => shell("Σύνδεση", `<main><div class="card"><h1>Σύνδεση</h1><p class="mut">Συνδεθείτε στον λογαριασμό σας.</p>${socialButtons()}
 <form method="post" action="/login"><label for="e">Email</label><input id="e" type="email" name="email" value="${esc(email)}" autocomplete="email" required autofocus>
 <label for="p">Κωδικός</label><input id="p" type="password" name="password" autocomplete="current-password" required>${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}
 <button class="btn">Σύνδεση</button></form><p class="mut" style="margin-top:16px">Δεν έχετε λογαριασμό; <a href="/signup">Δημιουργία λογαριασμού</a></p>
 <p class="mut">Ξεχάσατε τον κωδικό; Γράψτε μας στο <a href="mailto:${esc(CONTACT)}">${esc(CONTACT)}</a> και θα σας στείλουμε σύνδεσμο επαναφοράς.</p></div></main>`);
 
-const signupPage = ({ msg = "", v = {}, invite = "", orgName = "", plan = "" } = {}) => shell("Δημιουργία λογαριασμού", `<main><div class="card"><h1>${orgName ? "Συμμετοχή στο γραφείο " + esc(orgName) : "Δημιουργία λογαριασμού"}</h1>
-<p class="mut">${orgName ? "Θα δουλεύετε στην ίδια λίστα με τους συναδέλφους σας." : "Ένας λογαριασμός για όλο το γραφείο. Προσκαλείτε τους συνεργάτες σας μετά, χωρίς επιπλέον χρέωση."}</p>
-<form method="post" action="/signup"><input type="hidden" name="invite" value="${esc(invite)}"><input type="hidden" name="plan" value="${esc(plan)}">
-${orgName ? "" : `<label for="o">Επωνυμία γραφείου</label><input id="o" type="text" name="office" value="${esc(v.office)}" maxlength="120" autocomplete="organization" required>`}
+const signupPage = ({ msg = "", v = {}, invite = "", orgName = "", plan = "", tier = "office" } = {}) => shell("Δημιουργία λογαριασμού", `<main><div class="card"><h1>${orgName ? "Συμμετοχή στο γραφείο " + esc(orgName) : "Δημιουργία λογαριασμού"}</h1>
+<p class="mut">${orgName ? "Θα δουλεύετε στην ίδια λίστα με τους συναδέλφους σας." : tier === "agent" ? "Πρόγραμμα Μεσίτης: για έναν χρήστη." : "Πρόγραμμα Γραφείο: ένας λογαριασμός για όλη την ομάδα. Προσκαλείτε τους συνεργάτες σας μετά, χωρίς επιπλέον χρέωση."}</p>
+${socialButtons("?" + new URLSearchParams({ invite, plan, tier }))}${SOCIAL.google || SOCIAL.apple ? `<p class="mut" style="font-size:.85rem">Με τη σύνδεση αποδέχεστε τους <a href="/terms">όρους</a> και την <a href="/privacy">πολιτική απορρήτου</a>.</p>` : ""}
+<form method="post" action="/signup"><input type="hidden" name="invite" value="${esc(invite)}"><input type="hidden" name="plan" value="${esc(plan)}"><input type="hidden" name="tier" value="${esc(tier)}">
+${orgName ? "" : `<label for="o">${tier === "agent" ? "Επωνυμία (το όνομά σας ή του γραφείου)" : "Επωνυμία γραφείου"}</label><input id="o" type="text" name="office" value="${esc(v.office)}" maxlength="120" autocomplete="organization" required>`}
 <label for="n">Ονοματεπώνυμο</label><input id="n" type="text" name="name" value="${esc(v.name)}" maxlength="120" autocomplete="name" required>
 <label for="e">Email</label><input id="e" type="email" name="email" value="${esc(v.email)}" maxlength="200" autocomplete="email" required>
 <label for="p">Κωδικός (τουλάχιστον 8 χαρακτήρες)</label><input id="p" type="password" name="password" minlength="8" maxlength="200" autocomplete="new-password" required>
@@ -135,23 +149,53 @@ ${orgName ? "" : `<label for="o">Επωνυμία γραφείου</label><input
 ${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}<button class="btn alt">${orgName ? "Συμμετοχή" : "Συνέχεια στην πληρωμή"}</button></form>
 <p class="mut" style="margin-top:16px">Έχετε ήδη λογαριασμό; <a href="/login">Σύνδεση</a></p></div></main>`);
 
-function accountPage(req, who, org, team, note = "") {
+const planCard = (tier, first, org) => {
+  const P = PRICES[tier], save = P.month * 12 - P.year, pct = Math.round((save / (P.month * 12)) * 100);
+  const trial = TRIAL_DAYS > 0 && !org.stripe_customer ? `<p class="mut" style="margin:0"><b>${TRIAL_DAYS} ημέρες δωρεάν.</b> Χρέωση μετά τη δοκιμή.</p>` : "";
+  return `<div class="plan${first ? " best" : ""}"><span class="tag">${tier === "office" ? "ΟΛΗ Η ΟΜΑΔΑ" : "ΕΝΑΣ ΧΡΗΣΤΗΣ"}</span><p style="margin:8px 0 0;font-weight:800;font-size:1.15rem">${TIER_NAME[tier]}</p>
+<p class="mut" style="margin:0">${tier === "office" ? "Ο μεσίτης και όλοι οι συνεργάτες του γραφείου, με κοινές σημειώσεις." : "Για τον ανεξάρτητο μεσίτη ή συνεργάτη."}</p>
+<p class="big">€${eur(Math.round(P.year / 12))} <span class="mut" style="font-size:.9rem;font-weight:500">/ μήνα</span></p><p class="mut" style="margin:0">€${eur(P.year)} τον χρόνο με μία χρέωση. Κερδίζετε €${eur(save)} (${pct}%).</p>${trial}
+<form method="post" action="/billing/checkout"><input type="hidden" name="tier" value="${tier}"><input type="hidden" name="plan" value="year"><button class="btn alt">Ετήσιο · €${eur(P.year)}</button></form>
+<form method="post" action="/billing/checkout"><input type="hidden" name="tier" value="${tier}"><input type="hidden" name="plan" value="month"><button class="btn ghost" style="margin-top:10px">Μηνιαίο · €${eur(P.month)} / μήνα</button></form></div>`;
+};
+function accountPage(req, who, org, team, note = "", want = "office") {
   const active = paid(org), until = org.sub_until ? new Date(org.sub_until).toLocaleDateString("el-GR", { day: "numeric", month: "long", year: "numeric" }) : "";
-  const save = PRICE_MONTH * 12 - PRICE_YEAR, pct = Math.round((save / (PRICE_MONTH * 12)) * 100);
-  const link = `${origin(req)}/signup?invite=${org.invite}`;
+  const link = `${origin(req)}/signup?invite=${org.invite}`, office = org.comp || org.tier === "office";
   const status = org.comp ? `<p class="ok">Η πρόσβασή σας είναι ενεργή.</p>` : active
-    ? `<p class="ok">Η συνδρομή σας είναι ενεργή (${org.plan === "year" ? "ετήσια" : "μηνιαία"}).</p><p class="mut">${org.sub_cancels ? "Έχει ακυρωθεί και λήγει στις " : "Επόμενη ανανέωση στις "}${until}.${org.sub_status === "past_due" ? " Η τελευταία χρέωση απέτυχε· ενημερώστε την κάρτα σας." : ""}</p>`
+    ? `<p class="ok">Η συνδρομή σας είναι ενεργή: πρόγραμμα ${TIER_NAME[org.tier] || ""}, ${org.plan === "year" ? "ετήσια" : "μηνιαία"}${org.sub_status === "trialing" ? " (δωρεάν δοκιμή)" : ""}.</p><p class="mut">${org.sub_cancels ? "Έχει ακυρωθεί και λήγει στις " : org.sub_status === "trialing" ? "Η πρώτη χρέωση γίνεται στις " : "Επόμενη ανανέωση στις "}${until}.${org.sub_status === "past_due" ? " Η τελευταία χρέωση απέτυχε· ενημερώστε την κάρτα σας." : ""}</p>`
     : `<p><b>Δεν υπάρχει ενεργή συνδρομή.</b> Διαλέξτε πρόγραμμα για να ανοίξετε το εργαλείο.</p>`;
-  const plans = org.comp || active ? "" : `<div class="plans">
-<form class="plan best" method="post" action="/billing/checkout"><input type="hidden" name="plan" value="year"><span class="tag">ΕΚΠΤΩΣΗ ${pct}%</span><p style="margin:8px 0 0;font-weight:700">Ετήσιο</p><p class="big">€${eur(Math.round(PRICE_YEAR / 12))} <span class="mut" style="font-size:.9rem;font-weight:500">/ μήνα</span></p><p class="mut">€${eur(PRICE_YEAR)} με μία χρέωση τον χρόνο. Κερδίζετε €${eur(save)}.</p><button class="btn alt">Ετήσια συνδρομή</button></form>
-<form class="plan" method="post" action="/billing/checkout"><input type="hidden" name="plan" value="month"><p style="margin:26px 0 0;font-weight:700">Μηνιαίο</p><p class="big">€${eur(PRICE_MONTH)} <span class="mut" style="font-size:.9rem;font-weight:500">/ μήνα</span></p><p class="mut">Χρέωση κάθε μήνα. €${eur(PRICE_MONTH * 12)} τον χρόνο.</p><button class="btn ghost">Μηνιαία συνδρομή</button></form></div>
-<p class="mut">Η πληρωμή γίνεται με ασφάλεια μέσω Stripe. Ακύρωση όποτε θέλετε.</p>`;
+  const order = want === "agent" ? ["agent", "office"] : ["office", "agent"];
+  const plans = org.comp || active ? "" : `<div class="plans">${planCard(order[0], true, org)}${planCard(order[1], false, org)}</div><p class="mut">Η πληρωμή γίνεται με ασφάλεια μέσω Stripe. Ακύρωση όποτε θέλετε.</p>`;
+  const teamBox = office
+    ? `<h2>Η ομάδα σας</h2><p class="mut">Στείλτε αυτόν τον σύνδεσμο στους συνεργάτες του γραφείου σας. Όποιος εγγραφεί με αυτόν μπαίνει στην ίδια λίστα, χωρίς επιπλέον χρέωση.</p><p><code>${esc(link)}</code></p><ul>${team.map((u) => `<li>${esc(u.name)} · ${esc(u.email)}${u.role === "owner" ? " · διαχειριστής" : ""}</li>`).join("")}</ul>`
+    : active ? `<h2>Ομάδα</h2><p class="mut">Το πρόγραμμα Μεσίτης είναι για έναν χρήστη. Για να προσθέσετε συνεργάτες με κοινές σημειώσεις, γράψτε μας στο <a href="mailto:${esc(CONTACT)}">${esc(CONTACT)}</a> και θα σας περάσουμε στο πρόγραμμα Γραφείο.</p>` : "";
   return shell("Λογαριασμός", `<main class="wide"><div class="card"><h1>${esc(org.name)}</h1><p class="mut">${esc(who.user.name)} · ${esc(who.user.email)}</p>
 ${note ? `<p class="err" role="alert">${esc(note)}</p>` : ""}${status}${active ? `<a class="btn alt" href="/app">Άνοιγμα εργαλείου</a>` : ""}${plans}
 ${org.stripe_customer ? `<form method="post" action="/billing/portal"><button class="btn ghost">Διαχείριση συνδρομής (κάρτα, τιμολόγια, ακύρωση)</button></form>` : ""}
-<h2>Η ομάδα σας</h2><p class="mut">Στείλτε αυτόν τον σύνδεσμο στους συνεργάτες του γραφείου σας. Όποιος εγγραφεί με αυτόν μπαίνει στην ίδια λίστα, χωρίς επιπλέον χρέωση.</p><p><code>${esc(link)}</code></p>
-<ul>${team.map((u) => `<li>${esc(u.name)} · ${esc(u.email)}${u.role === "owner" ? " · διαχειριστής" : ""}</li>`).join("")}</ul>
+${teamBox}
+${who.user.role === "owner" ? `<h2>Επωνυμία</h2><form method="post" action="/account/name"><label for="on">Όνομα γραφείου ή μεσίτη</label><input id="on" type="text" name="name" value="${esc(org.name)}" maxlength="120" required><button class="btn ghost">Αποθήκευση</button></form>` : ""}
 <form method="post" action="/logout"><button class="btn ghost">Αποσύνδεση</button></form></div></main>`);
+}
+
+// ---- Google / Apple sign-in (authorization-code flow; the state travels signed, so no cookie is needed on the way back) ----
+const b64 = (o) => Buffer.from(typeof o === "string" ? o : JSON.stringify(o)).toString("base64url");
+const signState = (o) => { const p = b64({ ...o, t: Date.now() }); return p + "." + crypto.createHmac("sha256", SECRET).update(p).digest("base64url"); };
+const readState = (s) => { const [p, sig] = String(s || "").split("."); if (!p || !sig) return null; const good = crypto.createHmac("sha256", SECRET).update(p).digest("base64url"); if (!eq(sig, good)) return null; try { const o = JSON.parse(Buffer.from(p, "base64url").toString()); return Date.now() - o.t < 15 * 60e3 ? o : null; } catch { return null; } };
+const jwtBody = (t) => { try { return JSON.parse(Buffer.from(String(t).split(".")[1], "base64url").toString()); } catch { return {}; } };
+const appleSecret = () => { const now = Math.floor(Date.now() / 1000), head = b64({ alg: "ES256", kid: APPLE.kid }), body = b64({ iss: APPLE.team, iat: now, exp: now + 300, aud: "https://appleid.apple.com", sub: APPLE.id }); return `${head}.${body}.` + crypto.sign("sha256", Buffer.from(`${head}.${body}`), { key: APPLE.key, dsaEncoding: "ieee-p1363" }).toString("base64url"); };
+async function tokenExchange(url, params) { const r = await fetch(url, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(params), signal: AbortSignal.timeout(20000) }); const j = await r.json(); if (!r.ok || !j.id_token) throw new Error(j.error_description || j.error || "token " + r.status); return jwtBody(j.id_token); }
+// Signs the person in: an existing account (by provider id, then by verified email) or a new one.
+async function socialLogin(res, col, { sub, email, name }, st) {
+  let u = (await pool.query(`SELECT id FROM users WHERE ${col}=$1`, [sub])).rows[0];
+  if (!u && email) { u = (await pool.query("SELECT id FROM users WHERE email=$1", [email])).rows[0]; if (u) await pool.query(`UPDATE users SET ${col}=$2 WHERE id=$1`, [u.id, sub]); }
+  if (u) { await startSession(res, u.id); return res.redirect("/app"); }
+  if (!email) return res.status(400).send(loginPage("Ο πάροχος δεν μας έδωσε email. Δοκιμάστε ξανά ή εγγραφείτε με email."));
+  const org = st.invite ? (await pool.query("SELECT id FROM orgs WHERE invite=$1 AND id <> 1 AND tier='office'", [st.invite])).rows[0] : null;
+  const shown = (name || email.split("@")[0]).slice(0, 120), tier = st.tier === "agent" ? "agent" : "office";
+  const orgId = org ? org.id : (await pool.query("INSERT INTO orgs(name, invite, tier) VALUES ($1,$2,$3) RETURNING id", [shown, rand(12), tier])).rows[0].id;
+  const nu = await pool.query(`INSERT INTO users(org_id, email, name, pass, role, ${col}) VALUES ($1,$2,$3,'',$4,$5) RETURNING id`, [orgId, email, shown, org ? "member" : "owner", sub]);
+  await startSession(res, nu.rows[0].id);
+  res.redirect(org ? "/app" : `/billing/checkout?tier=${tier}&plan=${st.plan === "month" ? "month" : "year"}`);
 }
 
 export function mountSaas(app, { appFile, publicDir }) {
@@ -164,8 +208,44 @@ export function mountSaas(app, { appFile, publicDir }) {
   app.get("/api/public", async (_q, res) => {
     const { rows } = await pool.query("SELECT seller, category, count(*)::int AS n FROM listings WHERE img IS NOT FALSE AND gone_at IS NULL GROUP BY 1,2");
     const run = (await kvGet("run")) || {};
-    res.set("Cache-Control", "public, max-age=600").json({ counts: Object.fromEntries(rows.map((r) => [r.seller + "/" + r.category, r.n])), lastCheck: run.lastCheck || null, month: PRICE_MONTH, year: PRICE_YEAR, contact: CONTACT });
+    res.set("Cache-Control", "public, max-age=600").json({ counts: Object.fromEntries(rows.map((r) => [r.seller + "/" + r.category, r.n])), lastCheck: run.lastCheck || null, prices: PRICES, trial: TRIAL_DAYS, contact: CONTACT });
   });
+
+  // A small, anonymised taste of the real list for the landing page: area, size and price only. No links, photos, sources or contact details.
+  let peek = { at: 0, data: null };
+  app.get("/api/public/preview", async (_q, res) => {
+    if (Date.now() - peek.at > 30 * 60e3) {
+      const out = {};
+      for (const [seller, category] of [["owner", "home"], ["owner", "land"], ["agency", "home"], ["agency", "land"], ["agency", "hotel"]]) {
+        const { rows } = await pool.query("SELECT type, sqm, price, currency, floor, beds, location, first_seen FROM listings WHERE img IS NOT FALSE AND gone_at IS NULL AND seller=$1 AND category=$2 AND price > 20000 AND location <> '' ORDER BY first_seen DESC LIMIT 6", [seller, category]);
+        out[seller + "/" + category] = rows.map((r) => ({ type: r.type || "", sqm: r.sqm, price: Math.round(r.price / 1000) * 1000, currency: r.currency || "EUR", floor: r.floor || "", beds: r.beds, area: String(r.location).split(/[,(]/)[0].trim().slice(0, 40), seen: r.first_seen }));
+      }
+      peek = { at: Date.now(), data: out };
+    }
+    res.set("Cache-Control", "public, max-age=900").json(peek.data);
+  });
+
+  if (SOCIAL.google) {
+    app.get("/auth/google", (req, res) => res.redirect("https://accounts.google.com/o/oauth2/v2/auth?" + new URLSearchParams({ client_id: GOOGLE.id, redirect_uri: origin(req) + "/auth/google/callback", response_type: "code", scope: "openid email profile", prompt: "select_account", state: signState({ invite: String(req.query.invite || ""), plan: String(req.query.plan || ""), tier: String(req.query.tier || "") }) })));
+    app.get("/auth/google/callback", async (req, res) => {
+      const st = readState(req.query.state); if (!st || !req.query.code) return res.status(400).send(loginPage("Η σύνδεση δεν ολοκληρώθηκε. Δοκιμάστε ξανά."));
+      try { const t = await tokenExchange("https://oauth2.googleapis.com/token", { code: String(req.query.code), client_id: GOOGLE.id, client_secret: GOOGLE.secret, redirect_uri: origin(req) + "/auth/google/callback", grant_type: "authorization_code" });
+        if (!t.sub || !t.email || t.email_verified === false) throw new Error("no verified email");
+        await socialLogin(res, "google_sub", { sub: t.sub, email: String(t.email).toLowerCase(), name: t.name || "" }, st);
+      } catch (e) { console.error("google sign-in", e.message); res.status(400).send(loginPage("Η σύνδεση με Google απέτυχε. Δοκιμάστε ξανά.")); }
+    });
+  }
+  if (SOCIAL.apple) {
+    app.get("/auth/apple", (req, res) => res.redirect("https://appleid.apple.com/auth/authorize?" + new URLSearchParams({ client_id: APPLE.id, redirect_uri: origin(req) + "/auth/apple/callback", response_type: "code", response_mode: "form_post", scope: "name email", state: signState({ invite: String(req.query.invite || ""), plan: String(req.query.plan || ""), tier: String(req.query.tier || "") }) })));
+    app.post("/auth/apple/callback", async (req, res) => {
+      const st = readState(req.body.state); if (!st || !req.body.code) return res.status(400).send(loginPage("Η σύνδεση δεν ολοκληρώθηκε. Δοκιμάστε ξανά."));
+      try { const t = await tokenExchange("https://appleid.apple.com/auth/token", { code: String(req.body.code), client_id: APPLE.id, client_secret: appleSecret(), redirect_uri: origin(req) + "/auth/apple/callback", grant_type: "authorization_code" });
+        if (!t.sub) throw new Error("no subject");
+        let name = ""; try { const u = JSON.parse(req.body.user || "{}"); name = [u.name?.firstName, u.name?.lastName].filter(Boolean).join(" "); } catch {}
+        await socialLogin(res, "apple_sub", { sub: t.sub, email: t.email ? String(t.email).toLowerCase() : "", name }, st);
+      } catch (e) { console.error("apple sign-in", e.message); res.status(400).send(loginPage("Η σύνδεση με Apple απέτυχε. Δοκιμάστε ξανά.")); }
+    });
+  }
 
   // House team: the shared password still opens everything (office 1, no subscription needed).
   const teamPage = (msg = "") => shell("Ομάδα", `<main><div class="card"><h1>Είσοδος ομάδας</h1><form method="post" action="/team"><label for="p">Κωδικός ομάδας</label><input id="p" type="password" name="password" required autofocus>${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}<button class="btn">Σύνδεση</button></form></div></main>`);
@@ -185,25 +265,25 @@ export function mountSaas(app, { appFile, publicDir }) {
   });
   app.post("/logout", async (req, res) => { const sid = cookieOf(req, "sid"); if (sid) await pool.query("DELETE FROM sessions WHERE token=$1", [sid]); setCookie(res, "sid", "", 0); setCookie(res, "auth", "", 0); res.redirect("/"); });
 
-  const inviteOrg = async (code) => code ? (await pool.query("SELECT id, name FROM orgs WHERE invite=$1 AND id <> 1", [code])).rows[0] : null;
+  const inviteOrg = async (code) => code ? (await pool.query("SELECT id, name FROM orgs WHERE invite=$1 AND id <> 1 AND tier='office'", [code])).rows[0] : null;
   app.get("/signup", async (req, res) => {
     const invite = String(req.query.invite || ""), org = await inviteOrg(invite);
-    res.send(signupPage({ invite: org ? invite : "", orgName: org?.name || "", plan: req.query.plan === "month" ? "month" : "year" }));
+    res.send(signupPage({ invite: org ? invite : "", orgName: org?.name || "", plan: req.query.plan === "month" ? "month" : "year", tier: req.query.tier === "agent" ? "agent" : "office" }));
   });
   app.post("/signup", async (req, res) => {
     const b = req.body || {}, email = String(b.email || "").trim().toLowerCase(), name = String(b.name || "").trim().slice(0, 120), office = String(b.office || "").trim().slice(0, 120), pw = String(b.password || "");
-    const invite = String(b.invite || ""), org = await inviteOrg(invite), plan = b.plan === "month" ? "month" : "year";
-    const back = (msg) => res.status(400).send(signupPage({ msg, v: { email, name, office }, invite: org ? invite : "", orgName: org?.name || "", plan }));
+    const invite = String(b.invite || ""), org = await inviteOrg(invite), plan = b.plan === "month" ? "month" : "year", tier = b.tier === "agent" ? "agent" : "office";
+    const back = (msg) => res.status(400).send(signupPage({ msg, v: { email, name, office }, invite: org ? invite : "", orgName: org?.name || "", plan, tier }));
     if (throttled(req.ip)) return back("Πολλές προσπάθειες. Δοκιμάστε ξανά σε λίγο.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 200) return back("Γράψτε ένα έγκυρο email.");
     if (pw.length < 8) return back("Ο κωδικός χρειάζεται τουλάχιστον 8 χαρακτήρες.");
     if (!name || (!org && !office)) return back("Συμπληρώστε όλα τα πεδία.");
     if (b.terms !== "1") return back("Χρειάζεται η αποδοχή των όρων.");
     if ((await pool.query("SELECT 1 FROM users WHERE email=$1", [email])).rowCount) { failed(req.ip); return back("Υπάρχει ήδη λογαριασμός με αυτό το email. Συνδεθείτε."); }
-    const orgId = org ? org.id : (await pool.query("INSERT INTO orgs(name, invite) VALUES ($1,$2) RETURNING id", [office, rand(12)])).rows[0].id;
+    const orgId = org ? org.id : (await pool.query("INSERT INTO orgs(name, invite, tier) VALUES ($1,$2,$3) RETURNING id", [office, rand(12), tier])).rows[0].id;
     const u = await pool.query("INSERT INTO users(org_id, email, name, pass, role) VALUES ($1,$2,$3,$4,$5) RETURNING id", [orgId, email, name, hashPass(pw), org ? "member" : "owner"]);
     await startSession(res, u.rows[0].id);
-    res.redirect(org ? "/app" : "/account?plan=" + plan);
+    res.redirect(org ? "/app" : `/billing/checkout?tier=${tier}&plan=${plan}`);
   });
 
   // Password reset: the house team creates a one-time link and sends it to the person who asked.
@@ -224,24 +304,28 @@ export function mountSaas(app, { appFile, publicDir }) {
   app.get("/account", needUser, async (req, res) => {
     const org = await freshOrg(req.who.org);
     const team = (await pool.query("SELECT name, email, role FROM users WHERE org_id=$1 ORDER BY id", [org.id])).rows;
-    res.send(accountPage(req, req.who, org, team, req.query.pay === "off" ? "Οι πληρωμές ενεργοποιούνται σύντομα. Δοκιμάστε ξανά σε λίγο." : req.query.pay === "err" ? "Η πληρωμή δεν ξεκίνησε. Δοκιμάστε ξανά." : ""));
+    res.send(accountPage(req, req.who, org, team, req.query.pay === "off" ? "Οι πληρωμές ενεργοποιούνται σύντομα. Δοκιμάστε ξανά σε λίγο." : req.query.pay === "err" ? "Η πληρωμή δεν ξεκίνησε. Δοκιμάστε ξανά." : "", req.query.tier === "agent" || (req.query.tier !== "office" && org.tier === "agent") ? "agent" : "office"));
   });
-  app.post("/billing/checkout", needUser, async (req, res) => {
-    const org = await freshOrg(req.who.org);
+  app.post("/account/name", needUser, async (req, res) => { const n = String(req.body.name || "").trim().slice(0, 120); if (n && req.who.user.role === "owner") await pool.query("UPDATE orgs SET name=$2 WHERE id=$1", [req.who.org.id, n]); res.redirect("/account"); });
+  const checkout = async (req, res) => {   // POST from the account page, GET right after sign-up
+    const org = await freshOrg(req.who.org), q = { ...req.query, ...req.body };
     if (paid(org)) return res.redirect("/account");
-    const year = req.body.plan !== "month";
+    const year = q.plan !== "month", tier = q.tier === "agent" ? "agent" : "office", amount = PRICES[tier][year ? "year" : "month"];
+    if (tier === "agent" && (await pool.query("SELECT count(*)::int AS n FROM users WHERE org_id=$1", [org.id])).rows[0].n > 1) return res.redirect("/account?pay=err");
     try {
       const p = { mode: "subscription", client_reference_id: String(org.id), locale: "el", allow_promotion_codes: "true",
-        success_url: `${origin(req)}/billing/done?session_id={CHECKOUT_SESSION_ID}`, cancel_url: `${origin(req)}/account`,
-        "line_items[0][quantity]": "1", "line_items[0][price_data][currency]": "eur", "line_items[0][price_data][unit_amount]": String(year ? PRICE_YEAR : PRICE_MONTH),
-        "line_items[0][price_data][recurring][interval]": year ? "year" : "month", "line_items[0][price_data][product_data][name]": `${BRAND} · ${year ? "ετήσια" : "μηνιαία"} συνδρομή γραφείου`,
-        "subscription_data[metadata][org]": String(org.id), "metadata[org]": String(org.id) };
-      if (org.stripe_customer) p.customer = org.stripe_customer; else p.customer_email = req.who.user.email;
+        success_url: `${origin(req)}/billing/done?session_id={CHECKOUT_SESSION_ID}`, cancel_url: `${origin(req)}/account?tier=${tier}`,
+        "line_items[0][quantity]": "1", "line_items[0][price_data][currency]": "eur", "line_items[0][price_data][unit_amount]": String(amount),
+        "line_items[0][price_data][recurring][interval]": year ? "year" : "month", "line_items[0][price_data][product_data][name]": `${BRAND} · ${TIER_NAME[tier]} · ${year ? "ετήσια" : "μηνιαία"} συνδρομή`,
+        "subscription_data[metadata][org]": String(org.id), "subscription_data[metadata][tier]": tier, "metadata[org]": String(org.id) };
+      if (org.stripe_customer) p.customer = org.stripe_customer; else { p.customer_email = req.who.user.email; if (TRIAL_DAYS > 0) p["subscription_data[trial_period_days]"] = String(TRIAL_DAYS); }
       const s = await stripe("POST", "checkout/sessions", p);
       await pool.query("UPDATE orgs SET pending_session=$2, stripe_sub=NULL WHERE id=$1", [org.id, s.id]);
       res.redirect(303, s.url);
-    } catch (e) { if (e.message !== "stripe-not-configured") console.error("checkout", e.message); res.redirect("/account?pay=" + (e.message === "stripe-not-configured" ? "off" : "err")); }
-  });
+    } catch (e) { if (e.message !== "stripe-not-configured") console.error("checkout", e.message); res.redirect(`/account?tier=${tier}&pay=` + (e.message === "stripe-not-configured" ? "off" : "err")); }
+  };
+  app.post("/billing/checkout", needUser, checkout);
+  app.get("/billing/checkout", needUser, checkout);
   app.get("/billing/done", needUser, async (req, res) => {
     const id = String(req.query.session_id || "");
     if (id && id === req.who.org.pending_session) await syncOrg(req.who.org);

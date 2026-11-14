@@ -43,10 +43,10 @@ nav .login{color:#F6F4EE;border:1px solid rgba(246,244,238,.4);padding:8px 14px;
 
 /* product mock */
 .mock{background:var(--card);color:var(--ink);border-radius:18px;padding:22px;box-shadow:0 24px 60px rgba(0,0,0,.35);font-size:.95rem}
-.seg{display:flex;background:#E9E5DA;border-radius:10px;padding:4px}.seg span{flex:1;text-align:center;padding:9px;border-radius:7px;font-weight:700;color:var(--mut)}.seg span.on{background:var(--ink);color:#F6F4EE}
-.chips{display:flex;gap:8px;margin:14px 0 6px;flex-wrap:wrap}.chips span{padding:6px 14px;border-radius:99px;border:1px solid #CFC9BA;color:var(--mut);font-size:.85rem;font-weight:600}.chips span.on{background:var(--amber);border-color:var(--amber);color:var(--ink)}
+.seg{display:flex;background:#E9E5DA;border-radius:10px;padding:4px}.seg button{flex:1;text-align:center;padding:10px;border-radius:7px;font:inherit;font-weight:700;color:var(--mut);background:none;border:0;cursor:pointer}.seg button[aria-pressed=true]{background:var(--ink);color:#F6F4EE}
+.chips{display:flex;gap:8px;margin:14px 0 6px;flex-wrap:wrap}.chips button{padding:7px 14px;border-radius:99px;border:1px solid #CFC9BA;color:var(--mut);font:inherit;font-size:.85rem;font-weight:600;background:none;cursor:pointer}.chips button[aria-pressed=true]{background:var(--amber);border-color:var(--amber);color:var(--ink)}.chips button:disabled{opacity:.4;cursor:default}
 .row{display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
-.ph{width:52px;height:40px;border-radius:8px;background:linear-gradient(135deg,#c9d3df,#8fa0b5)}
+.ph{width:52px;height:40px;border-radius:8px;background:linear-gradient(135deg,#c9d3df,#8fa0b5)}#rows{min-height:204px}
 .row b{display:block}.row small{color:var(--mut)}.row .pr{font-weight:800;white-space:nowrap}
 .new{display:inline-block;background:#e2f3ea;color:#1c6b3f;font-size:.7rem;font-weight:800;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle}
 .mock .cap{color:var(--mut);font-size:.8rem;margin:10px 0 0}
@@ -70,7 +70,7 @@ nav .login{color:#F6F4EE;border:1px solid rgba(246,244,238,.4);padding:8px 14px;
 
 /* pricing */
 .price{background:var(--ink);color:#F6F4EE}.price .eyebrow{color:var(--amber)}.price h2{max-width:24ch}
-.plans{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;margin-top:36px;align-items:stretch}@media(max-width:820px){.plans{grid-template-columns:1fr}}
+.plans{display:grid;grid-template-columns:.9fr 1.1fr;gap:18px;margin-top:22px;align-items:stretch}@media(max-width:820px){.plans{grid-template-columns:1fr}}
 .plan{border-radius:18px;padding:30px;display:flex;flex-direction:column;gap:6px}
 .plan.best{background:var(--amber);color:var(--ink)}.plan.alt{background:var(--ink2);border:1px solid #2C4262}
 .badge{align-self:flex-start;background:var(--ink);color:var(--amber);font-size:.75rem;font-weight:800;letter-spacing:.1em;padding:5px 11px;border-radius:99px}
@@ -78,6 +78,9 @@ nav .login{color:#F6F4EE;border:1px solid rgba(246,244,238,.4);padding:8px 14px;
 .plan p{margin:0}.plan.alt p{color:var(--pale)}.plan.alt p.amt{color:#F6F4EE}.plan .btn{margin-top:auto}.plan .sp{height:18px}
 .incl{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 28px;list-style:none;padding:0;margin:30px 0 0;color:var(--pale)}@media(max-width:700px){.incl{grid-template-columns:1fr}}
 .incl li::before{content:"✓";color:var(--amber);font-weight:800;margin-right:10px}
+.tog{display:inline-flex;background:var(--ink2);border:1px solid #2C4262;border-radius:12px;padding:4px;margin-top:18px}.tog button{font:inherit;font-weight:700;color:var(--pale);background:none;border:0;padding:10px 18px;border-radius:9px;cursor:pointer}.tog button[aria-pressed=true]{background:#F6F4EE;color:var(--ink)}.tog .off{background:var(--amber);color:var(--ink);font-size:.75rem;font-weight:800;padding:2px 7px;border-radius:99px;margin-left:6px}
+.trial{display:inline-block;background:var(--amber);color:var(--ink);font-weight:800;padding:8px 14px;border-radius:10px;margin:18px 0 0}
+.plan ul.in{list-style:none;padding:0;margin:14px 0 20px;display:grid;gap:6px}.plan ul.in li::before{content:"✓";font-weight:800;margin-right:10px}.plan.alt ul.in{color:var(--pale)}.plan.alt ul.in li::before{color:var(--amber)}.plan.alt .badge{background:#2C4262;color:#F6F4EE}
 .fine{color:var(--pale);font-size:.85rem;margin-top:22px}.fine a{color:#F6F4EE}
 
 details{border-top:1px solid var(--line);padding:18px 0}details:last-of-type{border-bottom:1px solid var(--line)}
@@ -102,16 +105,18 @@ footer .fl{display:flex;flex-wrap:wrap;gap:8px 22px;margin-bottom:14px}footer p{
         <p class="eyebrow" style="color:var(--amber)">Για μεσιτικά γραφεία</p>
         <h1>Όλη η αγορά.<br><em>Μία οθόνη.</em></h1>
         <p class="lead">Κάθε νέο ακίνητο στην Ελλάδα, από ιδιώτες και μεσίτες, σε μία καθαρή λίστα. Πριν το δουν οι ανταγωνιστές σας.</p>
-        <div class="cta"><a class="btn amber" href="/signup?plan=year">Ξεκινήστε · <span data-y>€499</span> / έτος</a><a class="btn line" href="#how">Δείτε πώς λειτουργεί</a></div>
-        <ul class="ticks"><li>Όλη η Ελλάδα</li><li>Απεριόριστοι χρήστες ανά γραφείο</li><li>Ακύρωση όποτε θέλετε</li></ul>
+        <div class="cta"><a class="btn amber" href="#pricing"><span data-cta>Ξεκινήστε</span></a><a class="btn line" href="#how">Δείτε πώς λειτουργεί</a></div>
+        <ul class="ticks"><li>Όλη η Ελλάδα</li><li>Για μεσίτες και για γραφεία</li><li>Ακύρωση όποτε θέλετε</li></ul>
       </div>
-      <div class="mock" aria-label="Ενδεικτική εικόνα του εργαλείου">
-        <div class="seg"><span class="on">Ιδιώτες</span><span>Μεσίτες</span></div>
-        <div class="chips"><span class="on">Κατοικίες</span><span>Οικόπεδα</span><span>Ξενοδοχεία</span></div>
-        <div class="row"><div class="ph"></div><div><b>Νότια προάστια · 95 τ.μ. <span class="new">ΝΕΟ</span></b><small>3ος όροφος · 2 υπν. · ιδιώτης</small></div><div class="pr">310.000 €</div></div>
-        <div class="row"><div class="ph"></div><div><b>Κέντρο Αθήνας · 62 τ.μ.</b><small>1ος όροφος · 1 υπν. · ιδιώτης</small></div><div class="pr">185.000 €</div></div>
-        <div class="row"><div class="ph"></div><div><b>Βόρεια προάστια · 140 τ.μ.</b><small>Μεζονέτα · 3 υπν. · ιδιώτης</small></div><div class="pr">520.000 €</div></div>
-        <p class="cap">Ενδεικτική απεικόνιση</p>
+      <div class="mock" id="peek" aria-label="Δείγμα από τη σημερινή λίστα">
+        <div class="seg" role="group" aria-label="Πωλητής"><button type="button" data-s="owner" aria-pressed="true">Ιδιώτες</button><button type="button" data-s="agency" aria-pressed="false">Μεσίτες</button></div>
+        <div class="chips" role="group" aria-label="Κατηγορία"><button type="button" data-c="home" aria-pressed="true">Κατοικίες</button><button type="button" data-c="land" aria-pressed="false">Οικόπεδα</button><button type="button" data-c="hotel" aria-pressed="false">Ξενοδοχεία</button></div>
+        <div id="rows" aria-live="polite">
+          <div class="row"><div class="ph"></div><div><b>Νότια προάστια · 95 τ.μ. <span class="new">ΝΕΟ</span></b><small>3ος όροφος · 2 υπν.</small></div><div class="pr">310.000 €</div></div>
+          <div class="row"><div class="ph"></div><div><b>Κέντρο Αθήνας · 62 τ.μ.</b><small>1ος όροφος · 1 υπν.</small></div><div class="pr">185.000 €</div></div>
+          <div class="row"><div class="ph"></div><div><b>Βόρεια προάστια · 140 τ.μ.</b><small>Μεζονέτα · 3 υπν.</small></div><div class="pr">520.000 €</div></div>
+        </div>
+        <p class="cap" id="cap">Δείγμα. Στο εργαλείο: φωτογραφίες, πλήρη στοιχεία, φίλτρα και σύνδεσμος προς κάθε αγγελία.</p>
       </div>
     </header>
   </div>
@@ -136,11 +141,11 @@ footer .fl{display:flex;flex-wrap:wrap;gap:8px 22px;margin-bottom:14px}footer p{
     <p class="eyebrow">Τι κάνει</p>
     <h2 id="f-h">Λιγότερο ψάξιμο, περισσότερες αναθέσεις</h2>
     <div class="grid3">
-      <div class="f hi"><h3>Απευθείας στον ιδιοκτήτη</h3><p>Τα ακίνητα που πωλούνται χωρίς μεσίτη, χωριστά από όλα τα άλλα, με τα στοιχεία επικοινωνίας που έχει δημοσιεύσει ο ίδιος ο ιδιοκτήτης.</p></div>
+      <div class="f hi"><h3>Απευθείας στον ιδιοκτήτη</h3><p>Τα ακίνητα που πωλούνται χωρίς μεσίτη, χωριστά από όλα τα άλλα. Με ένα κλικ ανοίγετε την αρχική αγγελία και επικοινωνείτε από εκεί.</p></div>
       <div class="f"><h3>Ιδιώτες ή μεσίτες, με ένα κλικ</h3><p>Αλλάζετε προβολή αμέσως. Κατοικίες, οικόπεδα και ξενοδοχεία, κάθε κατηγορία στη δική της λίστα.</p></div>
       <div class="f"><h3>Πάντα φρέσκο</h3><p>Νέες αγγελίες τρεις φορές την ημέρα. Όσες κατεβαίνουν, φεύγουν και από τη λίστα σας.</p></div>
       <div class="f"><h3>Μία γραμμή ανά ακίνητο</h3><p>Το ίδιο ακίνητο σε πολλές ιστοσελίδες εμφανίζεται μία φορά. Μόνο αγγελίες με φωτογραφίες, τιμή και τετραγωνικά.</p></div>
-      <div class="f"><h3>Παρουσίαση πελάτη σε λίγα λεπτά</h3><p>Φιλτράρετε πολλές περιοχές μαζί, επιλέγετε ακίνητα και τα εξάγετε με όλες τις φωτογραφίες τους.</p></div>
+      <div class="f"><h3>Υλικό για τη δική σας παρουσίαση</h3><p>Φιλτράρετε πολλές περιοχές μαζί, επιλέγετε ακίνητα και εξάγετε τα στοιχεία τους. Την παρουσίαση στον πελάτη την ετοιμάζει και την κάνει ο μεσίτης, όχι το εργαλείο.</p></div>
       <div class="f"><h3>Κοινή λίστα για την ομάδα</h3><p>Σημειώσεις και κατάσταση ανά αγγελία. Όλοι βλέπουν ποιον έχει ήδη καλέσει συνάδελφος. Μόνο το γραφείο σας τα βλέπει.</p></div>
     </div>
   </div>
@@ -151,38 +156,42 @@ footer .fl{display:flex;flex-wrap:wrap;gap:8px 22px;margin-bottom:14px}footer p{
     <p class="eyebrow">Πώς λειτουργεί</p>
     <h2 id="h-h">Έτοιμο από την πρώτη μέρα</h2>
     <ol class="steps">
-      <li><h3>Ανοίγετε λογαριασμό</h3><p>Ένας λογαριασμός για το γραφείο. Χωρίς εγκατάσταση, από υπολογιστή ή κινητό.</p></li>
-      <li><h3>Προσκαλείτε την ομάδα</h3><p>Στέλνετε έναν σύνδεσμο στους συνεργάτες σας. Όλοι δουλεύουν στην ίδια λίστα, χωρίς επιπλέον χρέωση.</p></li>
-      <li><h3>Βλέπετε πρώτοι τα νέα ακίνητα</h3><p>Κάθε πρωί η λίστα έχει ό,τι καινούργιο βγήκε. Εσείς απλώς καλείτε.</p></li>
+      <li><h3>Ανοίγετε λογαριασμό</h3><p>Σε ένα λεπτό. Χωρίς εγκατάσταση, από υπολογιστή ή κινητό.</p></li>
+      <li><h3>Διαλέγετε πρόγραμμα</h3><p>Μεσίτης για έναν χρήστη, ή Γραφείο για όλη την ομάδα με κοινές σημειώσεις και σύνδεσμο πρόσκλησης.</p></li>
+      <li><h3>Βλέπετε πρώτοι τα νέα ακίνητα</h3><p>Κάθε πρωί η λίστα έχει ό,τι καινούργιο βγήκε. Ανοίγετε την αγγελία και κινείστε πρώτοι.</p></li>
     </ol>
   </div>
 </section>
 
 <section class="price" id="pricing" aria-labelledby="p-h">
   <div class="w">
-    <p class="eyebrow">Δύο τρόποι πληρωμής</p>
-    <h2 id="p-h">Μία συνδρομή για όλο το γραφείο. Πληρώστε λιγότερα ετησίως.</h2>
+    <p class="eyebrow">Τιμές</p>
+    <h2 id="p-h">Ένα πρόγραμμα για τον μεσίτη, ένα για το γραφείο</h2>
+    <p class="trial" id="trial" hidden></p><br>
+    <div class="tog" role="group" aria-label="Τρόπος πληρωμής"><button type="button" data-i="year" aria-pressed="true">Ετήσια <span class="off" data-maxpct>−20%</span></button><button type="button" data-i="month" aria-pressed="false">Μηνιαία</button></div>
     <div class="plans">
-      <div class="plan best">
-        <span class="badge">ΕΚΠΤΩΣΗ <span data-pct>15</span>% · ΠΡΟΤΕΙΝΟΜΕΝΟ</span>
-        <h3>Ετήσιο</h3>
-        <p class="amt"><span data-ym>€41,58</span> <small>/ μήνα</small></p>
-        <p><b><span data-y>€499</span> με μία χρέωση τον χρόνο.</b> Κερδίζετε <span data-save>€89</span>.</p>
-        <div class="sp"></div>
-        <a class="btn dark" href="/signup?plan=year">Ξεκινήστε με το ετήσιο</a>
+      <div class="plan alt" data-tier="agent">
+        <span class="badge">ΕΝΑΣ ΧΡΗΣΤΗΣ</span>
+        <h3>Μεσίτης</h3>
+        <p>Για τον ανεξάρτητο μεσίτη ή συνεργάτη.</p>
+        <p class="amt"><span data-amt>€14,92</span> <small>/ μήνα</small></p>
+        <p data-sub>€179 με μία χρέωση τον χρόνο.</p>
+        <ul class="in"><li>Όλες οι λίστες, όλη η Ελλάδα</li><li>Προσωπικές σημειώσεις ανά αγγελία</li><li>Εξαγωγή στοιχείων</li></ul>
+        <a class="btn line" data-go href="/signup?tier=agent&amp;plan=year">Ξεκινήστε ως μεσίτης</a>
       </div>
-      <div class="plan alt">
-        <h3>Μηνιαίο</h3>
-        <p class="amt"><span data-m>€49</span> <small>/ μήνα</small></p>
-        <p>Χρέωση κάθε μήνα. <span data-m12>€588</span> τον χρόνο.</p>
-        <div class="sp"></div>
-        <a class="btn line" href="/signup?plan=month">Ξεκινήστε με το μηνιαίο</a>
+      <div class="plan best" data-tier="office">
+        <span class="badge">ΟΛΗ Η ΟΜΑΔΑ · ΠΡΟΤΕΙΝΟΜΕΝΟ</span>
+        <h3>Γραφείο</h3>
+        <p>Ο μεσίτης και όλοι οι συνεργάτες του γραφείου.</p>
+        <p class="amt"><span data-amt>€41,58</span> <small>/ μήνα</small></p>
+        <p data-sub><b>€499 με μία χρέωση τον χρόνο.</b></p>
+        <ul class="in"><li>Απεριόριστοι χρήστες του γραφείου</li><li>Κοινές σημειώσεις: ποιος κάλεσε ποιον</li><li>Όλα όσα έχει το πρόγραμμα Μεσίτης</li></ul>
+        <a class="btn dark" data-go href="/signup?tier=office&amp;plan=year">Ξεκινήστε ως γραφείο</a>
       </div>
     </div>
     <ul class="incl">
-      <li>Όλη η Ελλάδα: κατοικίες, οικόπεδα, ξενοδοχεία</li><li>Ιδιώτες και μεσίτες, σε χωριστές λίστες</li>
-      <li>Τρεις ενημερώσεις την ημέρα</li><li>Εξαγωγή για παρουσιάσεις πελατών</li>
-      <li>Απεριόριστοι χρήστες στο γραφείο σας</li><li>Ακύρωση όποτε θέλετε</li>
+      <li>Κατοικίες, οικόπεδα, ξενοδοχεία</li><li>Ιδιώτες και μεσίτες, σε χωριστές λίστες</li>
+      <li>Τρεις ενημερώσεις την ημέρα</li><li>Ακύρωση όποτε θέλετε</li>
     </ul>
     <p class="fine">Η πληρωμή γίνεται με ασφάλεια μέσω Stripe. Με τη συνδρομή αποδέχεστε τους <a href="/terms">όρους</a> και την <a href="/privacy">πολιτική απορρήτου</a>.</p>
   </div>
@@ -194,7 +203,9 @@ footer .fl{display:flex;flex-wrap:wrap;gap:8px 22px;margin-bottom:14px}footer p{
     <h2 id="q-h">Συχνές ερωτήσεις</h2>
     <div class="faq">
       <details><summary>Από πού προέρχονται οι αγγελίες;</summary><p>Από δημόσια δημοσιευμένες αγγελίες σε ελληνικές ιστοσελίδες ακινήτων. Το Property Radar τις οργανώνει σε μία λίστα και σας παραπέμπει πάντα στην αρχική αγγελία. Δεν είναι συνεργάτης των ιστοσελίδων αυτών.</p></details>
-      <details><summary>Πόσοι χρήστες περιλαμβάνονται;</summary><p>Όλοι οι συνεργάτες του γραφείου σας, με μία συνδρομή. Ο καθένας έχει τον δικό του κωδικό και όλοι βλέπουν την ίδια λίστα και τις ίδιες σημειώσεις.</p></details>
+      <details><summary>Ποια είναι η διαφορά των δύο προγραμμάτων;</summary><p>Το πρόγραμμα Μεσίτης είναι για έναν χρήστη. Το πρόγραμμα Γραφείο καλύπτει όλους τους συνεργάτες του γραφείου με μία συνδρομή: ο καθένας έχει τη δική του σύνδεση και όλοι βλέπουν την ίδια λίστα και τις ίδιες σημειώσεις.</p></details>
+      <details><summary>Βλέπω τα τηλέφωνα των αγγελιών;</summary><p>Όχι μέσα στο εργαλείο. Κάθε γραμμή έχει σύνδεσμο προς την αρχική αγγελία, όπου βρίσκονται τα στοιχεία επικοινωνίας που έχει δημοσιεύσει ο αγγελιοδότης.</p></details>
+      <details><summary>Φτιάχνει το εργαλείο την παρουσίαση για τον πελάτη μου;</summary><p>Όχι. Το εργαλείο σάς δίνει τα ακίνητα και τα στοιχεία τους οργανωμένα. Την παρουσίαση την ετοιμάζει και την κάνει ο μεσίτης.</p></details>
       <details><summary>Βλέπουν άλλα γραφεία τις σημειώσεις μας;</summary><p>Όχι. Οι σημειώσεις και η κατάσταση κάθε αγγελίας είναι ορατές μόνο στους χρήστες του δικού σας γραφείου.</p></details>
       <details><summary>Πώς ακυρώνω;</summary><p>Από τη «Διαχείριση συνδρομής» στον λογαριασμό σας, όποτε θέλετε. Διατηρείτε την πρόσβαση μέχρι το τέλος της περιόδου που έχετε ήδη πληρώσει και δεν χρεώνεστε ξανά.</p></details>
       <details><summary>Προστίθεται ΦΠΑ;</summary><p>Όχι. Η τιμή που βλέπετε κατά την πληρωμή είναι το συνολικό ποσό. Η υπηρεσία παρέχεται από την Touslemonde LLC, εταιρεία των Ηνωμένων Πολιτειών.</p></details>
@@ -203,7 +214,7 @@ footer .fl{display:flex;flex-wrap:wrap;gap:8px 22px;margin-bottom:14px}footer p{
 </section>
 
 <section class="band final">
-  <div class="w"><h2>Δείτε πρώτοι το επόμενο ακίνητο της περιοχής σας</h2><a class="btn dark" href="/signup?plan=year">Ξεκινήστε · <span data-y>€499</span> / έτος</a></div>
+  <div class="w"><h2>Δείτε πρώτοι το επόμενο ακίνητο της περιοχής σας</h2><a class="btn dark" href="#pricing"><span data-cta>Ξεκινήστε</span></a></div>
 </section>
 
 <footer><div class="w">
@@ -214,12 +225,24 @@ footer .fl{display:flex;flex-wrap:wrap;gap:8px 22px;margin-bottom:14px}footer p{
 
 <script>
 document.getElementById("yr").textContent = new Date().getFullYear();
+const eur = c => "€" + (c / 100).toLocaleString("el-GR", { minimumFractionDigits: c % 100 ? 2 : 0, maximumFractionDigits: 2 });
+let PR = { agent: { month: 1900, year: 17900 }, office: { month: 4900, year: 49900 } }, iv = "year";
+function prices() {
+  let maxp = 0;
+  document.querySelectorAll(".plan[data-tier]").forEach(el => {
+    const t = el.dataset.tier, P = PR[t], save = P.month * 12 - P.year, pct = Math.round(save / (P.month * 12) * 100); maxp = Math.max(maxp, pct);
+    el.querySelector("[data-amt]").textContent = eur(iv === "year" ? Math.round(P.year / 12) : P.month);
+    el.querySelector("[data-sub]").innerHTML = iv === "year" ? `<b>${eur(P.year)} με μία χρέωση τον χρόνο.</b> Κερδίζετε ${eur(save)} (${pct}%).` : `Χρέωση κάθε μήνα. ${eur(P.month * 12)} τον χρόνο. Με το ετήσιο κερδίζετε ${eur(save)}.`;
+    el.querySelector("[data-go]").href = `/signup?tier=${t}&plan=${iv}`;
+  });
+  document.querySelector("[data-maxpct]").textContent = "έως −" + maxp + "%";
+}
+document.querySelectorAll(".tog button").forEach(b => b.onclick = () => { iv = b.dataset.i; document.querySelectorAll(".tog button").forEach(x => x.setAttribute("aria-pressed", x === b)); prices(); });
+prices();
 fetch("/api/public").then(r => r.json()).then(d => {
-  const eur = c => "€" + (c / 100).toLocaleString("el-GR", { minimumFractionDigits: c % 100 ? 2 : 0, maximumFractionDigits: 2 });
-  const set = (sel, v) => document.querySelectorAll(sel).forEach(e => e.textContent = v);
-  const save = d.month * 12 - d.year;
-  set("[data-y]", eur(d.year)); set("[data-m]", eur(d.month)); set("[data-ym]", eur(Math.round(d.year / 12))); set("[data-m12]", eur(d.month * 12));
-  set("[data-save]", eur(save)); set("[data-pct]", Math.round(save / (d.month * 12) * 100));
+  if (d.prices) { PR = d.prices; prices(); }
+  if (d.trial > 0) { const t = document.getElementById("trial"); t.textContent = `${d.trial} ημέρες δωρεάν δοκιμή σε κάθε πρόγραμμα`; t.hidden = false; document.querySelectorAll("[data-cta]").forEach(e => e.textContent = `Δοκιμάστε ${d.trial} ημέρες δωρεάν`); }
+  else document.querySelectorAll("[data-cta]").forEach(e => e.textContent = `Ξεκινήστε · από ${eur(Math.round(PR.agent.year / 12))} / μήνα`);
   const c = d.counts || {}, n = k => c[k] || 0, fmt = v => v.toLocaleString("el-GR");
   const round = v => v >= 1000 ? fmt(Math.floor(v / 100) * 100) + "+" : fmt(v);
   const all = Object.values(c).reduce((a, b) => a + b, 0);
@@ -233,5 +256,20 @@ fetch("/api/public").then(r => r.json()).then(d => {
   if (d.lastCheck) document.getElementById("asof").textContent = "Ζωντανά στοιχεία του εργαλείου · τελευταία ενημέρωση " + new Date(d.lastCheck).toLocaleString("el-GR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Athens" });
   if (d.contact) { const m = document.getElementById("mail"); m.textContent = d.contact; m.href = "mailto:" + d.contact; }
 }).catch(() => {});
+// Sneak peek: a few real rows from today's list (area, size, rounded price only).
+let PV = null, ps = "owner", pc = "home";
+const esc = t => String(t).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+function peek() {
+  document.querySelectorAll("#peek [data-s]").forEach(b => b.setAttribute("aria-pressed", b.dataset.s === ps));
+  document.querySelectorAll("#peek [data-c]").forEach(b => { b.disabled = !!PV && !(PV[ps + "/" + b.dataset.c] || []).length; b.setAttribute("aria-pressed", b.dataset.c === pc); });
+  if (!PV) return;
+  const rows = (PV[ps + "/" + pc] || []).slice(0, 4), now = Date.now();
+  if (!rows.length) return;
+  document.getElementById("rows").innerHTML = rows.map(r => `<div class="row"><div class="ph"></div><div><b>${esc(r.area)}${r.sqm ? " · " + r.sqm.toLocaleString("el-GR") + " τ.μ." : ""}${now - Date.parse(r.seen) < 2 * 864e5 ? ' <span class="new">ΝΕΟ</span>' : ""}</b><small>${esc([r.type, r.beds ? r.beds + " υπν." : ""].filter(Boolean).join(" · "))}</small></div><div class="pr">${r.price.toLocaleString("el-GR")} ${r.currency === "USD" ? "$" : "€"}</div></div>`).join("");
+  document.getElementById("cap").textContent = "Πραγματικά ακίνητα από τη σημερινή λίστα, με στρογγυλεμένες τιμές. Στο εργαλείο: φωτογραφίες, πλήρη στοιχεία, φίλτρα και σύνδεσμος προς κάθε αγγελία.";
+}
+document.querySelectorAll("#peek [data-s]").forEach(b => b.onclick = () => { ps = b.dataset.s; if (PV && !(PV[ps + "/" + pc] || []).length) pc = "home"; peek(); });
+document.querySelectorAll("#peek [data-c]").forEach(b => b.onclick = () => { pc = b.dataset.c; peek(); });
+fetch("/api/public/preview").then(r => r.json()).then(d => { PV = d; peek(); }).catch(() => {});
 </script>
 </body></html>

@@ -18,3 +18,6 @@ If a site shows a CAPTCHA or login code, it is **not** bypassed: the page header
 | `TEAM_PASSWORD` | shared password for the team page (any username) |
 | `STRIPE_SECRET_KEY` | Stripe secret key (subscriptions). Without it, sign-up works but checkout says payments are not enabled yet |
 | `CONTACT_EMAIL`, `PUBLIC_URL`, `PRICE_MONTH_CENTS`, `PRICE_YEAR_CENTS` | optional: contact address shown on the pages, the public address (https://propertyradar.gr), prices (default 4900 / 49900) |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign-in (redirect: PUBLIC_URL/auth/google/callback) |
+| `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` | Sign in with Apple (Services ID, team, key id, .p8 contents; return URL: PUBLIC_URL/auth/apple/callback) |
+| `PRICE_AGENT_MONTH_CENTS`, `PRICE_AGENT_YEAR_CENTS`, `TRIAL_DAYS` | agent plan prices (default 1900 / 17900) and free-trial days (default 7, 0 = none) |
