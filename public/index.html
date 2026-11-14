@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Property Radar</title>
+<title>vresakinita</title><link rel="icon" href="/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Commissioner:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
 <style>
 /* Layout: one working column — status bar, filter rail, then a dense list of listing rows (photo · facts · price · status) */
 :root{
@@ -120,18 +120,56 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
   .det{grid-auto-rows:auto}
   .facts,.side{height:auto;overflow:visible}
 }
+
+/* ---- vresakinita look: the logo's blues, Manrope, soft cards ---- */
+:root{--bg:#F5F7FA;--surface:#fff;--fg:#12305A;--muted:#64748B;--line:#E1E7EF;--accent:#0A5A9A;--accent-soft:#E3F1FB;
+  --new:#17754C;--new-soft:#E2F5EC;--done:#8A5A00;--done-soft:#FBF0D5;--skip:#7A8699;--skip-soft:#EEF1F5;
+  --f-display:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;--f-body:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --sh:0 1px 2px rgba(18,48,90,.06),0 2px 8px rgba(18,48,90,.04);--sh-lg:0 2px 4px rgba(18,48,90,.04),0 18px 44px -14px rgba(18,48,90,.22)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0B1626;--surface:#122135;--fg:#E6EDF6;--muted:#93A3B8;--line:#22354D;--accent:#7CC4F2;--accent-soft:#16304D;
+  --new:#5CC792;--new-soft:#133325;--done:#E0BD63;--done-soft:#33290F;--skip:#8391A5;--skip-soft:#1A2A40;--sh:none;--sh-lg:0 18px 44px -14px rgba(0,0,0,.6)}}
+:root[data-theme="dark"]{--bg:#0B1626;--surface:#122135;--fg:#E6EDF6;--muted:#93A3B8;--line:#22354D;--accent:#7CC4F2;--accent-soft:#16304D;
+  --new:#5CC792;--new-soft:#133325;--done:#E0BD63;--done-soft:#33290F;--skip:#8391A5;--skip-soft:#1A2A40;--sh:none;--sh-lg:0 18px 44px -14px rgba(0,0,0,.6)}
+body{margin:0;font-size:15px;-webkit-font-smoothing:antialiased}
+.topbar{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
+.topbar>div{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px clamp(12px,2vw,32px);min-height:64px}
+.brandmark{display:inline-flex;align-items:center;gap:10px;font-weight:800;font-size:1.25rem;letter-spacing:-.03em;color:var(--fg);text-decoration:none}
+.brandmark img{height:36px;width:auto;display:block}
+.topbar .counts{margin-left:auto}
+.count{border-radius:999px;padding:6px 12px;font-weight:600;box-shadow:var(--sh)}.count b{font-weight:800}
+#acct{font-size:.88rem!important;font-weight:700;color:var(--fg)!important;text-decoration:none;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:8px 14px;box-shadow:var(--sh)}
+.wrap{padding-block:18px 56px;gap:14px}
+.sub{font-size:.92rem;margin:0}
+.seg{border-radius:14px;padding:4px;background:var(--surface);box-shadow:var(--sh);overflow:visible}
+.seg button{border-radius:10px;font-weight:700;padding:9px 22px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.cats button{border-radius:999px;padding:8px 14px;font-weight:600;background:var(--surface)}
+.cats button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.filters{border-radius:18px;padding:16px;box-shadow:var(--sh);gap:10px}
+.filters label{font-weight:700;font-size:.7rem}
+input,select{border-radius:10px;padding:9px 11px;background:var(--bg)}
+.ms>button{border-radius:10px}.ms .pop{border-radius:14px;box-shadow:var(--sh-lg)}
+.tab{font-weight:600;padding:7px 14px}.tab[aria-pressed="true"]{background:var(--fg);border-color:var(--fg);color:var(--bg)}
+.exp button,.ms .pop .pa button{padding:6px 12px;font-weight:600}.exp .go{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] .exp .go{color:#0B1626}
+.row{border-radius:18px;padding:14px;box-shadow:var(--sh);transition:box-shadow .2s,transform .2s}
+.row:hover{box-shadow:var(--sh-lg)}
+.row.is-new{border-left:1px solid var(--line);box-shadow:inset 4px 0 0 var(--new),var(--sh)}
+.thumb,.thumb.has-photo{border-radius:14px}
+.loc{font-weight:800;font-size:1.08rem;letter-spacing:-.01em}
+.tile{border-radius:10px;background:var(--bg);border-color:transparent}
+.price{font-weight:800;font-size:1.6rem;letter-spacing:-.02em}
+.st{border-radius:10px;font-weight:600}
+.open{border-radius:12px;font-weight:700;background:var(--accent);color:#fff;border-color:var(--accent);padding:12px}.open:hover{background:var(--fg);border-color:var(--fg);color:var(--bg)}
+.tel{border-radius:12px}.note{border-radius:10px}.agent{border-radius:12px;background:var(--bg);border-color:transparent}
+.pill{font-weight:700}.empty{border-radius:18px}.more{border-radius:999px;padding:10px 20px;font-weight:700;box-shadow:var(--sh)}
+.toast{border-radius:12px;font-weight:600}
 </style>
 </head><body>
 
+<div class="topbar"><div><a class="brandmark" href="/app"><img src="/logo.png" alt="">vresakinita</a><div class="counts" id="counts"></div><a id="acct" href="/account">Λογαριασμός</a></div></div>
 <div class="wrap">
-  <header>
-    <div>
-      <h1>Property Radar</h1>
-      <p class="sub" id="sub">Ιδιώτες και μεσίτες · κατοικίες, οικόπεδα, ξενοδοχεία · μία γραμμή ανά ακίνητο</p>
-    </div>
-    <div class="counts" id="counts"></div>
-    <a id="acct" href="/account" style="font-size:.85rem;color:var(--muted);white-space:nowrap">Λογαριασμός</a>
-  </header>
+  <p class="sub" id="sub">Ιδιώτες και μεσίτες · κατοικίες, οικόπεδα, ξενοδοχεία · μία γραμμή ανά ακίνητο</p>
 
   <div class="mode" id="mode">
     <div class="seg" role="group" aria-label="Πωλητής"><button data-seller="owner" aria-pressed="true">Ιδιώτες</button><button data-seller="agency" aria-pressed="false">Μεσίτες</button></div>

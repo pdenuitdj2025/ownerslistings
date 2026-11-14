@@ -17,11 +17,14 @@ app.get("/healthz", (_q, r) => r.send("ok"));
 const PUBLIC = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public");
 mountSaas(app, { appFile: path.join(PUBLIC, "index.html"), publicDir: PUBLIC });   // public pages, accounts, billing; everything under /api needs a paid office or the house team
 
+// Subscribers never get contact details: phone-like numbers (10+ digits) and email addresses are cut out of the ad's own text too.
+const scrubText = (t) => t.replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, "").replace(/(?:\+|00)?\d(?:[\s.\-\/()]{0,2}\d){9,}/g, "").replace(/[ \t]{2,}/g, " ");
+const scrub = (v) => typeof v === "string" ? scrubText(v) : Array.isArray(v) ? v.map(scrub) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, scrub(x)])) : v;
 app.get("/api/listings", async (req, res) => {
   const seller = ["owner", "agency"].includes(req.query.seller) ? req.query.seller : null, cat = ["home", "land", "hotel"].includes(req.query.category) ? req.query.category : null;
   // each office sees its own statuses and notes
   const { rows } = await pool.query("SELECT l.*, COALESCE(m.status, 'new') AS status, COALESCE(m.note, '') AS note FROM listings l LEFT JOIN org_marks m ON m.listing_id = l.id AND m.org_id = $3 WHERE l.img IS NOT FALSE AND NOT EXISTS (SELECT 1 FROM blocked b WHERE b.key = l.url OR b.key = l.phone) AND ($1::text IS NULL OR l.seller=$1) AND ($2::text IS NULL OR l.category=$2) ORDER BY l.first_seen DESC LIMIT 8000", [seller, cat, req.who.orgId]);
-  res.json(rows.map(toApi).map((x) => (req.who.admin ? x : { ...x, phone: undefined })));   // subscribers get the link to the original ad, never a phone number
+  res.json(rows.map(toApi).map((x) => (req.who.admin ? x : { ...x, phone: undefined, details: scrub(x.details) })));   // subscribers get the link to the original ad, never a phone number
 });
 app.get("/api/counts", async (_q, res) => {
   const { rows } = await pool.query("SELECT seller, category, count(*)::int AS n FROM listings WHERE img IS NOT FALSE AND gone_at IS NULL GROUP BY 1,2");
