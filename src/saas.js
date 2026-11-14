@@ -5,7 +5,7 @@ import { pool, kvGet, kvSet } from "./db.js";
 
 export const BRAND = process.env.BRAND || "vresakinita";
 // Only a brokerage office subscribes (the price covers the office and its lead broker). Each agent is an extra paid seat, added afterwards from the account page.
-const BASE = { month: Number(process.env.PRICE_MONTH_CENTS || 4900), year: Number(process.env.PRICE_YEAR_CENTS || 49900) };
+const BASE = { month: Number(process.env.PRICE_MONTH_CENTS || 4900), year: Number(process.env.PRICE_YEAR_CENTS || 46800) };
 const SEAT = { month: Number(process.env.PRICE_SEAT_MONTH_CENTS || 1500), year: Number(process.env.PRICE_SEAT_YEAR_CENTS || 14900) };
 const GOOGLE = { id: process.env.GOOGLE_CLIENT_ID || "", secret: process.env.GOOGLE_CLIENT_SECRET || "" };
 const APPLE = { id: process.env.APPLE_CLIENT_ID || "", team: process.env.APPLE_TEAM_ID || "", kid: process.env.APPLE_KEY_ID || "", key: (process.env.APPLE_PRIVATE_KEY || "").replace(/\\n/g, "\n") };

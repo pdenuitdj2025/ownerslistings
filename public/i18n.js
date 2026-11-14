@@ -68,7 +68,7 @@
     "Σύνολο τον μήνα": "Total per month", "Σύνολο τον χρόνο": "Total per year",
     "Χρέωση κάθε μήνα. Με το ετήσιο κερδίζετε": "Billed every month. With the yearly plan you save",
     "και την": "and the", "με μία χρέωση τον χρόνο.": "with one charge per year.",
-    "€499 με μία χρέωση τον χρόνο.": "€499 with one charge per year.",
+    "€468 με μία χρέωση τον χρόνο.": "€468 with one charge per year.",
     "τον μήνα για κάθε μεσίτη": "per month for each agent",
     "τον μήνα για κάθε μεσίτη (": "per month for each agent (",
     "τον μήνα για κάθε μεσίτη (€149 τον χρόνο ανά θέση)": "per month for each agent (€149 per year per seat)",
