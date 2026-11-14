@@ -176,6 +176,8 @@ setInterval(async () => {
   } catch (e) { console.error("hotel pass", e.message); }
   hotelBusy = false;
 }, 3 * 60 * 1000);
+// Errors left behind by runs that a restart cut off ("browser closed") are not real errors: clear them at every start.
+(async () => { try { const st = (await kvGet("sites")) || {}; let n = 0; for (const k of Object.keys(st)) if (st[k] && st[k].status === "error" && /has been closed|Target closed|browser has been closed/i.test(st[k].message || "")) { delete st[k].status; delete st[k].message; n++; } if (n) { await kvSet("sites", st); console.log("stale cut-off errors cleared:", n); } } catch (e) { console.error(e); } })();
 // Plot.gr and Indomio are not part of the tool: drop their old status entries.
 (async () => { try { const st = (await kvGet("sites")) || {}; if (st.plot || st.indomio) { delete st.plot; delete st.indomio; await kvSet("sites", st); } } catch (e) { console.error(e); } })();
 // One-time: phone numbers are no longer kept anywhere.
