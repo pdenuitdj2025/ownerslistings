@@ -144,25 +144,19 @@ code{background:var(--soft);padding:4px 8px;border-radius:8px;word-break:break-a
 <body><div class="top"><a class="logo" href="/"><img src="/logo.png" alt="">${esc(BRAND)}</a><a href="/" class="mut">Αρχική</a></div>${body}
 <footer>© ${new Date().getFullYear()} Touslemonde LLC · <a href="/terms">Όροι</a> · <a href="/privacy">Απόρρητο</a> · <a href="/contact">Επικοινωνία</a></footer></body></html>`;
 
-const socialButtons = (q = "") => !SOCIAL.google && !SOCIAL.apple ? "" : `${SOCIAL.google ? `<a class="btn ghost" href="/auth/google${q}">Συνέχεια με Google</a>` : ""}${SOCIAL.apple ? `<a class="btn" href="/auth/apple${q}">Συνέχεια με Apple</a>` : ""}<p class="mut" style="text-align:center;margin:18px 0 0">ή με email</p>`;
-const loginPage = (msg = "", email = "") => shell("Σύνδεση", `<main><div class="card"><h1>Σύνδεση</h1><p class="mut">Συνδεθείτε στον λογαριασμό σας.</p>${socialButtons()}
-<form method="post" action="/login"><label for="e">Email</label><input id="e" type="email" name="email" value="${esc(email)}" autocomplete="email" required autofocus>
-<label for="p">Κωδικός</label><input id="p" type="password" name="password" autocomplete="current-password" required>${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}
-<button class="btn alt">Σύνδεση</button></form><p class="mut" style="margin-top:16px">Είστε μεσιτικό γραφείο χωρίς λογαριασμό; <a href="/signup">Εγγραφή γραφείου</a></p>
-<p class="mut">Είστε συνεργάτης; Ζητήστε τον σύνδεσμο πρόσκλησης από το γραφείο σας.</p>
-<p class="mut">Ξεχάσατε τον κωδικό; Γράψτε μας από τη <a href="/contact">φόρμα επικοινωνίας</a>.</p></div></main>`);
+const NOTE_OFF = "Η σύνδεση ενεργοποιείται σύντομα.";
+const socialButtons = (q = "") => `<a class="btn ghost" href="/auth/google${q}">Συνέχεια με Google</a><a class="btn" href="/auth/apple${q}" style="margin-top:10px">Συνέχεια με Apple</a>`;
+const loginPage = (msg = "") => shell("Σύνδεση", `<main><div class="card"><h1>Σύνδεση</h1><p class="mut">Συνδεθείτε με τον λογαριασμό Google ή Apple σας.</p>${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}${socialButtons()}
+<p class="mut" style="margin-top:16px">Είστε μεσιτικό γραφείο χωρίς λογαριασμό; <a href="/signup">Εγγραφή γραφείου</a></p>
+<p class="mut">Είστε συνεργάτης; Ζητήστε τον σύνδεσμο πρόσκλησης από το γραφείο σας.</p></div></main>`);
 
-const signupPage = ({ msg = "", v = {}, invite = "", orgName = "", plan = "", full = false } = {}) => shell(orgName ? "Συμμετοχή" : "Εγγραφή γραφείου", `<main><div class="card"><h1>${orgName ? "Συμμετοχή στο γραφείο " + esc(orgName) : "Εγγραφή γραφείου"}</h1>
+const signupPage = ({ msg = "", invite = "", orgName = "", plan = "", full = false } = {}) => shell(orgName ? "Συμμετοχή" : "Εγγραφή γραφείου", `<main><div class="card"><h1>${orgName ? "Συμμετοχή στο γραφείο " + esc(orgName) : "Εγγραφή γραφείου"}</h1>
 ${full ? `<p class="err" role="alert">Το γραφείο δεν έχει ελεύθερη θέση συνεργάτη αυτή τη στιγμή. Ζητήστε από τον υπεύθυνο του γραφείου να προσθέσει μία θέση και ανοίξτε ξανά τον σύνδεσμο.</p></div></main>` : `
 <p class="mut">${orgName ? "Θα δουλεύετε στην ίδια λίστα με τους συναδέλφους σας. Η θέση σας έχει ήδη καλυφθεί από το γραφείο." : "Τη συνδρομή την ανοίγει το μεσιτικό γραφείο. Μετά προσθέτετε τους συνεργάτες σας, έναν έναν, από τον λογαριασμό σας."}</p>
-${socialButtons("?" + new URLSearchParams({ invite, plan }))}${SOCIAL.google || SOCIAL.apple ? `<p class="mut" style="font-size:.85rem">Με τη σύνδεση αποδέχεστε τους <a href="/terms">όρους</a> και την <a href="/privacy">πολιτική απορρήτου</a>.</p>` : ""}
-<form method="post" action="/signup"><input type="hidden" name="invite" value="${esc(invite)}"><input type="hidden" name="plan" value="${esc(plan)}">
-${orgName ? "" : `<label for="o">Επωνυμία γραφείου</label><input id="o" type="text" name="office" value="${esc(v.office)}" maxlength="120" autocomplete="organization" required>`}
-<label for="n">Ονοματεπώνυμο</label><input id="n" type="text" name="name" value="${esc(v.name)}" maxlength="120" autocomplete="name" required>
-<label for="e">Email</label><input id="e" type="email" name="email" value="${esc(v.email)}" maxlength="200" autocomplete="email" required>
-<label for="p">Κωδικός (τουλάχιστον 8 χαρακτήρες)</label><input id="p" type="password" name="password" minlength="8" maxlength="200" autocomplete="new-password" required>
+<form method="get" action="/auth/google"><input type="hidden" name="invite" value="${esc(invite)}"><input type="hidden" name="plan" value="${esc(plan)}">
+${orgName ? "" : `<label for="o">Επωνυμία γραφείου</label><input id="o" type="text" name="office" maxlength="120" autocomplete="organization" required>`}
 <label class="chk"><input type="checkbox" name="terms" value="1" required><span>Αποδέχομαι τους <a href="/terms" target="_blank" rel="noopener">όρους χρήσης</a> και την <a href="/privacy" target="_blank" rel="noopener">πολιτική απορρήτου</a>.</span></label>
-${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}<button class="btn alt">${orgName ? "Συμμετοχή" : "Συνέχεια στην πληρωμή"}</button></form>
+${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}<button class="btn ghost" formaction="/auth/google" style="margin-top:14px">Συνέχεια με Google</button><button class="btn" formaction="/auth/apple" style="margin-top:10px">Συνέχεια με Apple</button></form>
 <p class="mut" style="margin-top:16px">Έχετε ήδη λογαριασμό; <a href="/login">Σύνδεση</a></p></div></main>`}`);
 
 function accountPage(req, who, org, team, note = "") {
@@ -201,11 +195,11 @@ async function socialLogin(res, col, { sub, email, name }, st) {
   let u = (await pool.query(`SELECT id FROM users WHERE ${col}=$1`, [sub])).rows[0];
   if (!u && email) { u = (await pool.query("SELECT id FROM users WHERE email=$1", [email])).rows[0]; if (u) await pool.query(`UPDATE users SET ${col}=$2 WHERE id=$1`, [u.id, sub]); }
   if (u) { await startSession(res, u.id); return res.redirect("/app"); }
-  if (!email) return res.status(400).send(loginPage("Ο πάροχος δεν μας έδωσε email. Δοκιμάστε ξανά ή εγγραφείτε με email."));
+  if (!email) return res.status(400).send(loginPage("Ο πάροχος δεν μας έδωσε email. Δοκιμάστε ξανά."));
   const org = st.invite ? (await pool.query("SELECT * FROM orgs WHERE invite=$1 AND id <> 1", [st.invite])).rows[0] : null;
   if (org && !(await hasRoom(org))) return res.status(409).send(signupPage({ orgName: org.name, full: true }));
-  const shown = (name || email.split("@")[0]).slice(0, 120);
-  const orgId = org ? org.id : (await pool.query("INSERT INTO orgs(name, invite) VALUES ($1,$2) RETURNING id", [shown, rand(12)])).rows[0].id;
+  const shown = (name || email.split("@")[0]).slice(0, 120), officeName = (st.office || "").trim().slice(0, 120) || shown;
+  const orgId = org ? org.id : (await pool.query("INSERT INTO orgs(name, invite) VALUES ($1,$2) RETURNING id", [officeName, rand(12)])).rows[0].id;
   const nu = await pool.query(`INSERT INTO users(org_id, email, name, pass, role, ${col}) VALUES ($1,$2,$3,'',$4,$5) RETURNING id`, [orgId, email, shown, org ? "member" : "owner", sub]);
   await startSession(res, nu.rows[0].id);
   res.redirect(org ? "/app" : `/billing/checkout?plan=${st.plan === "month" ? "month" : "year"}`);
@@ -285,8 +279,8 @@ if(j.ok){f.reset();say("ok","Το μήνυμά σας στάλθηκε. Θα σ�
     res.set("Cache-Control", "public, max-age=900").json(peek.data);
   });
 
-  if (SOCIAL.google) {
-    app.get("/auth/google", (req, res) => res.redirect("https://accounts.google.com/o/oauth2/v2/auth?" + new URLSearchParams({ client_id: GOOGLE.id, redirect_uri: origin(req) + "/auth/google/callback", response_type: "code", scope: "openid email profile", prompt: "select_account", state: signState({ invite: String(req.query.invite || ""), plan: String(req.query.plan || "") }) })));
+  {
+    app.get("/auth/google", (req, res) => !SOCIAL.google ? res.status(503).send(loginPage(NOTE_OFF)) : res.redirect("https://accounts.google.com/o/oauth2/v2/auth?" + new URLSearchParams({ client_id: GOOGLE.id, redirect_uri: origin(req) + "/auth/google/callback", response_type: "code", scope: "openid email profile", prompt: "select_account", state: signState({ invite: String(req.query.invite || ""), plan: String(req.query.plan || ""), office: String(req.query.office || "").slice(0, 120) }) })));
     app.get("/auth/google/callback", async (req, res) => {
       const st = readState(req.query.state); if (!st || !req.query.code) return res.status(400).send(loginPage("Η σύνδεση δεν ολοκληρώθηκε. Δοκιμάστε ξανά."));
       try { const t = await tokenExchange("https://oauth2.googleapis.com/token", { code: String(req.query.code), client_id: GOOGLE.id, client_secret: GOOGLE.secret, redirect_uri: origin(req) + "/auth/google/callback", grant_type: "authorization_code" });
@@ -295,8 +289,8 @@ if(j.ok){f.reset();say("ok","Το μήνυμά σας στάλθηκε. Θα σ�
       } catch (e) { console.error("google sign-in", e.message); res.status(400).send(loginPage("Η σύνδεση με Google απέτυχε. Δοκιμάστε ξανά.")); }
     });
   }
-  if (SOCIAL.apple) {
-    app.get("/auth/apple", (req, res) => res.redirect("https://appleid.apple.com/auth/authorize?" + new URLSearchParams({ client_id: APPLE.id, redirect_uri: origin(req) + "/auth/apple/callback", response_type: "code", response_mode: "form_post", scope: "name email", state: signState({ invite: String(req.query.invite || ""), plan: String(req.query.plan || "") }) })));
+  {
+    app.get("/auth/apple", (req, res) => !SOCIAL.apple ? res.status(503).send(loginPage(NOTE_OFF)) : res.redirect("https://appleid.apple.com/auth/authorize?" + new URLSearchParams({ client_id: APPLE.id, redirect_uri: origin(req) + "/auth/apple/callback", response_type: "code", response_mode: "form_post", scope: "name email", state: signState({ invite: String(req.query.invite || ""), plan: String(req.query.plan || ""), office: String(req.query.office || "").slice(0, 120) }) })));
     app.post("/auth/apple/callback", async (req, res) => {
       const st = readState(req.body.state); if (!st || !req.body.code) return res.status(400).send(loginPage("Η σύνδεση δεν ολοκληρώθηκε. Δοκιμάστε ξανά."));
       try { const t = await tokenExchange("https://appleid.apple.com/auth/token", { code: String(req.body.code), client_id: APPLE.id, client_secret: appleSecret(), redirect_uri: origin(req) + "/auth/apple/callback", grant_type: "authorization_code" });
@@ -316,13 +310,6 @@ if(j.ok){f.reset();say("ok","Το μήνυμά σας στάλθηκε. Θα σ�
   });
 
   app.get("/login", async (req, res) => { const who = await identify(req); if (who) return res.redirect(who.admin ? "/app" : "/account"); res.send(loginPage()); });
-  app.post("/login", async (req, res) => {
-    const email = String(req.body.email || "").trim().toLowerCase(), pw = String(req.body.password || "");
-    if (throttled(req.ip)) return res.status(429).send(loginPage("Πολλές προσπάθειες. Δοκιμάστε ξανά σε 15 λεπτά.", email));
-    const { rows } = await pool.query("SELECT id, pass FROM users WHERE email=$1", [email]);
-    if (!rows[0] || !checkPass(pw, rows[0].pass)) { failed(req.ip); return res.status(401).send(loginPage("Λάθος email ή κωδικός.", email)); }
-    await startSession(res, rows[0].id); res.redirect("/app");
-  });
   app.post("/logout", async (req, res) => { const sid = cookieOf(req, "sid"); if (sid) await pool.query("DELETE FROM sessions WHERE token=$1", [sid]); setCookie(res, "sid", "", 0); setCookie(res, "auth", "", 0); res.redirect("/"); });
 
   const inviteOrg = async (code) => code ? (await pool.query("SELECT * FROM orgs WHERE invite=$1 AND id <> 1", [code])).rows[0] : null;
@@ -330,37 +317,6 @@ if(j.ok){f.reset();say("ok","Το μήνυμά σας στάλθηκε. Θα σ�
     const invite = String(req.query.invite || ""), org = await inviteOrg(invite);
     res.send(signupPage({ invite: org ? invite : "", orgName: org?.name || "", plan: req.query.plan === "month" ? "month" : "year", full: !!org && !(await hasRoom(org)) }));
   });
-  app.post("/signup", async (req, res) => {
-    const b = req.body || {}, email = String(b.email || "").trim().toLowerCase(), name = String(b.name || "").trim().slice(0, 120), office = String(b.office || "").trim().slice(0, 120), pw = String(b.password || "");
-    const invite = String(b.invite || ""), org = await inviteOrg(invite), plan = b.plan === "month" ? "month" : "year";
-    const back = (msg) => res.status(400).send(signupPage({ msg, v: { email, name, office }, invite: org ? invite : "", orgName: org?.name || "", plan }));
-    if (throttled(req.ip)) return back("Πολλές προσπάθειες. Δοκιμάστε ξανά σε λίγο.");
-    if (org && !(await hasRoom(org))) return res.status(409).send(signupPage({ orgName: org.name, full: true }));
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 200) return back("Γράψτε ένα έγκυρο email.");
-    if (pw.length < 8) return back("Ο κωδικός χρειάζεται τουλάχιστον 8 χαρακτήρες.");
-    if (!name || (!org && !office)) return back("Συμπληρώστε όλα τα πεδία.");
-    if (b.terms !== "1") return back("Χρειάζεται η αποδοχή των όρων.");
-    if ((await pool.query("SELECT 1 FROM users WHERE email=$1", [email])).rowCount) { failed(req.ip); return back("Υπάρχει ήδη λογαριασμός με αυτό το email. Συνδεθείτε."); }
-    const orgId = org ? org.id : (await pool.query("INSERT INTO orgs(name, invite) VALUES ($1,$2) RETURNING id", [office, rand(12)])).rows[0].id;
-    const u = await pool.query("INSERT INTO users(org_id, email, name, pass, role) VALUES ($1,$2,$3,$4,$5) RETURNING id", [orgId, email, name, hashPass(pw), org ? "member" : "owner"]);
-    await startSession(res, u.rows[0].id);
-    res.redirect(org ? "/app" : `/billing/checkout?plan=${plan}`);
-  });
-
-  // Password reset: the house team creates a one-time link and sends it to the person who asked.
-  const resetPage = (token, msg = "") => shell("Νέος κωδικός", `<main><div class="card"><h1>Νέος κωδικός</h1><form method="post" action="/reset/${esc(token)}"><label for="p">Νέος κωδικός (τουλάχιστον 8 χαρακτήρες)</label><input id="p" type="password" name="password" minlength="8" autocomplete="new-password" required autofocus>${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}<button class="btn">Αποθήκευση</button></form></div></main>`);
-  app.get("/reset/:token", async (req, res) => { const ok = (await pool.query("SELECT 1 FROM resets WHERE token=$1 AND expires > now()", [req.params.token])).rowCount; res.status(ok ? 200 : 404).send(ok ? resetPage(req.params.token) : shell("Νέος κωδικός", `<main><div class="card"><h1>Ο σύνδεσμος έληξε</h1><p>Ζητήστε νέο σύνδεσμο από τη <a href="/contact">φόρμα επικοινωνίας</a>.</p></div></main>`)); });
-  app.post("/reset/:token", async (req, res) => {
-    const pw = String(req.body.password || "");
-    if (pw.length < 8) return res.status(400).send(resetPage(req.params.token, "Ο κωδικός χρειάζεται τουλάχιστον 8 χαρακτήρες."));
-    const { rows } = await pool.query("DELETE FROM resets WHERE token=$1 AND expires > now() RETURNING user_id", [req.params.token]);
-    if (!rows[0]) return res.redirect("/reset/" + encodeURIComponent(req.params.token));
-    await pool.query("UPDATE users SET pass=$2 WHERE id=$1", [rows[0].user_id, hashPass(pw)]);
-    await pool.query("DELETE FROM sessions WHERE user_id=$1", [rows[0].user_id]);
-    await startSession(res, rows[0].user_id); res.redirect("/app");
-  });
-
-  // ---- signed-in pages ----
   const needUser = async (req, res, next) => { try { const who = await identify(req); if (!who) return res.redirect("/login"); if (who.admin) return res.redirect("/app"); req.who = who; next(); } catch (e) { next(e); } };
   const NOTES = { off: "Οι πληρωμές ενεργοποιούνται σύντομα. Δοκιμάστε ξανά σε λίγο.", err: "Η ενέργεια δεν ολοκληρώθηκε. Δοκιμάστε ξανά.", seats: "Αφαιρέστε πρώτα συνεργάτες: οι θέσεις δεν μπορούν να είναι λιγότερες από τους συνεργάτες που έχετε." };
   app.get("/account", needUser, async (req, res) => {
@@ -432,10 +388,5 @@ if(j.ok){f.reset();say("ok","Το μήνυμά σας στάλθηκε. Θα σ�
     const r = await pool.query("SELECT count(*)::int AS n FROM listings WHERE url=$1 OR phone=$1", [key]);
     res.json({ ok: true, hidden: r.rows[0].n });
   });
-  app.post("/api/admin/reset-link", async (req, res) => {
-    const { rows } = await pool.query("SELECT id FROM users WHERE email=$1", [String(req.body.email || "").trim().toLowerCase()]);
-    if (!rows[0]) return res.status(404).json({ error: "no such user" });
-    const t = rand(); await pool.query("INSERT INTO resets(token, user_id, expires) VALUES ($1,$2, now() + interval '2 days')", [t, rows[0].id]);
-    res.json({ link: `${origin(req)}/reset/${t}` });
-  });
+
 }
