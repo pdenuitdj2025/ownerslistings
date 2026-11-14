@@ -274,7 +274,7 @@ const io = "IntersectionObserver" in window ? new IntersectionObserver(es => es.
 document.querySelectorAll(".reveal").forEach((el, i) => { if (io) { el.style.transitionDelay = (i % 3) * 70 + "ms"; io.observe(el); } else el.classList.add("in"); });
 
 const eur = c => "€" + (c / 100).toLocaleString("el-GR", { minimumFractionDigits: c % 100 ? 2 : 0, maximumFractionDigits: 2 });
-let BASE = { month: 4999, year: 47988 }, SEAT = { month: 1500, year: 14400 }, iv = "year";
+let BASE = { month: 4999, year: 47988 }, SEAT = { month: 1499, year: 14388 }, iv = "year";
 const $ = id => document.getElementById(id), set = (sel, v) => document.querySelectorAll(sel).forEach(e => e.textContent = v);
 function prices() {
   const y = iv === "year", n = Number($("ag").value), save = BASE.month * 12 - BASE.year, pct = Math.round(save / (BASE.month * 12) * 100);
