@@ -58,7 +58,7 @@ export async function phoneSite(page, key, { limit = 60, maxMs = 0 } = {}) {
   const t0 = Date.now();
   const { rows } = await pool.query(
     `SELECT id, url, phone FROM listings WHERE source=$1 AND gone_at IS NULL AND img IS NOT FALSE AND details_checked IS NULL
-      ORDER BY first_seen DESC LIMIT $2`, [key, limit]);
+      ORDER BY (seller='owner' AND category='home') DESC, first_seen DESC LIMIT $2`, [key, limit]);
   let found = 0, checked = 0, misses = 0, blocks = 0;
   for (const r of rows) {
     if (maxMs && Date.now() - t0 > maxMs) break;   // long backfills are done in slices so the scheduled runs are never blocked for long

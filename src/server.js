@@ -180,6 +180,8 @@ setInterval(async () => {
 (async () => { try { const st = (await kvGet("sites")) || {}; if (st.plot || st.indomio) { delete st.plot; delete st.indomio; await kvSet("sites", st); } } catch (e) { console.error(e); } })();
 // One-time: phone numbers are no longer kept anywhere.
 (async () => { try { if (!(await kvGet("phonesCleared"))) { const r = await pool.query("UPDATE listings SET phone=NULL WHERE phone IS NOT NULL"); await kvSet("phonesCleared", true); console.log("phone numbers cleared:", r.rowCount); } } catch (e) { console.error(e); } })();
+// One-time: owner homes that still have no details (they were put back as read by the earlier repair) are read now, first in the queue.
+(async () => { try { if (!(await kvGet("detailsRepair3"))) { const r = await pool.query("UPDATE listings SET details_checked=NULL WHERE gone_at IS NULL AND details IS NULL AND seller='owner' AND category='home'"); await kvSet("detailsRepair3", true); console.log("owner homes without details queued:", r.rowCount); } } catch (e) { console.error(e); } })();
 // One-time repair: ads that were marked "read" while the site was answering with a block page have no details; read them again.
 (async () => { try {
   if (!(await kvGet("detailsRepair1"))) {
