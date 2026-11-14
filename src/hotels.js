@@ -85,29 +85,98 @@ async function gep() {
   return out;
 }
 
-// Fills m², rooms, year and a clean location from each hotel's own page (once per hotel; 80 per run)
+// ---- details from each hotel's own page (place, size, rooms, dates, address, features) ----
+const isoDate = (s) => { const m = String(s || "").match(/(\d{4})-(\d\d)-(\d\d)/); return m ? `${m[3]}/${m[2]}/${m[1]}` : ""; };
+const titleCase = (s) => String(s || "").replace(/\bisland\b/i, "").trim().toLowerCase().replace(/(^|[\s-])\S/g, (c) => c.toUpperCase());
+const lines = (html) => html.replace(/<(script|style|noscript)[\s\S]*?<\/\1>/g, " ").replace(/<\/(li|div|p|h\d|tr|td|th|section)>|<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, " ")
+  .replace(/&amp;/g, "&").replace(/&nbsp;|&#8211;|&#8217;/g, " ").split("\n").map((s) => s.replace(/\s+/g, " ").trim()).filter(Boolean);
+const between = (L, from, to) => { const i = L.findIndex((l) => from.test(l)); if (i < 0) return []; const out = []; for (let k = i + 1; k < L.length && k < i + 60; k++) { if (to.test(L[k])) break; out.push(L[k]); } return out; };
+const numOf = (s) => num(String(s || "").replace(/[^\d.,]/g, ""));
+const apMap = (j) => Object.fromEntries((j?.additionalProperty || []).map((p) => [String(p.name).toLowerCase(), String(p.value)]));
+const empty = () => ({ published: "", updated: "", desc: "", address: "", facts: [], extras: [] });
+const fact = (d, k, v) => { if (v !== null && v !== undefined && String(v).trim() !== "") d.facts.push([k, String(v).trim() + (/^Εμβαδόν/.test(k) ? " τ.μ." : "")]); };
+
+export function gepDetails(html) {
+  const lds = ldBlocks(html), j = lds.find((b) => b["@type"] === "RealEstateListing");
+  if (!j) return null;
+  const wp = (lds.find((b) => Array.isArray(b["@graph"]))?.["@graph"] || []).find((g) => [].concat(g["@type"]).includes("WebPage"));
+  const ap = apMap(j), d = empty();
+  const street = String(j.address?.streetAddress || "").replace(/,\s*Greece$/i, "").trim(), place = titleCase(j.address?.addressLocality);
+  d.address = [street, place && !street.toLowerCase().includes(place.toLowerCase()) ? place : ""].filter(Boolean).join(", ");
+  d.published = isoDate(j.datePosted); d.updated = isoDate(wp?.dateModified);
+  fact(d, "Υπνοδωμάτια", ap["bedrooms"]); fact(d, "Μπάνια", ap["bathrooms"]); fact(d, "Εμβαδόν", ap["area size"] && Math.round(numOf(ap["area size"]))); fact(d, "Εμβαδόν οικοπέδου", ap["plot size"] && Math.round(numOf(ap["plot size"])));
+  fact(d, "Έτος κατασκευής", ap["year built"]);
+  const ref = lines(html).find((l) => /^[A-Z]{3,}[A-Z0-9]*\d{2,}$/.test(l)); fact(d, "Κωδικός αγγελίας", ref);
+  d.extras = between(lines(html), /^FEATURES$/i, /^SHARE THIS$/i).filter((l) => l.length < 40).slice(0, 30);
+  return { details: d, sqm: Math.round(numOf(ap["area size"])) || null, beds: +ap["bedrooms"] || null, year: +ap["year built"] || null, loc: place };
+}
+
+export function ktimatoDetails(html) {
+  const lds = ldBlocks(html), j = lds.find((b) => b["@type"] === "RealEstateListing") || lds.find((b) => [].concat(b["@type"]).includes("RealEstateListing"));
+  if (!j) return null;
+  const bc = (lds.find((b) => [].concat(b["@type"]).includes("BreadcrumbList"))?.itemListElement || []).map((x) => x.name || x.item?.name).filter(Boolean).filter((n) => !/^home$/i.test(n)).slice(0, -1);
+  const L = lines(html), ap = apMap(j), d = empty(), at = (re) => { const i = L.findIndex((l) => re.test(l)); return i >= 0 ? L[i + 1] : ""; };
+  d.address = bc.slice().reverse().join(", ") || [j.address?.addressLocality, j.address?.addressRegion].filter(Boolean).join(", ");
+  d.published = isoDate(j.datePosted);
+  const sqm = Math.round(numOf(ap["area size"] || j.floorSize?.value)) || null;
+  fact(d, "Εμβαδόν", sqm); fact(d, "Εμβαδόν οικοπέδου", ap["plot size"] && Math.round(numOf(ap["plot size"])));
+  fact(d, "Νομός", at(/^Prefecture$/i) || j.address?.addressRegion); fact(d, "Δήμος", at(/^Municipality$/i)); fact(d, "Κωδικός αγγελίας", at(/^Ref\.? No\.?$/i));
+  d.extras = between(L, /^Features$/i, /^Location$/i).filter((l) => l.length < 40).slice(0, 30);
+  return { details: d, sqm, beds: +j.numberOfBedrooms || null, year: null, loc: j.address?.addressLocality || "" };
+}
+
+export function realtingDetails(text, title) {
+  const L = text.split("\n").map((s) => s.replace(/\s+/g, " ").trim()).filter(Boolean), d = empty();
+  const at = (re) => { const i = L.findIndex((l) => re.test(l)); return i >= 0 ? L[i + 1] || "" : ""; };
+  const upd = (text.match(/Last update:\s*(\d\d\/\d\d\/\d{4})/) || [])[1]; d.updated = upd || "";
+  const town = at(/^Town$/), city = at(/^City$/), addr = at(/^Address$/);   // the "Address" label also appears in the price block; the value after "Town" is what we want
+  const loc = L.findIndex((l) => /^Location$/.test(l)), blk = loc >= 0 ? L.slice(loc, loc + 20) : [];
+  const g = (k) => { const i = blk.findIndex((l) => l === k); return i >= 0 ? blk[i + 1] || "" : ""; };
+  d.address = [g("Address"), g("Town") || town, g("City") || city].filter((x, i, a) => x && a.indexOf(x) === i).join(", ");
+  const area = (L[L.findIndex((l) => /^Total area$/.test(l)) + 1] || "").match(/([\d\s.,]+)\s*m²/);
+  const sqm = area ? Math.round(num(area[1].replace(/\s/g, ""))) : null, beds = +(String(title).match(/(\d+)\s*bedrooms?/i) || [])[1] || null;
+  fact(d, "Εμβαδόν", sqm); fact(d, "Υπνοδωμάτια", beds); fact(d, "Περιοχή", g("Region")); fact(d, "Δήμος", g("City"));
+  fact(d, "Κωδικός αγγελίας", (text.match(/ID:\s*\n?\s*(\d{5,})/) || [])[1]);
+  return d.address || d.facts.length ? { details: d, sqm, beds, year: null, loc: g("Town") || town || "" } : null;
+}
+
+async function saveHotel(id, r) {
+  await pool.query("UPDATE listings SET details=$2, sqm=COALESCE($3,sqm), beds=COALESCE($4,beds), year=COALESCE($5,year), location=CASE WHEN $6<>'' THEN $6 ELSE location END, details_checked=now() WHERE id=$1",
+    [id, JSON.stringify(r.details), r.sqm, r.beds, r.year && r.year > 1800 && r.year < 2100 ? r.year : null, r.loc || ""]);
+}
+const hotelQueue = (sources, limit) => pool.query(`SELECT id, source, url FROM listings WHERE category='hotel' AND gone_at IS NULL AND source = ANY($1)
+  AND (details_checked IS NULL OR (details IS NULL AND details_checked < now() - interval '1 day')) ORDER BY details_checked NULLS FIRST, first_seen DESC LIMIT $2`, [sources, limit]);
+
+// Reads each hotel's own page once. A page that cannot be read is tried again the next day.
 async function enrichHotels() {
-  const { rows } = await pool.query("SELECT id, source, url FROM listings WHERE category='hotel' AND source IN ('ktimato','gep') AND details_checked IS NULL ORDER BY first_seen DESC LIMIT 80");
-  let done = 0;
-  for (const r of rows) {
+  let done = 0, failed = 0;
+  for (const r of (await hotelQueue(["ktimato", "gep"], 400)).rows) {
     try {
-      const html = await get(r.url); let sqm = null, beds = null, year = null, loc = "";
-      if (r.source === "ktimato") {
-        const j = ldBlocks(html).find((b) => b["@type"] === "RealEstateListing");
-        sqm = Math.round(num(j?.floorSize?.value ?? j?.floorSize ?? "")) || null; beds = j?.numberOfBedrooms || null;
-        loc = [j?.address?.addressLocality].filter(Boolean).join(", ");
-      } else {
-        const txt = html.replace(/<(script|style)[\s\S]*?<\/\1>/g, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
-        const meta = txt.match(/GREX\w+\s+(.{0,160})/)?.[1] || "";
-        sqm = Math.round(num((meta.match(/([\d.,]+)\s*m2/i) || [])[1] || "")) || null; beds = +(meta.match(/(\d+)\s*Bedrooms/i) || [])[1] || null; year = +(meta.match(/(\d{4})\s*Year Built/i) || [])[1] || null;
-        const cities = [...html.matchAll(/property-city\/[a-z0-9-]+\/?"[^>]*>([^<]+)</g)].map((m) => m[1].trim()).filter((c) => c && !/^greece$/i.test(c));
-        loc = cities.length ? cities[cities.length - 1].toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase()) : "";
-      }
-      await pool.query("UPDATE listings SET sqm=COALESCE($2,sqm), beds=COALESCE($3,beds), year=COALESCE($4,year), location=CASE WHEN $5<>'' THEN $5 ELSE location END, details_checked=now() WHERE id=$1", [r.id, sqm, beds, year && year > 1800 && year < 2100 ? year : null, loc]);
-      done++;
-    } catch (e) { await pool.query("UPDATE listings SET details_checked=now() WHERE id=$1", [r.id]); }
-    await new Promise((z) => setTimeout(z, 500));
+      const html = await get(r.url), res = r.source === "ktimato" ? ktimatoDetails(html) : gepDetails(html);
+      if (!res) throw new Error("no details found");
+      await saveHotel(r.id, res); done++;
+    } catch (e) { failed++; await pool.query("UPDATE listings SET details_checked=now() WHERE id=$1", [r.id]); }
+    await new Promise((z) => setTimeout(z, 300));
   }
+  const rt = (await hotelQueue(["realting"], 120)).rows;
+  if (rt.length) {   // realting blocks plain requests, so a real browser reads these
+    const { chromium } = await import("playwright");
+    const browser = await chromium.launch({ headless: true, args: ["--no-sandbox", "--disable-blink-features=AutomationControlled"] });
+    try {
+      const page = await (await browser.newContext({ userAgent: UA, locale: "en-US", viewport: { width: 1366, height: 900 } })).newPage();
+      for (const r of rt) {
+        try {
+          const resp = await page.goto(r.url, { waitUntil: "domcontentloaded", timeout: 45000 }); await page.waitForTimeout(1200);
+          if (!resp || resp.status() !== 200) throw new Error("status " + (resp && resp.status()));
+          const res = realtingDetails(await page.locator("body").innerText({ timeout: 8000 }), await page.title());
+          if (!res) throw new Error("no details found");
+          await saveHotel(r.id, res); done++;
+        } catch (e) { failed++; await pool.query("UPDATE listings SET details_checked=now() WHERE id=$1", [r.id]); }
+        await new Promise((z) => setTimeout(z, 700));
+      }
+    } finally { await browser.close().catch(() => {}); }
+  }
+  console.log(`hotel details: read ${done}, failed ${failed}`);
   return done;
 }
 
@@ -118,6 +187,7 @@ export async function runHotelSources(sites) {
     try {
       const ads = (await s.run()).filter((a) => a.price);
       const { created, merged } = await mergeAds(ads);
+      for (const a of ads) await pool.query("UPDATE listings SET prev_price=CASE WHEN price IS DISTINCT FROM $2 THEN price ELSE prev_price END, price=$2 WHERE id=$1 AND price IS DISTINCT FROM $2", [a.id, a.price]).catch(() => {});
       let removed = 0;
       const { rows } = await pool.query("SELECT id FROM listings WHERE source=$1 AND gone_at IS NULL", [s.key]);
       if (ads.length >= 50 && ads.length >= rows.length * 0.7) {   // complete list read: ads that are no longer on the site are removed

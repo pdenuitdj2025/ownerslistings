@@ -179,6 +179,8 @@ setInterval(async () => {
     console.log("details repair narrowed: restored", r.rowCount); await kvSet("detailsRepair2", true);
   }
 } catch (e) { console.error(e); } })();
+// One-time: every hotel gets read again from its own page (place, size, rooms, dates).
+(async () => { try { if (!(await kvGet("hotelsRepair1"))) { await pool.query("UPDATE listings SET details_checked=NULL, details=NULL WHERE category='hotel'"); await kvSet("hotelsRepair1", true); console.log("hotels queued for a fresh read"); } } catch (e) { console.error(e); } })();
 // One-time full scan requested for this version: queue it once after deploy.
 (async () => { try {
   if ((await kvGet("scanVersion")) !== "v2" && !(await kvGet("scanPending"))) {   // v2: re-check homes that are listed on several sites (a dead main ad now hands over to its twin)

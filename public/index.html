@@ -245,7 +245,6 @@ input,select{border-radius:10px;padding:9px 11px;background:var(--bg)}
       <button type="button" id="pickAll" title="Επιλογή όλων των αγγελιών που φαίνονται με τα τρέχοντα φίλτρα">Επιλογή όλων</button><button type="button" id="pickNone">Καθαρισμός επιλογής</button>
       <button type="button" class="go" id="expCopy" title="Αντιγραφή της λίστας (με τα τρέχοντα φίλτρα) για επικόλληση στο Claude">Αντιγραφή για Claude</button>
       <button type="button" class="go" id="expZip" title="ZIP με κείμενο και φωτογραφίες υψηλής ανάλυσης, για παρουσίαση">Λήψη ZIP (με φωτογραφίες)</button><button type="button" id="expCsv">CSV</button><button type="button" id="expJson">JSON</button></span>
-    <label class="check" for="solo"><input id="solo" type="checkbox" checked> Μόνο ιδιώτες (απόκρυψη ομαδοποιημένων αγγελιών με μεσίτες)</label>
   </div>
 
   <div class="list" id="list">
@@ -258,7 +257,7 @@ input,select{border-radius:10px;padding:9px 11px;background:var(--bg)}
 <script>
 const $ = s => document.querySelector(s);
 const els = { list:$("#list"), empty:$("#empty"), more:$("#more"), counts:$("#counts"), sub:$("#sub"),
-  q:$("#q"), type:$("#type"), pmin:$("#pmin"), pmax:$("#pmax"), smin:$("#smin"), smax:$("#smax"), src:$("#src"), sort:$("#sort"), solo:$("#solo"), toast:$("#toast") };
+  q:$("#q"), type:$("#type"), pmin:$("#pmin"), pmax:$("#pmax"), smin:$("#smin"), smax:$("#smax"), src:$("#src"), sort:$("#sort"), toast:$("#toast") };
 const SITE = { realting: "Realting", ktimato: "Ktimatoemporiki", gep: "Greek Exclusive Properties", xe: "xe.gr", spitogatos: "Spitogatos", indomio: "Indomio", spiti24: "Spiti24", plot: "Plot" };
 const srcOf = x => SITE[x.source] ? x.source : "xe";
 const sitesOf = x => [SITE[srcOf(x)], ...(x.alsoOn || []).map(a => a.site)];
@@ -279,9 +278,9 @@ function prefs(){ try{ const p = JSON.parse(localStorage.getItem("owner-listings
   if (Array.isArray(p.floors)) floorSel = new Set(p.floors);
   if (Array.isArray(p.munis)) muniSel = new Set(p.munis);
   for (const k of ["q","type","pmin","pmax","smin","smax","src","sort"]) if (p[k]!=null) els[k].value = p[k];
-  if (p.solo!=null) els.solo.checked = p.solo; if (p.tab) setTab(p.tab, true); }catch(e){} }
+  if (p.tab) setTab(p.tab, true); }catch(e){} }
 function savePrefs(){ try{ localStorage.setItem("owner-listings-filters", JSON.stringify({
-  q:els.q.value, munis:[...muniSel], type:els.type.value, pmin:els.pmin.value, pmax:els.pmax.value, smin:els.smin.value, smax:els.smax.value, floors:[...floorSel], seller:sellerSel, cat:catSel, src:els.src.value, sort:els.sort.value, solo:els.solo.checked, tab})); }catch(e){} }
+  q:els.q.value, munis:[...muniSel], type:els.type.value, pmin:els.pmin.value, pmax:els.pmax.value, smin:els.smin.value, smax:els.smax.value, floors:[...floorSel], seller:sellerSel, cat:catSel, src:els.src.value, sort:els.sort.value, tab})); }catch(e){} }
 
 function toast(msg){ els.toast.textContent = msg; els.toast.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(()=>els.toast.hidden = true, 2200); }
 
@@ -307,7 +306,7 @@ function filtered(){
   const smin = +els.smin.value || 0, smax = +els.smax.value || Infinity;
   let r = rows.filter(x => inMode(x) &&
     (tab === "all" || (x.status || "new") === tab) &&
-    (!els.solo.checked || !x.multi) &&
+    !x.multi &&
     (!qs.length || qs.some(t => norm(x.location).includes(t))) &&
     (!muniSel.size || muniSel.has(muniOf(x.location))) &&
     (!type || x.type === type) &&
@@ -346,7 +345,7 @@ function fitTiles(det){
 function fitAll(){ requestAnimationFrame(() => document.querySelectorAll(".det").forEach(fitTiles)); }
 addEventListener("resize", () => { clearTimeout(fitAll.t); fitAll.t = setTimeout(fitAll, 150); });
 function render(){
-  const all = rows.filter(x => inMode(x) && (!els.solo.checked || !x.multi));
+  const all = rows.filter(x => inMode(x) && !x.multi);
   updateMode();
   const c = s => all.filter(x => (x.status||"new") === s).length;
   const fresh = all.filter(x => (x.status||"new")==="new" && x.firstSeen && Date.now()-Date.parse(x.firstSeen) < 864e5).length;
@@ -408,7 +407,7 @@ function rowEl(x){
   const m = document.createElement("span"); m.textContent = [x.posted ? `δημοσιεύτηκε ${x.posted.toLowerCase()}` : "", ago(x.firstSeen)].filter(Boolean).join(" · "); meta.appendChild(m);
   const dt = x.details, det = d.querySelector(".det");
   if (dt) {
-    const MAIN = ["Όροφος","Έτος κατασκευής","Έτος ανακαίνισης","Θέρμανση","Σύστημα θέρμανσης","Ενεργειακή κλάση","Υπνοδωμάτια","Μπάνια","WC","Κουζίνες","Καθιστικά","Σαλόνια","Επίπεδα","Κατάσταση","Κατασκευή","Χρήση","Πάρκινγκ","Εμβαδόν οικοπέδου","Ζώνη","Διαθέσιμο από","Μεσιτική αμοιβή"];
+    const MAIN = ["Όροφος","Έτος κατασκευής","Έτος ανακαίνισης","Θέρμανση","Σύστημα θέρμανσης","Ενεργειακή κλάση","Υπνοδωμάτια","Μπάνια","WC","Κουζίνες","Καθιστικά","Σαλόνια","Επίπεδα","Κατάσταση","Κατασκευή","Χρήση","Πάρκινγκ","Εμβαδόν οικοπέδου","Νομός","Δήμος","Περιοχή","Κωδικός αγγελίας","Ζώνη","Διαθέσιμο από","Μεσιτική αμοιβή"];
     const tile = (k, v, wide) => { if (!v) return; const e = document.createElement("div"); e.className = "tile" + (wide === "full" ? " full" : wide ? " wide" : ""); const a = document.createElement("span"); a.textContent = k; const b = document.createElement("b"); b.textContent = v; e.append(a, b); det.appendChild(e); };
     tile("Διεύθυνση", dt.address, "full");
     tile("Δημοσίευση", dt.published); tile("Ενημέρωση", dt.updated);
@@ -566,7 +565,7 @@ function setupMuni(){
 function boot(){
   prefs(); setupMuni(); setupFloors(); setupExport(); setupMode();
   document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
-  ["q","type","pmin","pmax","smin","smax","src","sort","solo"].forEach(k => els[k].addEventListener("input", () => { shown = PAGE; savePrefs(); render(); }));
+  ["q","type","pmin","pmax","smin","smax","src","sort"].forEach(k => els[k].addEventListener("input", () => { shown = PAGE; savePrefs(); render(); }));
   els.more.addEventListener("click", () => { shown += PAGE; render(); });
 }
 boot();
