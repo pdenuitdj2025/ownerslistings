@@ -168,8 +168,15 @@ setInterval(async () => {
 // One-time repair: ads that were marked "read" while the site was answering with a block page have no details; read them again.
 (async () => { try {
   if (!(await kvGet("detailsRepair1"))) {
-    const r = await pool.query("UPDATE listings SET details_checked=NULL, phone_checked=CASE WHEN phone IS NULL THEN NULL ELSE phone_checked END WHERE gone_at IS NULL AND details IS NULL AND source IN ('spiti24','spitogatos','xe') AND details_checked IS NOT NULL");
+    const r = await pool.query("UPDATE listings SET details_checked=NULL, phone_checked=CASE WHEN phone IS NULL THEN NULL ELSE phone_checked END WHERE gone_at IS NULL AND details IS NULL AND seller='owner' AND category='home' AND source IN ('spiti24','spitogatos','xe') AND details_checked IS NOT NULL");
     console.log("details repair: re-queued", r.rowCount); await kvSet("detailsRepair1", true);
+  }
+} catch (e) { console.error(e); } })();
+// The repair above was too wide: put back everything that is not an owner home or that is older than yesterday (those were read before), so the sites are not hammered for hours.
+(async () => { try {
+  if (!(await kvGet("detailsRepair2"))) {
+    const r = await pool.query("UPDATE listings SET details_checked=now(), phone_checked=COALESCE(phone_checked, now()) WHERE gone_at IS NULL AND details IS NULL AND details_checked IS NULL AND (NOT (seller='owner' AND category='home') OR first_seen < now() - interval '30 hours')");
+    console.log("details repair narrowed: restored", r.rowCount); await kvSet("detailsRepair2", true);
   }
 } catch (e) { console.error(e); } })();
 // One-time full scan requested for this version: queue it once after deploy.
