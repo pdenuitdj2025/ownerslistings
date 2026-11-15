@@ -36,6 +36,12 @@ export async function initSaas() {
     await pool.query("INSERT INTO org_marks(org_id, listing_id, status, note) SELECT 1, id, status, note FROM listings WHERE status <> 'new' OR note <> '' ON CONFLICT DO NOTHING");
     await kvSet("marksMigrated", true);
   }
+  // Test brokerage for trying the whole customer flow end to end (signs in with Google; free access, skips payment).
+  if (!(await kvGet("testOffice1"))) {
+    const o = (await pool.query("INSERT INTO orgs(name, invite, comp) VALUES ('Test Brokerage', $1, true) RETURNING id", [rand(12)])).rows[0];
+    await pool.query("INSERT INTO users(org_id, email, name, pass, role) VALUES ($1, 'abllicense@gmail.com', 'Test Brokerage', '', 'owner') ON CONFLICT (email) DO NOTHING", [o.id]);
+    await kvSet("testOffice1", true);
+  }
   await pool.query("DELETE FROM sessions WHERE expires < now(); DELETE FROM resets WHERE expires < now()");
   await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login timestamptz; ALTER TABLE users ADD COLUMN IF NOT EXISTS logins integer NOT NULL DEFAULT 0; ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub text; ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_sub text; ALTER TABLE orgs ADD COLUMN IF NOT EXISTS tier text NOT NULL DEFAULT 'office'; ALTER TABLE orgs ADD COLUMN IF NOT EXISTS seats integer NOT NULL DEFAULT 0");
   SECRET = (await kvGet("authSecret")) || rand(32); await kvSet("authSecret", SECRET);

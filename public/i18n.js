@@ -8,7 +8,7 @@
 
   var D = {
     /* ---- shared / navigation ---- */
-    "Αρχική": "Home", "Διαχείριση": "Admin", "Άνοιγμα εργαλείου": "Open the tool", "Αποσύνδεση": "Log out", "Πελάτες": "Customers", "Συνέχεια με Google": "Continue with Google", "Συνέχεια με Apple": "Continue with Apple", "Συνδεθείτε με τον λογαριασμό Google ή Apple σας.": "Sign in with your Google or Apple account.", "Σύνδεση": "Log in", "Εγγραφή γραφείου": "Register your office", "Επικοινωνία": "Contact",
+    "Αρχική": "Home", "Συνδεθείτε με τον λογαριασμό Google σας.": "Sign in with your Google account.", "ή με email και κωδικό": "or with email and password", "Email (όνομα χρήστη)": "Email (username)", "Ή εγγραφή με email και κωδικό": "Or sign up with email and password", "Διαχείριση": "Admin", "Άνοιγμα εργαλείου": "Open the tool",  "Συνέχεια με Google": "Continue with Google", "Συνέχεια με Apple": "Continue with Apple", "Συνδεθείτε με τον λογαριασμό Google ή Apple σας.": "Sign in with your Google or Apple account.", "Σύνδεση": "Log in", "Εγγραφή γραφείου": "Register your office", "Επικοινωνία": "Contact",
     "Όροι": "Terms", "Απόρρητο": "Privacy", "Αποσύνδεση": "Log out", "Λογαριασμός": "Account", "Άνοιγμα εργαλείου": "Open the tool",
     "Κύρια πλοήγηση": "Main navigation", "Τι κάνει": "Features", "Πώς λειτουργεί": "How it works", "Τιμή": "Price",
     "Νομικές πληροφορίες & όροι": "Legal information & terms", "Πολιτική απορρήτου": "Privacy policy",
