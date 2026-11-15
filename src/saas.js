@@ -212,7 +212,7 @@ export function mountSaas(app, { appFile, publicDir }) {
   app.get("/", page("landing.html"));
   app.get("/terms", page("terms.html"));
   app.get("/privacy", page("privacy.html"));
-  app.get("/i18n.js?v=4", (_q, res) => res.sendFile("i18n.js", { root: publicDir, maxAge: "5m" }));
+  app.get("/i18n.js", (_q, res) => res.sendFile("i18n.js", { root: publicDir, maxAge: "5m" }));
   for (const f of ["logo.png", "logo-white.png", "favicon.png", "icon-google.png", "icon-apple.png"]) app.get("/" + f, (_q, res) => res.sendFile(f, { root: publicDir, maxAge: "7d" }));
   // ---- contact form: every message is kept, then forwarded to the owner's inbox ----
   const sentBy = new Map();
