@@ -180,6 +180,8 @@ setInterval(async () => {
 (async () => { try { const st = (await kvGet("sites")) || {}; let n = 0; for (const k of Object.keys(st)) if (st[k] && st[k].status === "error" && /has been closed|Target closed|browser has been closed/i.test(st[k].message || "")) { delete st[k].status; delete st[k].message; n++; } if (n) { await kvSet("sites", st); console.log("stale cut-off errors cleared:", n); } } catch (e) { console.error(e); } })();
 // Plot.gr and Indomio are not part of the tool: drop their old status entries.
 (async () => { try { const st = (await kvGet("sites")) || {}; if (st.plot || st.indomio) { delete st.plot; delete st.indomio; await kvSet("sites", st); } } catch (e) { console.error(e); } })();
+// One-time: clear every note made before (the office's own earlier notes).
+(async () => { try { if (!(await kvGet("notesCleared"))) { const a = await pool.query("UPDATE listings SET note='' WHERE note IS NOT NULL AND note<>''"); const b = await pool.query("UPDATE org_marks SET note='' WHERE note IS NOT NULL AND note<>''"); await kvSet("notesCleared", true); console.log("notes cleared:", a.rowCount + b.rowCount); } } catch (e) { console.error(e); } })();
 // One-time: phone numbers are no longer kept anywhere.
 (async () => { try { if (!(await kvGet("phonesCleared"))) { const r = await pool.query("UPDATE listings SET phone=NULL WHERE phone IS NOT NULL"); await kvSet("phonesCleared", true); console.log("phone numbers cleared:", r.rowCount); } } catch (e) { console.error(e); } })();
 // One-time: owner homes that still have no details (they were put back as read by the earlier repair) are read now, first in the queue.
