@@ -37,7 +37,7 @@ export async function initSaas() {
     await kvSet("marksMigrated", true);
   }
   await pool.query("DELETE FROM sessions WHERE expires < now(); DELETE FROM resets WHERE expires < now()");
-  await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub text; ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_sub text; ALTER TABLE orgs ADD COLUMN IF NOT EXISTS tier text NOT NULL DEFAULT 'office'; ALTER TABLE orgs ADD COLUMN IF NOT EXISTS seats integer NOT NULL DEFAULT 0");
+  await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login timestamptz; ALTER TABLE users ADD COLUMN IF NOT EXISTS logins integer NOT NULL DEFAULT 0; ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub text; ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_sub text; ALTER TABLE orgs ADD COLUMN IF NOT EXISTS tier text NOT NULL DEFAULT 'office'; ALTER TABLE orgs ADD COLUMN IF NOT EXISTS seats integer NOT NULL DEFAULT 0");
   SECRET = (await kvGet("authSecret")) || rand(32); await kvSet("authSecret", SECRET);
 }
 
@@ -119,7 +119,7 @@ async function identify(req) {
   if (r.id === 1) return { admin: true, orgId: 1, user: { id: r.uid, email: r.email, name: r.uname, role: r.role }, org: r };   // the house office = the admin console
   return { admin: false, orgId: r.id, user: { id: r.uid, email: r.email, name: r.uname, role: r.role }, org: r };
 }
-async function startSession(res, userId) { const t = rand(); await pool.query("INSERT INTO sessions(token, user_id, expires) VALUES ($1,$2, now() + interval '30 days')", [t, userId]); setCookie(res, "sid", t, 30); }
+async function startSession(res, userId) { await pool.query("UPDATE users SET last_login=now(), logins=COALESCE(logins,0)+1 WHERE id=$1", [userId]).catch(() => {}); const t = rand(); await pool.query("INSERT INTO sessions(token, user_id, expires) VALUES ($1,$2, now() + interval '30 days')", [t, userId]); setCookie(res, "sid", t, 30); }
 
 // ---- pages ----
 const shell = (title, body) => `<!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)} · ${esc(BRAND)}</title>
@@ -413,18 +413,51 @@ if(j.ok){f.reset();say("ok","Το μήνυμά σας στάλθηκε. Θα σ�
   app.get("/api/me", (req, res) => res.json(req.who.admin ? { admin: true, org: "Team" } : { admin: false, org: req.who.org.name, name: req.who.user.name }));
   app.get("/api/admin/messages", async (_q, res) => res.json((await pool.query("SELECT * FROM contact_messages ORDER BY id DESC LIMIT 200")).rows));
   app.get("/api/admin/orgs", async (_q, res) => res.json((await pool.query("SELECT o.id, o.name, o.comp, o.plan, o.sub_status, o.sub_until, o.created, (SELECT json_agg(json_build_object('email', u.email, 'name', u.name, 'role', u.role)) FROM users u WHERE u.org_id=o.id) AS users FROM orgs o ORDER BY o.id")).rows));
+  // ---- admin console: customers ----
+  const custRows = async () => (await pool.query(`SELECT u.id, u.email, u.name, u.role, u.created, u.last_login, u.logins, (u.google_sub IS NOT NULL) AS google, o.id AS org_id, o.name AS org, o.comp, o.plan, o.seats, o.sub_status, o.sub_until, o.sub_cancels, o.stripe_sub
+    FROM users u JOIN orgs o ON o.id=u.org_id WHERE o.id <> 1 ORDER BY u.created DESC`)).rows;
+  const custStatus = (r) => r.comp ? "free" : !r.sub_status ? "none" : r.sub_status === "canceled" || r.sub_status === "incomplete_expired" ? "cancelled" : r.sub_cancels ? "ending" : r.sub_status === "past_due" || r.sub_status === "unpaid" ? "past_due" : ["active", "trialing"].includes(r.sub_status) ? "active" : "none";
+  app.get("/api/admin/customers", async (_q, res) => {
+    const rows = (await custRows()).map((r) => ({ ...r, status: custStatus(r), signin: r.google ? "google" : "email" }));
+    const orgs = new Map(); for (const r of rows) if (!orgs.has(r.org_id)) orgs.set(r.org_id, r);
+    const live = [...orgs.values()].filter((r) => ["active", "ending", "past_due"].includes(r.status) && !r.comp);
+    const mrr = live.reduce((n, r) => n + (r.plan === "year" ? BASE.year / 12 + (r.seats || 0) * SEAT.year / 12 : BASE.month + (r.seats || 0) * SEAT.month), 0);
+    res.json({ rows, stats: { users: rows.length, offices: orgs.size, active: live.length, yearly: live.filter((r) => r.plan === "year").length, monthly: live.filter((r) => r.plan !== "year").length, cancelled: [...orgs.values()].filter((r) => r.status === "cancelled" || r.status === "ending").length, none: [...orgs.values()].filter((r) => r.status === "none").length, week: rows.filter((r) => Date.now() - new Date(r.created).getTime() < 7 * 864e5).length, mrr_cents: Math.round(mrr) } });
+  });
+  app.get("/api/admin/customers.csv", async (_q, res) => {
+    const q = (v) => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+    const out = [["email", "name", "office", "role", "signed_in_with", "status", "plan", "seats", "paid_until", "joined", "last_login", "logins"].join(",")];
+    for (const r of await custRows()) out.push([r.email, r.name, r.org, r.role, r.google ? "google" : "email", custStatus(r), r.plan || "", r.seats || 0, r.sub_until ? new Date(r.sub_until).toISOString() : "", new Date(r.created).toISOString(), r.last_login ? new Date(r.last_login).toISOString() : "", r.logins || 0].map(q).join(","));
+    res.type("text/csv; charset=utf-8").set("Content-Disposition", 'attachment; filename="customers.csv"').send("﻿" + out.join("\n"));
+  });
+  app.post("/api/admin/refresh", async (_q, res) => {
+    const orgs = (await pool.query("SELECT * FROM orgs WHERE id <> 1 AND (stripe_sub IS NOT NULL OR pending_session IS NOT NULL)")).rows;
+    for (const o of orgs) await syncOrg(o);
+    res.json({ ok: true, refreshed: orgs.length });
+  });
   app.get("/customers", needAccess, (req, res) => {
     if (!req.who.admin) return res.redirect("/");
-    res.send(shell("Πελάτες", `<main style="max-width:1000px"><p><a href="/app">← Εργαλείο</a></p><h1>Πελάτες</h1><p class="mut" id="sum"></p><div style="overflow:auto"><table id="t" style="width:100%;border-collapse:collapse;font-size:.92rem"></table></div></main>
+    res.send(shell("Πελάτες", `<main style="max-width:1100px"><p><a href="/app">← Εργαλείο</a></p><h1>Πελάτες</h1><p class="mut">Όλοι όσοι έχουν συνδεθεί, με την κατάσταση της συνδρομής τους από το Stripe.</p>
+<div id="tiles" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:18px 0"></div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px"><input id="q" type="search" placeholder="Αναζήτηση email, γραφείο, κατάσταση, πλάνο" style="flex:1;min-width:220px;padding:11px 14px;border:1px solid var(--line);border-radius:10px;font:inherit"><button class="btn sm" id="rf" type="button">Ανανέωση από Stripe</button><a class="btn ghost sm" href="/api/admin/customers.csv">Λήψη CSV</a></div>
+<div style="overflow:auto;background:#fff;border:1px solid var(--line);border-radius:14px"><table id="t" style="width:100%;border-collapse:collapse;font-size:.92rem"></table></div>
 <script>
-const e=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const d=s=>s?new Date(s).toLocaleDateString("el-GR"):"—";
-fetch("/api/admin/orgs").then(r=>r.json()).then(o=>{
-  const paid=o.filter(x=>x.sub_status==="active"||x.sub_status==="trialing").length, users=o.reduce((n,x)=>n+(x.users||[]).length,0);
-  document.getElementById("sum").textContent=o.length+" γραφεία · "+users+" χρήστες · "+paid+" ενεργές συνδρομές";
-  document.getElementById("t").innerHTML="<tr style='text-align:left;border-bottom:2px solid #ccd6e4'><th>Γραφείο</th><th>Χρήστες</th><th>Πλάνο</th><th>Κατάσταση</th><th>Ισχύει έως</th><th>Εγγραφή</th></tr>"+o.map(x=>"<tr style='border-bottom:1px solid #e3e9f2;vertical-align:top'><td style='padding:8px 6px'><b>"+e(x.name)+"</b>"+(x.comp?" <small>(δωρεάν)</small>":"")+"</td><td>"+(x.users||[]).map(u=>e(u.name||"")+" &lt;"+e(u.email)+"&gt; "+(u.role==="owner"?"★":"")).join("<br>")+"</td><td>"+e(x.plan||"—")+"</td><td>"+e(x.sub_status||"—")+"</td><td>"+d(x.sub_until)+"</td><td>"+d(x.created)+"</td></tr>").join("");
-});
-</script>`));
+const e=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const d=s=>s?new Date(s).toLocaleString("el-GR",{dateStyle:"short",timeStyle:"short"}):"—";
+const ST={active:"Ενεργή",ending:"Λήγει (ακυρώθηκε)",past_due:"Καθυστέρηση",cancelled:"Ακυρωμένη",none:"Χωρίς πλάνο",free:"Δωρεάν"};
+const PL={month:"Μηνιαίο",year:"Ετήσιο"};
+let DATA=[];
+function draw(){const k=document.getElementById("q").value.toLowerCase();
+ const rows=DATA.filter(r=>!k||[r.email,r.name,r.org,ST[r.status],PL[r.plan]].join(" ").toLowerCase().includes(k));
+ document.getElementById("t").innerHTML="<tr style='text-align:left;color:#566884;font-size:.78rem;text-transform:uppercase'><th style='padding:12px 14px'>Email</th><th>Γραφείο</th><th>Σύνδεση με</th><th>Κατάσταση</th><th>Πλάνο</th><th>Ισχύει έως</th><th>Εγγραφή</th><th>Τελευταία σύνδεση</th><th>Συνδέσεις</th></tr>"+
+ (rows.map(r=>"<tr style='border-top:1px solid #e3e9f2'><td style='padding:12px 14px'>"+e(r.email)+(r.role==="owner"?" ★":"")+"</td><td>"+e(r.org)+"</td><td>"+e(r.signin)+"</td><td><span style='background:#eef2f7;border-radius:999px;padding:3px 10px;font-weight:700;font-size:.8rem'>"+e(ST[r.status])+"</span></td><td>"+e(PL[r.plan]||"—")+(r.seats?" +"+r.seats+" θέσ.":"")+"</td><td>"+(r.sub_until?d(r.sub_until).split(",")[0]:"—")+"</td><td>"+d(r.created)+"</td><td>"+d(r.last_login)+"</td><td>"+(r.logins||0)+"</td></tr>").join("")||"<tr><td style='padding:18px 14px' colspan='9'>Κανένας πελάτης ακόμη.</td></tr>");}
+async function load(){const j=await (await fetch("/api/admin/customers")).json();DATA=j.rows;const st=j.stats;
+ const tl=[["Χρήστες",st.users],["Γραφεία",st.offices],["Ενεργές συνδρομές",st.active],["Ετήσιες",st.yearly],["Μηνιαίες",st.monthly],["Ακυρωμένες",st.cancelled],["Χωρίς πλάνο ακόμη",st.none],["Νέοι, 7 ημέρες",st.week],["Μηνιαία επαναλαμβανόμενα έσοδα","€"+(st.mrr_cents/100).toLocaleString("el-GR",{minimumFractionDigits:2,maximumFractionDigits:2})]];
+ document.getElementById("tiles").innerHTML=tl.map(x=>"<div style='background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px'><div style='font-size:1.7rem;font-weight:800'>"+e(x[1])+"</div><div class='mut' style='font-size:.85rem'>"+e(x[0])+"</div></div>").join("");draw();}
+document.getElementById("q").addEventListener("input",draw);
+document.getElementById("rf").addEventListener("click",async b=>{const el=b.target;el.disabled=true;el.textContent="Ανανέωση…";try{await fetch("/api/admin/refresh",{method:"POST"});await load();}finally{el.disabled=false;el.textContent="Ανανέωση από Stripe";}});
+load();
+</script></main>`));
   });
   app.post("/api/admin/comp", async (req, res) => { const r = await pool.query("UPDATE orgs SET comp=$2 WHERE id=$1 AND id <> 1", [Number(req.body.org), !!req.body.comp]); res.json({ ok: !!r.rowCount }); });
   // Removal request from an advertiser: the ad (by link) or every ad with that phone number stops showing, and stays hidden if it is read again.
