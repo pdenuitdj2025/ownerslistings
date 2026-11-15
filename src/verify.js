@@ -15,7 +15,8 @@ function priceOf(key, text, stored, sqm) {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export async function verifySite(page, key, { mode, since } = {}) {
+export async function verifySite(page, key, { mode, since, maxMs = 0 } = {}) {
+  const t0 = Date.now();
   const scan = mode === "scan";   // full re-check of every listing (all statuses), resumable: skips rows already checked since the scan started
   const photos = mode === "photos";   // backfill: every listed ad that has no photo link yet, all statuses, no daily cap
   const { rows } = scan
@@ -72,6 +73,7 @@ export async function verifySite(page, key, { mode, since } = {}) {
   };
   let total = 0, totalNoPhoto = 0, goneDeleted = 0, priceChanged = 0;
   for (const r of rows) {
+    if (maxMs && Date.now() - t0 > maxMs) { console.log(`[verify ${key}] time limit reached after ${total} ads, the rest continues next run`); break; }   // so one site can never hold up the others
     let v;
     if (key === "xe") {   // xe.gr is a JS app: open the ad like a visitor and see whether it bounces to the generic search page
       try {
@@ -108,7 +110,7 @@ export async function verifySite(page, key, { mode, since } = {}) {
       if (v.page) (PHOTO[key].test(v.og || "") ? withPhoto : noPhoto).push(r.id);
       if (PHOTO[key].test(v.og || "")) photoUrl[r.id] = v.og.replace(/^http:/, "https:");   // only judged when the ad page really loaded
     }
-    if (alive.length >= 15) { total += alive.length; totalNoPhoto += noPhoto.length; await flush(); }
+    if (alive.length >= 15) { total += alive.length; totalNoPhoto += noPhoto.length; await flush(); console.log(`[verify ${key}] progress: ${total} of ${rows.length} checked`); }
     await sleep(1200 + Math.random() * 1400);
   }
   total += alive.length; totalNoPhoto += noPhoto.length;

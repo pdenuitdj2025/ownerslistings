@@ -101,7 +101,7 @@ export async function runAll({ verify = true, enrich = false, phones = false, sc
           console.log(`[${s.label}] agency ${cat}: scraped ${ag.length}, new ${am.created}`);
         } catch (e) { console.error(`[${s.label}] agency ads failed: ${e.message}`); }
         sites[s.key] = { status: "ok", at: new Date().toISOString(), scraped: ads.length, created, merged, dropped };
-        if (verify) try { sites[s.key].verified = await verifySite(page, s.key); } catch (e) { console.error(`[${s.label}] verify failed: ${e.message}`); sites[s.key].verified = { error: e.message.slice(0, 120) }; }
+        if (verify) try { sites[s.key].verified = await verifySite(page, s.key, { maxMs: 10 * 60 * 1000 }); } catch (e) { console.error(`[${s.label}] verify failed: ${e.message}`); sites[s.key].verified = { error: e.message.slice(0, 120) }; }
         try { sites[s.key].phones = { ...(await phoneSite(page, s.key, { limit: 150, maxMs: 12 * 60 * 1000 })), at: new Date().toISOString() }; } catch (e) { console.error(`[${s.label}] phones failed: ${e.message}`); }
         console.log(`[${s.label}] scraped ${ads.length}, new ${created}, merged ${merged}, price drops ${dropped}`);
       } catch (e) {
