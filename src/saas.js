@@ -380,6 +380,19 @@ if(j.ok){f.reset();say("ok","Το μήνυμά σας στάλθηκε. Θα σ�
   app.get("/api/me", (req, res) => res.json(req.who.admin ? { admin: true, org: "Team" } : { admin: false, org: req.who.org.name, name: req.who.user.name }));
   app.get("/api/admin/messages", async (_q, res) => res.json((await pool.query("SELECT * FROM contact_messages ORDER BY id DESC LIMIT 200")).rows));
   app.get("/api/admin/orgs", async (_q, res) => res.json((await pool.query("SELECT o.id, o.name, o.comp, o.plan, o.sub_status, o.sub_until, o.created, (SELECT json_agg(json_build_object('email', u.email, 'name', u.name, 'role', u.role)) FROM users u WHERE u.org_id=o.id) AS users FROM orgs o ORDER BY o.id")).rows));
+  app.get("/customers", needAccess, (req, res) => {
+    if (!req.who.admin) return res.redirect("/");
+    res.send(shell("Πελάτες", `<main style="max-width:1000px"><h1>Πελάτες</h1><p class="mut" id="sum"></p><div style="overflow:auto"><table id="t" style="width:100%;border-collapse:collapse;font-size:.92rem"></table></div></main>
+<script>
+const e=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const d=s=>s?new Date(s).toLocaleDateString("el-GR"):"—";
+fetch("/api/admin/orgs").then(r=>r.json()).then(o=>{
+  const paid=o.filter(x=>x.sub_status==="active"||x.sub_status==="trialing").length, users=o.reduce((n,x)=>n+(x.users||[]).length,0);
+  document.getElementById("sum").textContent=o.length+" γραφεία · "+users+" χρήστες · "+paid+" ενεργές συνδρομές";
+  document.getElementById("t").innerHTML="<tr style='text-align:left;border-bottom:2px solid #ccd6e4'><th>Γραφείο</th><th>Χρήστες</th><th>Πλάνο</th><th>Κατάσταση</th><th>Ισχύει έως</th><th>Εγγραφή</th></tr>"+o.map(x=>"<tr style='border-bottom:1px solid #e3e9f2;vertical-align:top'><td style='padding:8px 6px'><b>"+e(x.name)+"</b>"+(x.comp?" <small>(δωρεάν)</small>":"")+"</td><td>"+(x.users||[]).map(u=>e(u.name||"")+" &lt;"+e(u.email)+"&gt; "+(u.role==="owner"?"★":"")).join("<br>")+"</td><td>"+e(x.plan||"—")+"</td><td>"+e(x.sub_status||"—")+"</td><td>"+d(x.sub_until)+"</td><td>"+d(x.created)+"</td></tr>").join("");
+});
+</script>`));
+  });
   app.post("/api/admin/comp", async (req, res) => { const r = await pool.query("UPDATE orgs SET comp=$2 WHERE id=$1 AND id <> 1", [Number(req.body.org), !!req.body.comp]); res.json({ ok: !!r.rowCount }); });
   // Removal request from an advertiser: the ad (by link) or every ad with that phone number stops showing, and stays hidden if it is read again.
   app.post("/api/admin/block", async (req, res) => {
