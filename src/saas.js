@@ -145,18 +145,31 @@ code{background:var(--soft);padding:4px 8px;border-radius:8px;word-break:break-a
 <footer>© ${new Date().getFullYear()} Touslemonde LLC · <a href="/terms">Όροι</a> · <a href="/privacy">Απόρρητο</a> · <a href="/contact">Επικοινωνία</a></footer></body></html>`;
 
 const NOTE_OFF = "Η σύνδεση ενεργοποιείται σύντομα.";
-const socialButtons = (q = "") => `<a class="sbtn g" href="/auth/google${q}"><img src="/icon-google.png?v=1" alt=""><span>Συνέχεια με Google</span></a><a class="sbtn a" href="/auth/apple${q}"><img src="/icon-apple.png?v=1" alt=""><span>Συνέχεια με Apple</span></a>`;
-const loginPage = (msg = "") => shell("Σύνδεση", `<main><div class="card"><h1>Σύνδεση</h1><p class="mut">Συνδεθείτε με τον λογαριασμό Google ή Apple σας.</p>${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}${socialButtons()}
+const GBTN = `<img src="/icon-google.png?v=1" alt=""><span>Συνέχεια με Google</span>`;
+const socialButtons = (q = "") => `<a class="sbtn g" href="/auth/google${q}">${GBTN}</a>`;
+const loginPage = (msg = "", email = "") => shell("Σύνδεση", `<main><div class="card"><h1>Σύνδεση</h1><p class="mut">Συνδεθείτε με τον λογαριασμό Google σας.</p>${socialButtons()}
+<p class="mut" style="margin:18px 0 0;text-align:center">ή με email και κωδικό</p>
+<form method="post" action="/login"><label for="e">Email (όνομα χρήστη)</label><input id="e" type="email" name="email" value="${esc(email)}" autocomplete="username" required>
+<label for="p">Κωδικός</label><input id="p" type="password" name="password" autocomplete="current-password" required>${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}
+<button class="btn alt">Σύνδεση</button></form>
 <p class="mut" style="margin-top:16px">Είστε μεσιτικό γραφείο χωρίς λογαριασμό; <a href="/signup">Εγγραφή γραφείου</a></p>
 <p class="mut">Είστε συνεργάτης; Ζητήστε τον σύνδεσμο πρόσκλησης από το γραφείο σας.</p></div></main>`);
 
-const signupPage = ({ msg = "", invite = "", orgName = "", plan = "", full = false } = {}) => shell(orgName ? "Συμμετοχή" : "Εγγραφή γραφείου", `<main><div class="card"><h1>${orgName ? "Συμμετοχή στο γραφείο " + esc(orgName) : "Εγγραφή γραφείου"}</h1>
+const signupPage = ({ msg = "", v = {}, invite = "", orgName = "", plan = "", full = false } = {}) => shell(orgName ? "Συμμετοχή" : "Εγγραφή γραφείου", `<main><div class="card"><h1>${orgName ? "Συμμετοχή στο γραφείο " + esc(orgName) : "Εγγραφή γραφείου"}</h1>
 ${full ? `<p class="err" role="alert">Το γραφείο δεν έχει ελεύθερη θέση συνεργάτη αυτή τη στιγμή. Ζητήστε από τον υπεύθυνο του γραφείου να προσθέσει μία θέση και ανοίξτε ξανά τον σύνδεσμο.</p></div></main>` : `
 <p class="mut">${orgName ? "Θα δουλεύετε στην ίδια λίστα με τους συναδέλφους σας. Η θέση σας έχει ήδη καλυφθεί από το γραφείο." : "Τη συνδρομή την ανοίγει το μεσιτικό γραφείο. Μετά προσθέτετε τους συνεργάτες σας, έναν έναν, από τον λογαριασμό σας."}</p>
 <form method="get" action="/auth/google"><input type="hidden" name="invite" value="${esc(invite)}"><input type="hidden" name="plan" value="${esc(plan)}">
 ${orgName ? "" : `<label for="o">Επωνυμία γραφείου</label><input id="o" type="text" name="office" maxlength="120" autocomplete="organization" required>`}
 <label class="chk"><input type="checkbox" name="terms" value="1" required><span>Αποδέχομαι τους <a href="/terms" target="_blank" rel="noopener">όρους χρήσης</a> και την <a href="/privacy" target="_blank" rel="noopener">πολιτική απορρήτου</a>.</span></label>
-${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}<button type="submit" class="sbtn g" formaction="/auth/google"><img src="/icon-google.png?v=1" alt=""><span>Συνέχεια με Google</span></button><button type="submit" class="sbtn a" formaction="/auth/apple"><img src="/icon-apple.png?v=1" alt=""><span>Συνέχεια με Apple</span></button></form>
+<button type="submit" class="sbtn g">${GBTN}</button></form>
+<details style="margin-top:18px"${msg ? " open" : ""}><summary class="mut" style="cursor:pointer">Ή εγγραφή με email και κωδικό</summary>
+<form method="post" action="/signup"><input type="hidden" name="invite" value="${esc(invite)}"><input type="hidden" name="plan" value="${esc(plan)}">
+${orgName ? "" : `<label for="o2">Επωνυμία γραφείου</label><input id="o2" type="text" name="office" value="${esc(v.office)}" maxlength="120" autocomplete="organization" required>`}
+<label for="n">Ονοματεπώνυμο</label><input id="n" type="text" name="name" value="${esc(v.name)}" maxlength="120" autocomplete="name" required>
+<label for="e">Email (όνομα χρήστη)</label><input id="e" type="email" name="email" value="${esc(v.email)}" maxlength="200" autocomplete="username" required>
+<label for="pw">Κωδικός (τουλάχιστον 8 χαρακτήρες)</label><input id="pw" type="password" name="password" minlength="8" autocomplete="new-password" required>
+<label class="chk"><input type="checkbox" name="terms" value="1" required><span>Αποδέχομαι τους <a href="/terms" target="_blank" rel="noopener">όρους χρήσης</a> και την <a href="/privacy" target="_blank" rel="noopener">πολιτική απορρήτου</a>.</span></label>
+${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}<button class="btn alt">Εγγραφή</button></form></details>
 <p class="mut" style="margin-top:16px">Έχετε ήδη λογαριασμό; <a href="/login">Σύνδεση</a></p></div></main>`}`);
 
 function accountPage(req, who, org, team, note = "") {
@@ -310,12 +323,35 @@ if(j.ok){f.reset();say("ok","Το μήνυμά σας στάλθηκε. Θα σ�
   });
 
   app.get("/login", async (req, res) => { const who = await identify(req); if (who) return res.redirect(who.admin ? "/app" : "/account"); res.send(loginPage()); });
+  app.post("/login", async (req, res) => {
+    const email = String(req.body.email || "").trim().toLowerCase(), pw = String(req.body.password || "");
+    if (throttled(req.ip)) return res.status(429).send(loginPage("Πολλές προσπάθειες. Δοκιμάστε ξανά σε 15 λεπτά.", email));
+    const { rows } = await pool.query("SELECT id, pass FROM users WHERE email=$1", [email]);
+    if (!rows[0] || !rows[0].pass || !checkPass(pw, rows[0].pass)) { failed(req.ip); return res.status(401).send(loginPage("Λάθος email ή κωδικός.", email)); }
+    await startSession(res, rows[0].id); res.redirect("/account");
+  });
   app.post("/logout", async (req, res) => { const sid = cookieOf(req, "sid"); if (sid) await pool.query("DELETE FROM sessions WHERE token=$1", [sid]); setCookie(res, "sid", "", 0); setCookie(res, "auth", "", 0); res.redirect("/"); });
 
   const inviteOrg = async (code) => code ? (await pool.query("SELECT * FROM orgs WHERE invite=$1 AND id <> 1", [code])).rows[0] : null;
   app.get("/signup", async (req, res) => {
     const invite = String(req.query.invite || ""), org = await inviteOrg(invite);
     res.send(signupPage({ invite: org ? invite : "", orgName: org?.name || "", plan: req.query.plan === "month" ? "month" : "year", full: !!org && !(await hasRoom(org)) }));
+  });
+  app.post("/signup", async (req, res) => {
+    const b = req.body || {}, email = String(b.email || "").trim().toLowerCase(), name = String(b.name || "").trim().slice(0, 120), office = String(b.office || "").trim().slice(0, 120), pw = String(b.password || "");
+    const invite = String(b.invite || ""), org = await inviteOrg(invite), plan = b.plan === "month" ? "month" : "year";
+    const back = (msg) => res.status(400).send(signupPage({ msg, v: { email, name, office }, invite: org ? invite : "", orgName: org?.name || "", plan }));
+    if (throttled(req.ip)) return back("Πολλές προσπάθειες. Δοκιμάστε ξανά σε λίγο.");
+    if (org && !(await hasRoom(org))) return res.status(409).send(signupPage({ orgName: org.name, full: true }));
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 200) return back("Γράψτε ένα έγκυρο email.");
+    if (pw.length < 8) return back("Ο κωδικός χρειάζεται τουλάχιστον 8 χαρακτήρες.");
+    if (!name || (!org && !office)) return back("Συμπληρώστε όλα τα πεδία.");
+    if (b.terms !== "1") return back("Χρειάζεται η αποδοχή των όρων.");
+    if ((await pool.query("SELECT 1 FROM users WHERE email=$1", [email])).rowCount) { failed(req.ip); return back("Υπάρχει ήδη λογαριασμός με αυτό το email. Συνδεθείτε."); }
+    const orgId = org ? org.id : (await pool.query("INSERT INTO orgs(name, invite) VALUES ($1,$2) RETURNING id", [office, rand(12)])).rows[0].id;
+    const u = await pool.query("INSERT INTO users(org_id, email, name, pass, role) VALUES ($1,$2,$3,$4,$5) RETURNING id", [orgId, email, name, hashPass(pw), org ? "member" : "owner"]);
+    await startSession(res, u.rows[0].id);
+    res.redirect(org ? "/app" : `/billing/checkout?plan=${plan}`);
   });
   const needUser = async (req, res, next) => { try { const who = await identify(req); if (!who) return res.redirect("/login"); if (who.admin) return res.redirect("/app"); req.who = who; next(); } catch (e) { next(e); } };
   const NOTES = { off: "Οι πληρωμές ενεργοποιούνται σύντομα. Δοκιμάστε ξανά σε λίγο.", err: "Η ενέργεια δεν ολοκληρώθηκε. Δοκιμάστε ξανά.", seats: "Αφαιρέστε πρώτα συνεργάτες: οι θέσεις δεν μπορούν να είναι λιγότερες από τους συνεργάτες που έχετε." };
