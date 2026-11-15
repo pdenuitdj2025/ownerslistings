@@ -122,7 +122,7 @@
     "Αντιγραφή για Claude": "Copy for Claude", "Αντιγραφή της λίστας (με τα τρέχοντα φίλτρα) για επικόλληση στο Claude": "Copy the list (with the current filters) to paste into Claude",
     "Λήψη ZIP (με φωτογραφίες)": "Download ZIP (with photos)", "ZIP με κείμενο και φωτογραφίες υψηλής ανάλυσης, για παρουσίαση": "ZIP with text and high-resolution photos, for a presentation",
     "Για εξαγωγή": "For export", "Σημείωση (τηλέφωνο, αποτέλεσμα κλήσης…)": "Note (call result, follow-up…)",
-    "Άνοιγμα αγγελίας": "Open listing", "Άνοιγμα αγγελίας στο": "Open listing on", "Αγγελία": "Listing", "Αγγελία ιδιώτη": "Private seller listing",
+    "Αγγελία μεσίτη": "Agency listing", "Αγγελία ιδιώτη": "Private owner listing", "Άνοιγμα αγγελίας": "Open listing", "Άνοιγμα αγγελίας στο": "Open listing on", "Αγγελία": "Listing", "Αγγελία ιδιώτη": "Private seller listing",
     "Παράλειψη": "Skip", "Επέστρεψε στον έλεγχο": "Back to review", "Περισσότερα": "More", "Φωτογραφίες": "Photos", "Φωτογραφίες…": "Photos…",
     "Τιμή/τ.μ.": "Price/sqm", "Τιμή:": "Price:", "Εμβαδόν": "Area", "Εμβαδόν:": "Area:", "Εμβαδόν οικοπέδου": "Plot area",
     "Υπνοδωμάτια": "Bedrooms", "Μπάνια": "Bathrooms", "Όροφος": "Floor", "Έτος κατασκευής": "Year built", "Έτος ανακαίνισης": "Year renovated",

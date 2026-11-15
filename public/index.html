@@ -402,7 +402,7 @@ function rowEl(x){
     uniq.forEach((a, i) => { if (i) also.append(", "); const l = document.createElement("a"); l.href = a.url; l.target = "_blank"; l.rel = "noopener"; l.textContent = a.site + " ↗"; also.appendChild(l); });
     meta.appendChild(also);
   }
-  meta.insertAdjacentHTML("beforeend", x.multi ? `<span class="pill multi">Ομαδοποιημένη · ιδιώτης + άλλοι</span>` : `<span class="pill">Αγγελία ιδιώτη</span>`);
+  meta.insertAdjacentHTML("beforeend", x.multi ? `<span class="pill multi">Ομαδοποιημένη · ιδιώτης + άλλοι</span>` : `<span class="pill">${x.seller === "agency" ? "Αγγελία μεσίτη" : "Αγγελία ιδιώτη"}</span>`);
   const m = document.createElement("span"); m.textContent = [x.posted ? `δημοσιεύτηκε ${x.posted.toLowerCase()}` : "", ago(x.firstSeen)].filter(Boolean).join(" · "); meta.appendChild(m);
   const dt = x.details, det = d.querySelector(".det");
   if (dt) {

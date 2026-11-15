@@ -68,7 +68,8 @@ export async function runAll({ verify = true, enrich = false, phones = false, sc
           await kvSet("sites", sites);
           continue;
         }
-        const ads = await s.run(page);
+        let ads = await s.run(page);
+        for (let t = 0; !ads.length && t < 2; t++) { console.log(`[${s.label}] 0 ads read (possible bot check); waiting 2 min and trying again`); await page.waitForTimeout(120000); ads = await s.run(page); }
         if (s.login) await saveState(s.key, context);
         if (!ads.length) throw Object.assign(new Error(`${s.label}: the page loaded but 0 ads were read (layout may have changed).`), { code: "empty" });
         const { created, merged, dropped } = await mergeAds(ads);
