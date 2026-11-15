@@ -447,15 +447,58 @@ if(j.ok){f.reset();say("ok","Το μήνυμά σας στάλθηκε. Θα σ�
     res.json({ ok: true, password: pw });
   });
   app.post("/api/admin/users/:id/delete", async (req, res) => {
-    const id = Number(req.params.id) || 0;
+    const id = Number(req.params.id) || 0, cancel = req.body?.cancelStripe === true || req.body?.cancelStripe === "1";
     const u = (await pool.query("SELECT u.id, u.org_id, o.stripe_sub, o.sub_status, o.sub_cancels FROM users u JOIN orgs o ON o.id=u.org_id WHERE u.id=$1 AND u.org_id <> 1", [id])).rows[0];
     if (!u) return res.status(404).json({ error: "Δεν βρέθηκε ο χρήστης." });
     const others = (await pool.query("SELECT count(*)::int AS n FROM users WHERE org_id=$1 AND id <> $2", [u.org_id, id])).rows[0].n;
-    if (!others && u.stripe_sub && ["active", "trialing", "past_due"].includes(u.sub_status) && !u.sub_cancels) return res.status(409).json({ error: "Το γραφείο έχει ενεργή συνδρομή. Ακυρώστε πρώτα τη συνδρομή στο Stripe και μετά διαγράψτε τον χρήστη." });
+    const live = !others && u.stripe_sub && ["active", "trialing", "past_due"].includes(u.sub_status) && !u.sub_cancels;
+    if (live && !cancel) return res.status(409).json({ error: "Το γραφείο έχει ενεργή συνδρομή. Τσεκάρετε «Ακύρωση και της συνδρομής στο Stripe» ή ακυρώστε την πρώτα στο Stripe." });
+    if (live && cancel) { try { await stripe("DELETE", "subscriptions/" + encodeURIComponent(u.stripe_sub)); } catch (e) { return res.status(502).json({ error: "Η ακύρωση στο Stripe απέτυχε: " + e.message }); } }
     await pool.query("DELETE FROM users WHERE id=$1", [id]);
     let officeDeleted = false;
     if (!others) { await pool.query("DELETE FROM org_marks WHERE org_id=$1", [u.org_id]); await pool.query("DELETE FROM orgs WHERE id=$1 AND id <> 1", [u.org_id]); officeDeleted = true; }
     res.json({ ok: true, officeDeleted });
+  });
+  app.post("/api/admin/test-user", async (req, res) => {
+    const email = String(req.body?.email || "").trim().toLowerCase(), pw = String(req.body?.password || "");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 200) return res.status(400).json({ error: "Γράψτε ένα έγκυρο email." });
+    if (pw.length < 8) return res.status(400).json({ error: "Ο κωδικός χρειάζεται τουλάχιστον 8 χαρακτήρες." });
+    if (ADMIN_EMAILS.has(email)) return res.status(400).json({ error: "Αυτό το email είναι διαχειριστής." });
+    if ((await pool.query("SELECT 1 FROM users WHERE email=$1", [email])).rowCount) return res.status(409).json({ error: "Υπάρχει ήδη χρήστης με αυτό το email." });
+    const o = (await pool.query("INSERT INTO orgs(name, invite, comp) VALUES ($1,$2,true) RETURNING id", ["Δοκιμαστικό: " + email, rand(12)])).rows[0];
+    const u = (await pool.query("INSERT INTO users(org_id, email, name, pass, role) VALUES ($1,$2,$3,$4,'owner') RETURNING id", [o.id, email, "Δοκιμαστικός χρήστης", hashPass(pw)])).rows[0];
+    res.json({ ok: true, id: u.id });
+  });
+  app.get("/api/admin/users/:id", async (req, res) => {
+    const r = (await custRows()).find((x) => x.id === Number(req.params.id));
+    if (!r) return res.status(404).json({ error: "Δεν βρέθηκε ο χρήστης." });
+    res.json({ ...r, status: custStatus(r), signin: r.google ? "google" : "email" });
+  });
+  app.get("/admin/user/:id", needAccess, (req, res) => {
+    if (!req.who.admin) return res.redirect("/");
+    res.send(shell("Χρήστης", `<main style="max-width:760px"><p><a href="/admin">← Όλοι οι χρήστες</a></p><h1 id="em">…</h1><p class="mut">Διαχείριση αυτού του λογαριασμού.</p>
+<div id="info" style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0"></div>
+<div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0"><h2 style="margin-top:0">Κωδικός</h2><div id="pwbox"></div></div>
+<div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0"><h2 style="margin-top:0">Διαγραφή λογαριασμού</h2><p class="mut">Αφαιρεί τον χρήστη και τον αποσυνδέει. Αν είναι ο τελευταίος χρήστης του γραφείου, διαγράφεται και το γραφείο με τις σημειώσεις του. Δεν αναιρείται.</p>
+<label class="chk"><input type="checkbox" id="cs"><span>Ακύρωση και της συνδρομής στο Stripe</span></label><label class="chk"><input type="checkbox" id="ok"><span>Καταλαβαίνω ότι δεν αναιρείται</span></label>
+<p class="err" id="err" role="alert" hidden></p><button class="btn" id="del" type="button" style="background:#8f2a22">Διαγραφή λογαριασμού</button></div>
+<script>
+const id=location.pathname.split("/").pop();
+const e=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const d=s=>s?new Date(s).toLocaleString("el-GR",{dateStyle:"medium",timeStyle:"short"}):"—";
+const ST={active:"Ενεργή",ending:"Λήγει (ακυρώθηκε)",past_due:"Καθυστέρηση",cancelled:"Ακυρωμένη",none:"Χωρίς πλάνο",free:"Δωρεάν"},PL={month:"Μηνιαίο",year:"Ετήσιο"};
+fetch("/api/admin/users/"+id).then(r=>r.json()).then(u=>{
+ if(u.error){document.getElementById("em").textContent=u.error;return;}
+ document.getElementById("em").textContent=u.email;
+ const row=(a,b)=>"<tr><td style='padding:6px 24px 6px 0;color:#566884'>"+a+"</td><td>"+b+"</td></tr>";
+ document.getElementById("info").innerHTML="<table>"+row("Γραφείο",e(u.org))+row("Σύνδεση με",e(u.signin))+row("Κατάσταση",e(ST[u.status]))+row("Πλάνο",e(PL[u.plan]||"—")+(u.seats?" +"+u.seats+" θέσεις":""))+row("Ισχύει έως",u.sub_until?d(u.sub_until):"—")+row("Εγγραφή",d(u.created))+row("Τελευταία σύνδεση",d(u.last_login))+row("Συνδέσεις",u.logins||0)+"</table>";
+ document.getElementById("pwbox").innerHTML=u.signin==="email"?"<button class='btn ghost sm' id='rs' type='button'>Νέος κωδικός</button>":"<p class='mut' style='margin:0'>Ο χρήστης συνδέεται με Google, δεν υπάρχει κωδικός για επαναφορά.</p>";
+ const rs=document.getElementById("rs"); if(rs)rs.onclick=async()=>{if(!confirm("Να δημιουργηθεί νέος προσωρινός κωδικός; Ο χρήστης αποσυνδέεται παντού."))return;const j=await (await fetch("/api/admin/users/"+id+"/reset",{method:"POST"})).json();if(j.ok)prompt("Νέος κωδικός (αντιγράψτε τον και δώστε τον στον χρήστη):",j.password);else alert(j.error||"Σφάλμα");};
+ document.getElementById("del").onclick=async()=>{const er=document.getElementById("err");er.hidden=true;if(!document.getElementById("ok").checked){er.textContent="Τσεκάρετε ότι καταλαβαίνετε ότι δεν αναιρείται.";er.hidden=false;return;}
+  const r=await fetch("/api/admin/users/"+id+"/delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cancelStripe:document.getElementById("cs").checked})});const j=await r.json();
+  if(j.ok)location.href="/admin";else{er.textContent=j.error||"Σφάλμα";er.hidden=false;}};
+});
+</script></main>`));
   });
   app.post("/api/admin/refresh", async (_q, res) => {
     const orgs = (await pool.query("SELECT * FROM orgs WHERE id <> 1 AND (stripe_sub IS NOT NULL OR pending_session IS NOT NULL)")).rows;
@@ -467,6 +510,8 @@ if(j.ok){f.reset();say("ok","Το μήνυμά σας στάλθηκε. Θα σ�
     if (!req.who.admin) return res.redirect("/");
     res.send(shell("Διαχείριση", `<main style="max-width:1100px"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><h1 style="margin:0">Διαχείριση</h1><span><a class="btn sm" href="/app">Άνοιγμα εργαλείου</a> <form method="post" action="/logout" style="display:inline"><button class="btn ghost sm">Αποσύνδεση</button></form></span></div><p class="mut">Όλοι όσοι έχουν συνδεθεί, με την κατάσταση της συνδρομής τους από το Stripe.</p>
 <div id="tiles" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:18px 0"></div>
+<div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:18px"><h2 style="margin:0 0 6px">Προσθήκη δοκιμαστικού χρήστη</h2><p class="mut" style="margin:0 0 12px">Δημιουργεί λογαριασμό με κωδικό, πλήρη πρόσβαση στο εργαλείο και χωρίς πληρωμή. Δεν στέλνεται email: δώστε τον κωδικό εσείς.</p>
+<div style="display:flex;gap:10px;flex-wrap:wrap"><input id="tu_e" type="email" placeholder="Email" autocomplete="off" style="flex:1;min-width:200px;padding:11px 14px;border:1px solid var(--line);border-radius:10px;font:inherit"><input id="tu_p" type="text" placeholder="Κωδικός (8+ χαρακτήρες)" autocomplete="off" style="flex:1;min-width:200px;padding:11px 14px;border:1px solid var(--line);border-radius:10px;font:inherit"><button class="btn ghost sm" id="tu_g" type="button">Δημιουργία κωδικού</button><button class="btn sm" id="tu_c" type="button">Δημιουργία</button></div><p class="err" id="tu_err" role="alert" hidden></p></div>
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px"><input id="q" type="search" placeholder="Αναζήτηση email, γραφείο, κατάσταση, πλάνο" style="flex:1;min-width:220px;padding:11px 14px;border:1px solid var(--line);border-radius:10px;font:inherit"><button class="btn sm" id="rf" type="button">Ανανέωση από Stripe</button><a class="btn ghost sm" href="/api/admin/customers.csv">Λήψη CSV</a></div>
 <div style="overflow:auto;background:#fff;border:1px solid var(--line);border-radius:14px"><table id="t" style="width:100%;border-collapse:collapse;font-size:.92rem"></table></div>
 <script>
@@ -478,17 +523,17 @@ let DATA=[];
 function draw(){const k=document.getElementById("q").value.toLowerCase();
  const rows=DATA.filter(r=>!k||[r.email,r.name,r.org,ST[r.status],PL[r.plan]].join(" ").toLowerCase().includes(k));
  document.getElementById("t").innerHTML="<tr style='text-align:left;color:#566884;font-size:.78rem;text-transform:uppercase'><th style='padding:12px 14px'>Email</th><th>Γραφείο</th><th>Σύνδεση με</th><th>Κατάσταση</th><th>Πλάνο</th><th>Ισχύει έως</th><th>Εγγραφή</th><th>Τελευταία σύνδεση</th><th>Συνδέσεις</th><th></th></tr>"+
- (rows.map(r=>"<tr style='border-top:1px solid #e3e9f2'><td style='padding:12px 14px'>"+e(r.email)+(r.role==="owner"?" ★":"")+"</td><td>"+e(r.org)+"</td><td>"+e(r.signin)+"</td><td><span style='background:#eef2f7;border-radius:999px;padding:3px 10px;font-weight:700;font-size:.8rem'>"+e(ST[r.status])+"</span></td><td>"+e(PL[r.plan]||"—")+(r.seats?" +"+r.seats+" θέσ.":"")+"</td><td>"+(r.sub_until?d(r.sub_until).split(",")[0]:"—")+"</td><td>"+d(r.created)+"</td><td>"+d(r.last_login)+"</td><td>"+(r.logins||0)+"</td><td style='white-space:nowrap;padding-right:12px'>"+(r.signin==="email"?"<button class='btn ghost sm' data-act='reset' data-id='"+r.id+"'>Νέος κωδικός</button> ":"")+"<button class='btn ghost sm' data-act='del' data-id='"+r.id+"' data-email='"+e(r.email)+"'>Διαγραφή</button></td></tr>").join("")||"<tr><td style='padding:18px 14px' colspan='10'>Κανένας πελάτης ακόμη.</td></tr>");}
+ (rows.map(r=>"<tr style='border-top:1px solid #e3e9f2'><td style='padding:12px 14px'>"+e(r.email)+(r.role==="owner"?" ★":"")+"</td><td>"+e(r.org)+"</td><td>"+e(r.signin)+"</td><td><span style='background:#eef2f7;border-radius:999px;padding:3px 10px;font-weight:700;font-size:.8rem'>"+e(ST[r.status])+"</span></td><td>"+e(PL[r.plan]||"—")+(r.seats?" +"+r.seats+" θέσ.":"")+"</td><td>"+(r.sub_until?d(r.sub_until).split(",")[0]:"—")+"</td><td>"+d(r.created)+"</td><td>"+d(r.last_login)+"</td><td>"+(r.logins||0)+"</td><td style='white-space:nowrap;padding-right:12px'><a class='btn ghost sm' href='/admin/user/"+r.id+"'>Διαχείριση</a></td></tr>").join("")||"<tr><td style='padding:18px 14px' colspan='10'>Κανένας πελάτης ακόμη.</td></tr>");}
 async function load(){const j=await (await fetch("/api/admin/customers")).json();DATA=j.rows;const st=j.stats;
  const tl=[["Χρήστες",st.users],["Γραφεία",st.offices],["Ενεργές συνδρομές",st.active],["Ετήσιες",st.yearly],["Μηνιαίες",st.monthly],["Ακυρωμένες",st.cancelled],["Χωρίς πλάνο ακόμη",st.none],["Νέοι, 7 ημέρες",st.week],["Μηνιαία επαναλαμβανόμενα έσοδα","€"+(st.mrr_cents/100).toLocaleString("el-GR",{minimumFractionDigits:2,maximumFractionDigits:2})]];
  document.getElementById("tiles").innerHTML=tl.map(x=>"<div style='background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px'><div style='font-size:1.7rem;font-weight:800'>"+e(x[1])+"</div><div class='mut' style='font-size:.85rem'>"+e(x[0])+"</div></div>").join("");draw();}
 document.getElementById("q").addEventListener("input",draw);
-document.getElementById("t").addEventListener("click",async ev=>{const b=ev.target.closest("button[data-act]");if(!b)return;const id=b.dataset.id;
- if(b.dataset.act==="reset"){if(!confirm("Να δημιουργηθεί νέος προσωρινός κωδικός; Ο χρήστης αποσυνδέεται παντού."))return;
-  const r=await fetch("/api/admin/users/"+id+"/reset",{method:"POST"});const j=await r.json();if(j.ok)prompt("Νέος κωδικός (αντιγράψτε τον και στείλτε τον στον χρήστη):",j.password);else alert(j.error||"Σφάλμα");}
- else{if(!confirm("Διαγραφή του χρήστη "+b.dataset.email+"; Δεν μπορεί να αναιρεθεί. Αν είναι ο τελευταίος χρήστης του γραφείου, διαγράφεται και το γραφείο με τις σημειώσεις του."))return;
-  const r=await fetch("/api/admin/users/"+id+"/delete",{method:"POST"});const j=await r.json();if(j.ok){await load();}else alert(j.error||"Σφάλμα");}});
+
 document.getElementById("rf").addEventListener("click",async b=>{const el=b.target;el.disabled=true;el.textContent="Ανανέωση…";try{await fetch("/api/admin/refresh",{method:"POST"});await load();}finally{el.disabled=false;el.textContent="Ανανέωση από Stripe";}});
+document.getElementById("tu_g").onclick=()=>{const a="abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";let p="";for(let i=0;i<12;i++)p+=a[crypto.getRandomValues(new Uint32Array(1))[0]%a.length];document.getElementById("tu_p").value=p;};
+document.getElementById("tu_c").onclick=async()=>{const er=document.getElementById("tu_err");er.hidden=true;const email=document.getElementById("tu_e").value,pw=document.getElementById("tu_p").value;
+ const j=await (await fetch("/api/admin/test-user",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password:pw})})).json();
+ if(j.ok){alert("Δημιουργήθηκε. Email: "+email+"\\nΚωδικός: "+pw+"\\n\\nΣυνδεθείτε στο /login με email και κωδικό.");document.getElementById("tu_e").value="";document.getElementById("tu_p").value="";load();}else{er.textContent=j.error||"Σφάλμα";er.hidden=false;}};
 load();
 </script></main>`));
   });
