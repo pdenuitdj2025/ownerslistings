@@ -145,7 +145,7 @@ code{background:var(--soft);padding:4px 8px;border-radius:8px;word-break:break-a
 <footer>© ${new Date().getFullYear()} Touslemonde LLC · <a href="/terms">Όροι</a> · <a href="/privacy">Απόρρητο</a> · <a href="/contact">Επικοινωνία</a></footer></body></html>`;
 
 const NOTE_OFF = "Η σύνδεση ενεργοποιείται σύντομα.";
-const socialButtons = (q = "") => `<a class="sbtn" href="/auth/google${q}"><img src="/btn-google.png" alt="Sign in with Google"></a><a class="sbtn" href="/auth/apple${q}"><img src="/btn-apple.png" alt="Sign in with Apple"></a>`;
+const socialButtons = (q = "") => `<a class="sbtn" href="/auth/google${q}"><img src="/btn-google.png?v=2" alt="Sign in with Google"></a><a class="sbtn" href="/auth/apple${q}"><img src="/btn-apple.png?v=2" alt="Sign in with Apple"></a>`;
 const loginPage = (msg = "") => shell("Σύνδεση", `<main><div class="card"><h1>Σύνδεση</h1><p class="mut">Συνδεθείτε με τον λογαριασμό Google ή Apple σας.</p>${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}${socialButtons()}
 <p class="mut" style="margin-top:16px">Είστε μεσιτικό γραφείο χωρίς λογαριασμό; <a href="/signup">Εγγραφή γραφείου</a></p>
 <p class="mut">Είστε συνεργάτης; Ζητήστε τον σύνδεσμο πρόσκλησης από το γραφείο σας.</p></div></main>`);
@@ -156,7 +156,7 @@ ${full ? `<p class="err" role="alert">Το γραφείο δεν έχει ελε
 <form method="get" action="/auth/google"><input type="hidden" name="invite" value="${esc(invite)}"><input type="hidden" name="plan" value="${esc(plan)}">
 ${orgName ? "" : `<label for="o">Επωνυμία γραφείου</label><input id="o" type="text" name="office" maxlength="120" autocomplete="organization" required>`}
 <label class="chk"><input type="checkbox" name="terms" value="1" required><span>Αποδέχομαι τους <a href="/terms" target="_blank" rel="noopener">όρους χρήσης</a> και την <a href="/privacy" target="_blank" rel="noopener">πολιτική απορρήτου</a>.</span></label>
-${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}<button type="submit" class="sbtn" formaction="/auth/google"><img src="/btn-google.png" alt="Sign in with Google"></button><button type="submit" class="sbtn" formaction="/auth/apple"><img src="/btn-apple.png" alt="Sign in with Apple"></button></form>
+${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}<button type="submit" class="sbtn" formaction="/auth/google"><img src="/btn-google.png?v=2" alt="Sign in with Google"></button><button type="submit" class="sbtn" formaction="/auth/apple"><img src="/btn-apple.png?v=2" alt="Sign in with Apple"></button></form>
 <p class="mut" style="margin-top:16px">Έχετε ήδη λογαριασμό; <a href="/login">Σύνδεση</a></p></div></main>`}`);
 
 function accountPage(req, who, org, team, note = "") {
