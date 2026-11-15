@@ -19,9 +19,9 @@ function proxyOpt() {
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
 const SITES = [
-  { key: "spiti24", label: "Spiti24", run: scrapeSpiti24, land: scrapeSpiti24Land, landAgency: (page, o) => scrapeSpiti24Land(page, { agency: true, cat: o.cat || "land", maxPages: o.maxPages, start: o.start, maxMs: 10 * 60 * 1000 }) },
   { key: "xe", label: "xe.gr", run: scrapeXe, land: (page, o) => scrapeXe(page, { url: XE_LAND_URL, category: "land", backfill: o.maxPages > 3, maxPages: o.maxPages > 3 ? 260 : 6 }), agencyNew: (page, cat) => scrapeXeAgency(page, { category: cat, maxPages: 8 }), login: { home: "https://www.xe.gr/", preflight: dismissConsent, loggedOutText: /Συνδέσου για να τις δεις/, probe: "https://www.xe.gr/property/results?item_type=residence&transaction_name=buy&publication_origins%5B%5D=false&country=GR&geo_place_ids%5B%5D=ChIJUwsYu2cPnxQRkIC54iy9AAE&sorting=publication_date_desc" } },
   { key: "spitogatos", label: "Spitogatos", run: scrapeSpitogatos, landNew: scrapeSpitogatosLand, login: { home: "https://www.spitogatos.gr/", probe: "https://www.spitogatos.gr/pwliseis-katoikies/athina-kentro/prwti_dimosieusi_24wres/order_datemodified_desc" } },
+  { key: "spiti24", label: "Spiti24", run: scrapeSpiti24, land: scrapeSpiti24Land, landAgency: (page, o) => scrapeSpiti24Land(page, { agency: true, cat: o.cat || "land", maxPages: o.maxPages, start: o.start, maxMs: 10 * 60 * 1000 }) },
 ];
 
 let running = false;
