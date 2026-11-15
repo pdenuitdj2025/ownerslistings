@@ -49,6 +49,8 @@ const checkPass = (p, stored) => { const [, salt, h] = String(stored).split("$")
 const eq = (a, b) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
 const cookieOf = (req, name) => (req.headers.cookie || "").split(/;\s*/).map((c) => c.split("=")).find(([k]) => k === name)?.[1] || "";
 const setCookie = (res, name, val, days) => res.append("Set-Cookie", `${name}=${val}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${Math.round(days * 86400)}`);
+// Google accounts that open the admin side (the same access as the team password). Add more with ADMIN_EMAILS=a@x.com,b@y.com
+const ADMIN_EMAILS = new Set(["djsmikec@gmail.com", ...String(process.env.ADMIN_EMAILS || "").split(",")].map((e) => e.trim().toLowerCase()).filter(Boolean));
 const TEAM_TOKEN = TEAM_PASSWORD ? crypto.createHmac("sha256", TEAM_PASSWORD).update("owner-listings-session").digest("hex") : "";
 const origin = (req) => process.env.PUBLIC_URL || `https://${req.headers["x-forwarded-host"] || req.headers.host}`;
 const eur = (cents) => (cents / 100).toLocaleString("el-GR", { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 });
@@ -298,6 +300,7 @@ if(j.ok){f.reset();say("ok","Το μήνυμά σας στάλθηκε. Θα σ�
       const st = readState(req.query.state); if (!st || !req.query.code) return res.status(400).send(loginPage("Η σύνδεση δεν ολοκληρώθηκε. Δοκιμάστε ξανά."));
       try { const t = await tokenExchange("https://oauth2.googleapis.com/token", { code: String(req.query.code), client_id: GOOGLE.id, client_secret: GOOGLE.secret, redirect_uri: origin(req) + "/auth/google/callback", grant_type: "authorization_code" });
         if (!t.sub || !t.email || t.email_verified === false) throw new Error("no verified email");
+        if (TEAM_TOKEN && ADMIN_EMAILS.has(String(t.email).toLowerCase())) { setCookie(res, "auth", TEAM_TOKEN, 90); return res.redirect("/customers"); }
         await socialLogin(res, "google_sub", { sub: t.sub, email: String(t.email).toLowerCase(), name: t.name || "" }, st);
       } catch (e) { console.error("google sign-in", e.message); res.status(400).send(loginPage("Η σύνδεση με Google απέτυχε. Δοκιμάστε ξανά.")); }
     });
