@@ -15,7 +15,7 @@ One row per home (the same home on several portals is merged), status + notes fo
 Sessions are kept in the database, so a login only happens when a session expires.
 If a site shows a CAPTCHA or login code, it is **not** bypassed: the page header shows a warning for that site.
 `POST /api/run` (with the team password) starts a check immediately.
-| `TEAM_PASSWORD` | shared password for the team page (any username) |
+| `ADMIN_EMAILS` | extra Google emails that open the admin console (djsmikec@gmail.com is built in) |
 | `STRIPE_SECRET_KEY` | Stripe secret key (subscriptions). Without it, sign-up works but checkout says payments are not enabled yet |
 | `PUBLIC_URL`, `PRICE_MONTH_CENTS`, `PRICE_YEAR_CENTS` | optional: the public address (https://vresakinita.gr), prices (default 4999 / 47988) |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign-in (redirect: PUBLIC_URL/auth/google/callback) |

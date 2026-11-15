@@ -12,7 +12,6 @@ const APPLE = { id: process.env.APPLE_CLIENT_ID || "", team: process.env.APPLE_T
 const SOCIAL = { google: !!(GOOGLE.id && GOOGLE.secret), apple: !!(APPLE.id && APPLE.team && APPLE.kid && APPLE.key) };
 let SECRET = "";
 const STRIPE_KEY = process.env.STRIPE_SECRET_KEY || "";
-const TEAM_PASSWORD = process.env.TEAM_PASSWORD || "";
 const DAY = 864e5;
 
 export async function initSaas() {
@@ -51,7 +50,6 @@ const cookieOf = (req, name) => (req.headers.cookie || "").split(/;\s*/).map((c)
 const setCookie = (res, name, val, days) => res.append("Set-Cookie", `${name}=${val}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${Math.round(days * 86400)}`);
 // Google accounts that open the admin side (the same access as the team password). Add more with ADMIN_EMAILS=a@x.com,b@y.com
 const ADMIN_EMAILS = new Set(["djsmikec@gmail.com", ...String(process.env.ADMIN_EMAILS || "").split(",")].map((e) => e.trim().toLowerCase()).filter(Boolean));
-const TEAM_TOKEN = TEAM_PASSWORD ? crypto.createHmac("sha256", TEAM_PASSWORD).update("owner-listings-session").digest("hex") : "";
 const origin = (req) => process.env.PUBLIC_URL || `https://${req.headers["x-forwarded-host"] || req.headers.host}`;
 const eur = (cents) => (cents / 100).toLocaleString("el-GR", { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 });
 
@@ -113,16 +111,12 @@ async function freshOrg(org) {
 
 // ---- who is asking ----
 async function identify(req) {
-  if (TEAM_TOKEN) {
-    if (eq(cookieOf(req, "auth"), TEAM_TOKEN)) return { admin: true, orgId: 1 };
-    const [, p] = Buffer.from((req.headers.authorization || "").replace(/^Basic /, ""), "base64").toString().split(/:(.*)/s);
-    if (p && eq(p, TEAM_PASSWORD)) return { admin: true, orgId: 1 };
-  }
   const sid = cookieOf(req, "sid");
   if (!sid) return null;
   const { rows } = await pool.query("SELECT u.id AS uid, u.email, u.name AS uname, u.role, o.* FROM sessions s JOIN users u ON u.id=s.user_id JOIN orgs o ON o.id=u.org_id WHERE s.token=$1 AND s.expires > now()", [sid]);
   if (!rows[0]) return null;
   const r = rows[0];
+  if (r.id === 1) return { admin: true, orgId: 1, user: { id: r.uid, email: r.email, name: r.uname, role: r.role }, org: r };   // the house office = the admin console
   return { admin: false, orgId: r.id, user: { id: r.uid, email: r.email, name: r.uname, role: r.role }, org: r };
 }
 async function startSession(res, userId) { const t = rand(); await pool.query("INSERT INTO sessions(token, user_id, expires) VALUES ($1,$2, now() + interval '30 days')", [t, userId]); setCookie(res, "sid", t, 30); }
@@ -300,7 +294,13 @@ if(j.ok){f.reset();say("ok","Το μήνυμά σας στάλθηκε. Θα σ�
       const st = readState(req.query.state); if (!st || !req.query.code) return res.status(400).send(loginPage("Η σύνδεση δεν ολοκληρώθηκε. Δοκιμάστε ξανά."));
       try { const t = await tokenExchange("https://oauth2.googleapis.com/token", { code: String(req.query.code), client_id: GOOGLE.id, client_secret: GOOGLE.secret, redirect_uri: origin(req) + "/auth/google/callback", grant_type: "authorization_code" });
         if (!t.sub || !t.email || t.email_verified === false) throw new Error("no verified email");
-        if (TEAM_TOKEN && ADMIN_EMAILS.has(String(t.email).toLowerCase())) { setCookie(res, "auth", TEAM_TOKEN, 90); return res.redirect("/customers"); }
+        if (ADMIN_EMAILS.has(String(t.email).toLowerCase())) {   // admin console: a verified Google account listed in ADMIN_EMAILS, no password
+          const em = String(t.email).toLowerCase();
+          let u = (await pool.query("SELECT id FROM users WHERE email=$1", [em])).rows[0];
+          if (u) await pool.query("UPDATE users SET org_id=1, role='owner', pass='', google_sub=$2 WHERE id=$1", [u.id, t.sub]);
+          else u = (await pool.query("INSERT INTO users(org_id, email, name, pass, role, google_sub) VALUES (1,$1,$2,'','owner',$3) RETURNING id", [em, t.name || em.split("@")[0], t.sub])).rows[0];
+          await startSession(res, u.id); return res.redirect("/app");
+        }
         await socialLogin(res, "google_sub", { sub: t.sub, email: String(t.email).toLowerCase(), name: t.name || "" }, st);
       } catch (e) { console.error("google sign-in", e.message); res.status(400).send(loginPage("Η σύνδεση με Google απέτυχε. Δοκιμάστε ξανά.")); }
     });
@@ -317,18 +317,11 @@ if(j.ok){f.reset();say("ok","Το μήνυμά σας στάλθηκε. Θα σ�
     });
   }
 
-  // House team: the shared password still opens everything (office 1, no subscription needed).
-  const teamPage = (msg = "") => shell("Ομάδα", `<main><div class="card"><h1>Είσοδος ομάδας</h1><form method="post" action="/team"><label for="p">Κωδικός ομάδας</label><input id="p" type="password" name="password" required autofocus>${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}<button class="btn">Σύνδεση</button></form></div></main>`);
-  app.get("/team", (_q, res) => res.send(teamPage()));
-  app.post("/team", (req, res) => {
-    if (!TEAM_PASSWORD || throttled(req.ip) || !eq(String(req.body.password || ""), TEAM_PASSWORD)) { failed(req.ip); return res.status(401).send(teamPage("Λάθος κωδικός")); }
-    setCookie(res, "auth", TEAM_TOKEN, 90); res.redirect("/app");
-  });
-
   app.get("/login", async (req, res) => { const who = await identify(req); if (who) return res.redirect(who.admin ? "/app" : "/account"); res.send(loginPage()); });
   app.post("/login", async (req, res) => {
     const email = String(req.body.email || "").trim().toLowerCase(), pw = String(req.body.password || "");
     if (throttled(req.ip)) return res.status(429).send(loginPage("Πολλές προσπάθειες. Δοκιμάστε ξανά σε 15 λεπτά.", email));
+    if (ADMIN_EMAILS.has(email)) { failed(req.ip); return res.status(401).send(loginPage("Αυτός ο λογαριασμός συνδέεται μόνο με Google.", email)); }
     const { rows } = await pool.query("SELECT id, pass FROM users WHERE email=$1", [email]);
     if (!rows[0] || !rows[0].pass || !checkPass(pw, rows[0].pass)) { failed(req.ip); return res.status(401).send(loginPage("Λάθος email ή κωδικός.", email)); }
     await startSession(res, rows[0].id); res.redirect("/account");
@@ -346,6 +339,7 @@ if(j.ok){f.reset();say("ok","Το μήνυμά σας στάλθηκε. Θα σ�
     const back = (msg) => res.status(400).send(signupPage({ msg, v: { email, name, office }, invite: org ? invite : "", orgName: org?.name || "", plan }));
     if (throttled(req.ip)) return back("Πολλές προσπάθειες. Δοκιμάστε ξανά σε λίγο.");
     if (org && !(await hasRoom(org))) return res.status(409).send(signupPage({ orgName: org.name, full: true }));
+    if (ADMIN_EMAILS.has(email)) return back("Αυτό το email δεν μπορεί να χρησιμοποιηθεί.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 200) return back("Γράψτε ένα έγκυρο email.");
     if (pw.length < 8) return back("Ο κωδικός χρειάζεται τουλάχιστον 8 χαρακτήρες.");
     if (!name || (!org && !office)) return back("Συμπληρώστε όλα τα πεδία.");
@@ -421,7 +415,7 @@ if(j.ok){f.reset();say("ok","Το μήνυμά σας στάλθηκε. Θα σ�
   app.get("/api/admin/orgs", async (_q, res) => res.json((await pool.query("SELECT o.id, o.name, o.comp, o.plan, o.sub_status, o.sub_until, o.created, (SELECT json_agg(json_build_object('email', u.email, 'name', u.name, 'role', u.role)) FROM users u WHERE u.org_id=o.id) AS users FROM orgs o ORDER BY o.id")).rows));
   app.get("/customers", needAccess, (req, res) => {
     if (!req.who.admin) return res.redirect("/");
-    res.send(shell("Πελάτες", `<main style="max-width:1000px"><h1>Πελάτες</h1><p class="mut" id="sum"></p><div style="overflow:auto"><table id="t" style="width:100%;border-collapse:collapse;font-size:.92rem"></table></div></main>
+    res.send(shell("Πελάτες", `<main style="max-width:1000px"><p><a href="/app">← Εργαλείο</a></p><h1>Πελάτες</h1><p class="mut" id="sum"></p><div style="overflow:auto"><table id="t" style="width:100%;border-collapse:collapse;font-size:.92rem"></table></div></main>
 <script>
 const e=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const d=s=>s?new Date(s).toLocaleDateString("el-GR"):"—";
