@@ -225,3 +225,6 @@ setInterval(async () => {
     }
   } catch (e) { console.error(e); }
 }, 5 * 60 * 1000);
+
+// One-time: the house account starts clean (no contacted/skipped marks or notes carried over from before office accounts).
+(async () => { try { if (!(await kvGet("marksReset1"))) { const a = await pool.query("DELETE FROM org_marks WHERE org_id=1"); await pool.query("UPDATE listings SET status='new', note='' WHERE status<>'new' OR note<>''"); await kvSet("marksReset1", true); console.log("house marks reset:", a.rowCount); } } catch (e) { console.error(e); } })();
