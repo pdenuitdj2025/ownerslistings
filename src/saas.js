@@ -135,17 +135,17 @@ main{max-width:460px;margin:20px auto 64px;padding:0 16px}main.wide{max-width:78
 h1{font-size:1.65rem;line-height:1.2;margin:0 0 6px;font-weight:800;letter-spacing:-.01em}h2{font-size:1.1rem;margin:30px 0 8px}p{margin:8px 0}.mut{color:var(--mut);font-size:.95rem}
 label{display:block;font-weight:600;font-size:.9rem;margin-top:14px}input[type=text],input[type=email],input[type=password],input[type=number]{width:100%;padding:12px 14px;font:inherit;border:1px solid #c5d2e3;border-radius:12px;background:#fff;margin-top:6px;color:var(--ink)}
 input:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
-.sbtn{display:block;width:260px;max-width:100%;margin:14px auto 0;padding:0;border:0;background:none;cursor:pointer}.sbtn img{display:block;width:100%;height:auto}.btn{display:inline-block;width:100%;padding:13px 18px;font:inherit;font-weight:700;border:0;border-radius:12px;background:var(--ink);color:#fff;cursor:pointer;text-align:center;text-decoration:none;margin-top:16px}.btn.alt{background:linear-gradient(135deg,#0B5C9B,#0C3F78);color:#fff}.btn.ghost{background:#fff;color:var(--ink);border:1px solid #b9c8dc}.btn.sm{width:auto;padding:7px 12px;font-size:.85rem;margin:0}
+.sbtn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;height:52px;box-sizing:border-box;margin:12px 0 0;padding:0 16px;border-radius:12px;font:inherit;font-size:16px;font-weight:600;line-height:1;text-decoration:none;cursor:pointer}.sbtn img{height:22px;width:auto;display:block}.sbtn.g{background:#fff;color:#1f1f1f;border:1px solid #c9d3e0}.sbtn.a{background:#000;color:#fff;border:1px solid #000}.btn{display:inline-block;width:100%;padding:13px 18px;font:inherit;font-weight:700;border:0;border-radius:12px;background:var(--ink);color:#fff;cursor:pointer;text-align:center;text-decoration:none;margin-top:16px}.btn.alt{background:linear-gradient(135deg,#0B5C9B,#0C3F78);color:#fff}.btn.ghost{background:#fff;color:var(--ink);border:1px solid #b9c8dc}.btn.sm{width:auto;padding:7px 12px;font-size:.85rem;margin:0}
 .err{color:var(--err);font-weight:600;margin-top:12px}.ok{color:#17663d;font-weight:700}.chk{display:flex;gap:10px;align-items:flex-start;font-weight:400;font-size:.9rem}.chk input{margin-top:4px}
 .plans{display:grid;gap:14px;grid-template-columns:1fr 1fr;margin-top:14px}@media(max-width:560px){.plans{grid-template-columns:1fr}}.plan{border:1px solid var(--line);border-radius:16px;padding:20px;background:#fff}.plan.best{border:2px solid var(--blue);background:var(--soft)}.plan form{margin:0}.tag{display:inline-block;background:var(--blue);color:#fff;font-weight:800;font-size:.72rem;letter-spacing:.06em;padding:3px 9px;border-radius:99px}.big{font-size:1.8rem;font-weight:800;margin:6px 0 0}
 .box{background:var(--soft);border-radius:14px;padding:16px 18px;margin-top:10px}.rowf{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}.rowf label{margin:0;flex:1;min-width:150px}.rowf .btn{width:auto;margin:0}
 ul.team{list-style:none;padding:0;margin:10px 0}ul.team li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}ul.team form{margin:0}
-code{background:var(--soft);padding:4px 8px;border-radius:8px;word-break:break-all;font-size:.9rem}footer{max-width:1040px;margin:0 auto;padding:24px;color:var(--mut);font-size:.85rem}footer a{color:var(--mut)}</style><script src="/i18n.js?v=3" defer></script></head>
+code{background:var(--soft);padding:4px 8px;border-radius:8px;word-break:break-all;font-size:.9rem}footer{max-width:1040px;margin:0 auto;padding:24px;color:var(--mut);font-size:.85rem}footer a{color:var(--mut)}</style><script src="/i18n.js?v=4" defer></script></head>
 <body><div class="top"><a class="logo" href="/"><img src="/logo.png" alt="">${esc(BRAND)}</a><a href="/" class="mut">Αρχική</a></div>${body}
 <footer>© ${new Date().getFullYear()} Touslemonde LLC · <a href="/terms">Όροι</a> · <a href="/privacy">Απόρρητο</a> · <a href="/contact">Επικοινωνία</a></footer></body></html>`;
 
 const NOTE_OFF = "Η σύνδεση ενεργοποιείται σύντομα.";
-const socialButtons = (q = "") => `<a class="sbtn" href="/auth/google${q}"><img src="/btn-google.png?v=2" alt="Sign in with Google"></a><a class="sbtn" href="/auth/apple${q}"><img src="/btn-apple.png?v=2" alt="Sign in with Apple"></a>`;
+const socialButtons = (q = "") => `<a class="sbtn g" href="/auth/google${q}"><img src="/icon-google.png?v=1" alt=""><span>Συνέχεια με Google</span></a><a class="sbtn a" href="/auth/apple${q}"><img src="/icon-apple.png?v=1" alt=""><span>Συνέχεια με Apple</span></a>`;
 const loginPage = (msg = "") => shell("Σύνδεση", `<main><div class="card"><h1>Σύνδεση</h1><p class="mut">Συνδεθείτε με τον λογαριασμό Google ή Apple σας.</p>${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}${socialButtons()}
 <p class="mut" style="margin-top:16px">Είστε μεσιτικό γραφείο χωρίς λογαριασμό; <a href="/signup">Εγγραφή γραφείου</a></p>
 <p class="mut">Είστε συνεργάτης; Ζητήστε τον σύνδεσμο πρόσκλησης από το γραφείο σας.</p></div></main>`);
@@ -156,7 +156,7 @@ ${full ? `<p class="err" role="alert">Το γραφείο δεν έχει ελε
 <form method="get" action="/auth/google"><input type="hidden" name="invite" value="${esc(invite)}"><input type="hidden" name="plan" value="${esc(plan)}">
 ${orgName ? "" : `<label for="o">Επωνυμία γραφείου</label><input id="o" type="text" name="office" maxlength="120" autocomplete="organization" required>`}
 <label class="chk"><input type="checkbox" name="terms" value="1" required><span>Αποδέχομαι τους <a href="/terms" target="_blank" rel="noopener">όρους χρήσης</a> και την <a href="/privacy" target="_blank" rel="noopener">πολιτική απορρήτου</a>.</span></label>
-${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}<button type="submit" class="sbtn" formaction="/auth/google"><img src="/btn-google.png?v=2" alt="Sign in with Google"></button><button type="submit" class="sbtn" formaction="/auth/apple"><img src="/btn-apple.png?v=2" alt="Sign in with Apple"></button></form>
+${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}<button type="submit" class="sbtn g" formaction="/auth/google"><img src="/icon-google.png?v=1" alt=""><span>Συνέχεια με Google</span></button><button type="submit" class="sbtn a" formaction="/auth/apple"><img src="/icon-apple.png?v=1" alt=""><span>Συνέχεια με Apple</span></button></form>
 <p class="mut" style="margin-top:16px">Έχετε ήδη λογαριασμό; <a href="/login">Σύνδεση</a></p></div></main>`}`);
 
 function accountPage(req, who, org, team, note = "") {
@@ -212,8 +212,8 @@ export function mountSaas(app, { appFile, publicDir }) {
   app.get("/", page("landing.html"));
   app.get("/terms", page("terms.html"));
   app.get("/privacy", page("privacy.html"));
-  app.get("/i18n.js?v=3", (_q, res) => res.sendFile("i18n.js", { root: publicDir, maxAge: "5m" }));
-  for (const f of ["logo.png", "logo-white.png", "favicon.png", "btn-google.png", "btn-apple.png"]) app.get("/" + f, (_q, res) => res.sendFile(f, { root: publicDir, maxAge: "7d" }));
+  app.get("/i18n.js?v=4", (_q, res) => res.sendFile("i18n.js", { root: publicDir, maxAge: "5m" }));
+  for (const f of ["logo.png", "logo-white.png", "favicon.png", "icon-google.png", "icon-apple.png"]) app.get("/" + f, (_q, res) => res.sendFile(f, { root: publicDir, maxAge: "7d" }));
   // ---- contact form: every message is kept, then forwarded to the owner's inbox ----
   const sentBy = new Map();
   async function forward(m, site) {
