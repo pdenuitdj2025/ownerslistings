@@ -299,7 +299,7 @@ if(j.ok){f.reset();say("ok","Το μήνυμά σας στάλθηκε. Θα σ�
           let u = (await pool.query("SELECT id FROM users WHERE email=$1", [em])).rows[0];
           if (u) await pool.query("UPDATE users SET org_id=1, role='owner', pass='', google_sub=$2 WHERE id=$1", [u.id, t.sub]);
           else u = (await pool.query("INSERT INTO users(org_id, email, name, pass, role, google_sub) VALUES (1,$1,$2,'','owner',$3) RETURNING id", [em, t.name || em.split("@")[0], t.sub])).rows[0];
-          await startSession(res, u.id); return res.redirect("/app");
+          await startSession(res, u.id); return res.redirect("/admin");
         }
         await socialLogin(res, "google_sub", { sub: t.sub, email: String(t.email).toLowerCase(), name: t.name || "" }, st);
       } catch (e) { console.error("google sign-in", e.message); res.status(400).send(loginPage("Η σύνδεση με Google απέτυχε. Δοκιμάστε ξανά.")); }
@@ -317,7 +317,7 @@ if(j.ok){f.reset();say("ok","Το μήνυμά σας στάλθηκε. Θα σ�
     });
   }
 
-  app.get("/login", async (req, res) => { const who = await identify(req); if (who) return res.redirect(who.admin ? "/app" : "/account"); res.send(loginPage()); });
+  app.get("/login", async (req, res) => { const who = await identify(req); if (who) return res.redirect(who.admin ? "/admin" : "/account"); res.send(loginPage()); });
   app.post("/login", async (req, res) => {
     const email = String(req.body.email || "").trim().toLowerCase(), pw = String(req.body.password || "");
     if (throttled(req.ip)) return res.status(429).send(loginPage("Πολλές προσπάθειες. Δοκιμάστε ξανά σε 15 λεπτά.", email));
@@ -430,14 +430,36 @@ if(j.ok){f.reset();say("ok","Το μήνυμά σας στάλθηκε. Θα σ�
     for (const r of await custRows()) out.push([r.email, r.name, r.org, r.role, r.google ? "google" : "email", custStatus(r), r.plan || "", r.seats || 0, r.sub_until ? new Date(r.sub_until).toISOString() : "", new Date(r.created).toISOString(), r.last_login ? new Date(r.last_login).toISOString() : "", r.logins || 0].map(q).join(","));
     res.type("text/csv; charset=utf-8").set("Content-Disposition", 'attachment; filename="customers.csv"').send("﻿" + out.join("\n"));
   });
+  app.post("/api/admin/users/:id/reset", async (req, res) => {
+    const id = Number(req.params.id) || 0;
+    const u = (await pool.query("SELECT u.id, u.pass FROM users u WHERE u.id=$1 AND u.org_id <> 1", [id])).rows[0];
+    if (!u) return res.status(404).json({ error: "Δεν βρέθηκε ο χρήστης." });
+    if (!u.pass) return res.status(400).json({ error: "Αυτός ο χρήστης συνδέεται με Google και δεν έχει κωδικό." });
+    const pw = rand(9);
+    await pool.query("UPDATE users SET pass=$2 WHERE id=$1", [id, hashPass(pw)]);
+    await pool.query("DELETE FROM sessions WHERE user_id=$1", [id]);
+    res.json({ ok: true, password: pw });
+  });
+  app.post("/api/admin/users/:id/delete", async (req, res) => {
+    const id = Number(req.params.id) || 0;
+    const u = (await pool.query("SELECT u.id, u.org_id, o.stripe_sub, o.sub_status, o.sub_cancels FROM users u JOIN orgs o ON o.id=u.org_id WHERE u.id=$1 AND u.org_id <> 1", [id])).rows[0];
+    if (!u) return res.status(404).json({ error: "Δεν βρέθηκε ο χρήστης." });
+    const others = (await pool.query("SELECT count(*)::int AS n FROM users WHERE org_id=$1 AND id <> $2", [u.org_id, id])).rows[0].n;
+    if (!others && u.stripe_sub && ["active", "trialing", "past_due"].includes(u.sub_status) && !u.sub_cancels) return res.status(409).json({ error: "Το γραφείο έχει ενεργή συνδρομή. Ακυρώστε πρώτα τη συνδρομή στο Stripe και μετά διαγράψτε τον χρήστη." });
+    await pool.query("DELETE FROM users WHERE id=$1", [id]);
+    let officeDeleted = false;
+    if (!others) { await pool.query("DELETE FROM org_marks WHERE org_id=$1", [u.org_id]); await pool.query("DELETE FROM orgs WHERE id=$1 AND id <> 1", [u.org_id]); officeDeleted = true; }
+    res.json({ ok: true, officeDeleted });
+  });
   app.post("/api/admin/refresh", async (_q, res) => {
     const orgs = (await pool.query("SELECT * FROM orgs WHERE id <> 1 AND (stripe_sub IS NOT NULL OR pending_session IS NOT NULL)")).rows;
     for (const o of orgs) await syncOrg(o);
     res.json({ ok: true, refreshed: orgs.length });
   });
-  app.get("/customers", needAccess, (req, res) => {
+  app.get("/customers", (_q, res) => res.redirect("/admin"));
+  app.get("/admin", needAccess, (req, res) => {
     if (!req.who.admin) return res.redirect("/");
-    res.send(shell("Πελάτες", `<main style="max-width:1100px"><p><a href="/app">← Εργαλείο</a></p><h1>Πελάτες</h1><p class="mut">Όλοι όσοι έχουν συνδεθεί, με την κατάσταση της συνδρομής τους από το Stripe.</p>
+    res.send(shell("Διαχείριση", `<main style="max-width:1100px"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><h1 style="margin:0">Διαχείριση</h1><span><a class="btn sm" href="/app">Άνοιγμα εργαλείου</a> <form method="post" action="/logout" style="display:inline"><button class="btn ghost sm">Αποσύνδεση</button></form></span></div><p class="mut">Όλοι όσοι έχουν συνδεθεί, με την κατάσταση της συνδρομής τους από το Stripe.</p>
 <div id="tiles" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:18px 0"></div>
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px"><input id="q" type="search" placeholder="Αναζήτηση email, γραφείο, κατάσταση, πλάνο" style="flex:1;min-width:220px;padding:11px 14px;border:1px solid var(--line);border-radius:10px;font:inherit"><button class="btn sm" id="rf" type="button">Ανανέωση από Stripe</button><a class="btn ghost sm" href="/api/admin/customers.csv">Λήψη CSV</a></div>
 <div style="overflow:auto;background:#fff;border:1px solid var(--line);border-radius:14px"><table id="t" style="width:100%;border-collapse:collapse;font-size:.92rem"></table></div>
@@ -449,12 +471,17 @@ const PL={month:"Μηνιαίο",year:"Ετήσιο"};
 let DATA=[];
 function draw(){const k=document.getElementById("q").value.toLowerCase();
  const rows=DATA.filter(r=>!k||[r.email,r.name,r.org,ST[r.status],PL[r.plan]].join(" ").toLowerCase().includes(k));
- document.getElementById("t").innerHTML="<tr style='text-align:left;color:#566884;font-size:.78rem;text-transform:uppercase'><th style='padding:12px 14px'>Email</th><th>Γραφείο</th><th>Σύνδεση με</th><th>Κατάσταση</th><th>Πλάνο</th><th>Ισχύει έως</th><th>Εγγραφή</th><th>Τελευταία σύνδεση</th><th>Συνδέσεις</th></tr>"+
- (rows.map(r=>"<tr style='border-top:1px solid #e3e9f2'><td style='padding:12px 14px'>"+e(r.email)+(r.role==="owner"?" ★":"")+"</td><td>"+e(r.org)+"</td><td>"+e(r.signin)+"</td><td><span style='background:#eef2f7;border-radius:999px;padding:3px 10px;font-weight:700;font-size:.8rem'>"+e(ST[r.status])+"</span></td><td>"+e(PL[r.plan]||"—")+(r.seats?" +"+r.seats+" θέσ.":"")+"</td><td>"+(r.sub_until?d(r.sub_until).split(",")[0]:"—")+"</td><td>"+d(r.created)+"</td><td>"+d(r.last_login)+"</td><td>"+(r.logins||0)+"</td></tr>").join("")||"<tr><td style='padding:18px 14px' colspan='9'>Κανένας πελάτης ακόμη.</td></tr>");}
+ document.getElementById("t").innerHTML="<tr style='text-align:left;color:#566884;font-size:.78rem;text-transform:uppercase'><th style='padding:12px 14px'>Email</th><th>Γραφείο</th><th>Σύνδεση με</th><th>Κατάσταση</th><th>Πλάνο</th><th>Ισχύει έως</th><th>Εγγραφή</th><th>Τελευταία σύνδεση</th><th>Συνδέσεις</th><th></th></tr>"+
+ (rows.map(r=>"<tr style='border-top:1px solid #e3e9f2'><td style='padding:12px 14px'>"+e(r.email)+(r.role==="owner"?" ★":"")+"</td><td>"+e(r.org)+"</td><td>"+e(r.signin)+"</td><td><span style='background:#eef2f7;border-radius:999px;padding:3px 10px;font-weight:700;font-size:.8rem'>"+e(ST[r.status])+"</span></td><td>"+e(PL[r.plan]||"—")+(r.seats?" +"+r.seats+" θέσ.":"")+"</td><td>"+(r.sub_until?d(r.sub_until).split(",")[0]:"—")+"</td><td>"+d(r.created)+"</td><td>"+d(r.last_login)+"</td><td>"+(r.logins||0)+"</td><td style='white-space:nowrap;padding-right:12px'>"+(r.signin==="email"?"<button class='btn ghost sm' data-act='reset' data-id='"+r.id+"'>Νέος κωδικός</button> ":"")+"<button class='btn ghost sm' data-act='del' data-id='"+r.id+"' data-email='"+e(r.email)+"'>Διαγραφή</button></td></tr>").join("")||"<tr><td style='padding:18px 14px' colspan='10'>Κανένας πελάτης ακόμη.</td></tr>");}
 async function load(){const j=await (await fetch("/api/admin/customers")).json();DATA=j.rows;const st=j.stats;
  const tl=[["Χρήστες",st.users],["Γραφεία",st.offices],["Ενεργές συνδρομές",st.active],["Ετήσιες",st.yearly],["Μηνιαίες",st.monthly],["Ακυρωμένες",st.cancelled],["Χωρίς πλάνο ακόμη",st.none],["Νέοι, 7 ημέρες",st.week],["Μηνιαία επαναλαμβανόμενα έσοδα","€"+(st.mrr_cents/100).toLocaleString("el-GR",{minimumFractionDigits:2,maximumFractionDigits:2})]];
  document.getElementById("tiles").innerHTML=tl.map(x=>"<div style='background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px'><div style='font-size:1.7rem;font-weight:800'>"+e(x[1])+"</div><div class='mut' style='font-size:.85rem'>"+e(x[0])+"</div></div>").join("");draw();}
 document.getElementById("q").addEventListener("input",draw);
+document.getElementById("t").addEventListener("click",async ev=>{const b=ev.target.closest("button[data-act]");if(!b)return;const id=b.dataset.id;
+ if(b.dataset.act==="reset"){if(!confirm("Να δημιουργηθεί νέος προσωρινός κωδικός; Ο χρήστης αποσυνδέεται παντού."))return;
+  const r=await fetch("/api/admin/users/"+id+"/reset",{method:"POST"});const j=await r.json();if(j.ok)prompt("Νέος κωδικός (αντιγράψτε τον και στείλτε τον στον χρήστη):",j.password);else alert(j.error||"Σφάλμα");}
+ else{if(!confirm("Διαγραφή του χρήστη "+b.dataset.email+"; Δεν μπορεί να αναιρεθεί. Αν είναι ο τελευταίος χρήστης του γραφείου, διαγράφεται και το γραφείο με τις σημειώσεις του."))return;
+  const r=await fetch("/api/admin/users/"+id+"/delete",{method:"POST"});const j=await r.json();if(j.ok){await load();}else alert(j.error||"Σφάλμα");}});
 document.getElementById("rf").addEventListener("click",async b=>{const el=b.target;el.disabled=true;el.textContent="Ανανέωση…";try{await fetch("/api/admin/refresh",{method:"POST"});await load();}finally{el.disabled=false;el.textContent="Ανανέωση από Stripe";}});
 load();
 </script></main>`));
