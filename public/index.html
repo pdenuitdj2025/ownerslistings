@@ -223,6 +223,10 @@ input,select{border-radius:10px;padding:9px 11px;background:var(--bg)}
       <div class="ms" id="floorBox"><button type="button" id="floorBtn">Όλοι οι όροφοι</button>
         <div class="pop" id="floorPop" hidden><div class="pa"><button type="button" id="floorClear">Καθαρισμός</button><button type="button" id="floorClose">Κλείσιμο</button></div><div id="floorList"></div></div></div>
     </div>
+    <div class="fl floorbox" style="display:grid;gap:3px;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);min-width:0">Υπνοδωμάτια
+      <div class="ms" id="bedBox"><button type="button" id="bedBtn">Όλα</button>
+        <div class="pop" id="bedPop" hidden><div class="pa"><button type="button" id="bedClear">Καθαρισμός</button><button type="button" id="bedClose">Κλείσιμο</button></div><div id="bedList"></div></div></div>
+    </div>
     <label for="src">Ιστότοπος
       <select id="src"><option value="">Όλοι οι ιστότοποι</option><option value="xe">xe.gr</option><option value="spitogatos">Spitogatos</option><option value="spiti24">Spiti24</option><option value="ktimato">Ktimatoemporiki</option><option value="gep">Greek Exclusive Properties</option><option value="realting">Realting (σε $)</option></select>
     </label>
@@ -264,7 +268,7 @@ const SITE = { realting: "Realting", ktimato: "Ktimatoemporiki", gep: "Greek Exc
 const srcOf = x => SITE[x.source] ? x.source : "xe";
 const sitesOf = x => [SITE[srcOf(x)], ...(x.alsoOn || []).map(a => a.site)];
 let counts = {};
-let muniSel = new Set(), floorSel = new Set(), sellerSel = "owner", catSel = "home";
+let muniSel = new Set(), floorSel = new Set(), bedSel = new Set(), sellerSel = "owner", catSel = "home";
 const inMode = x => (x.seller || "owner") === sellerSel && (x.category || "home") === catSel;
 let picked = new Set(); try { picked = new Set(JSON.parse(localStorage.getItem('owner-listings-picked') || '[]')); } catch (e) {}
 const savePicked = () => { try { localStorage.setItem('owner-listings-picked', JSON.stringify([...picked])); } catch (e) {} };
@@ -278,11 +282,12 @@ const norm = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase
 function prefs(){ try{ const p = JSON.parse(localStorage.getItem("owner-listings-filters")||"{}");
   if (p.seller) sellerSel = p.seller; if (p.cat) catSel = p.cat;
   if (Array.isArray(p.floors)) floorSel = new Set(p.floors);
+  if (Array.isArray(p.beds)) bedSel = new Set(p.beds);
   if (Array.isArray(p.munis)) muniSel = new Set(p.munis);
   for (const k of ["q","type","pmin","pmax","smin","smax","src","sort"]) if (p[k]!=null) els[k].value = p[k];
   if (p.tab) setTab(p.tab, true); }catch(e){} }
 function savePrefs(){ try{ localStorage.setItem("owner-listings-filters", JSON.stringify({
-  q:els.q.value, munis:[...muniSel], type:els.type.value, pmin:els.pmin.value, pmax:els.pmax.value, smin:els.smin.value, smax:els.smax.value, floors:[...floorSel], seller:sellerSel, cat:catSel, src:els.src.value, sort:els.sort.value, tab})); }catch(e){} }
+  q:els.q.value, munis:[...muniSel], type:els.type.value, pmin:els.pmin.value, pmax:els.pmax.value, smin:els.smin.value, smax:els.smax.value, floors:[...floorSel], beds:[...bedSel], seller:sellerSel, cat:catSel, src:els.src.value, sort:els.sort.value, tab})); }catch(e){} }
 
 function toast(msg){ els.toast.textContent = msg; els.toast.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(()=>els.toast.hidden = true, 2200); }
 
@@ -315,7 +320,8 @@ function filtered(){
     (!els.src.value || srcOf(x) === els.src.value) &&
     (x.price == null || (x.price >= pmin && x.price <= pmax)) &&
     (x.sqm == null || (x.sqm >= smin && x.sqm <= smax)) &&
-    (!floorSel.size || catSel !== "home" || floorsOf(x.floor).some(n => floorSel.has(n))));
+    (!floorSel.size || catSel !== "home" || floorsOf(x.floor).some(n => floorSel.has(n))) &&
+    (!bedSel.size || catSel !== "home" || bedSel.has(bedKey(x))));
   const s = els.sort.value;
   const ppm = x => x.price && x.sqm ? x.price / x.sqm : Infinity;
   r.sort(s === "price_asc" ? (a,b)=>(a.price||0)-(b.price||0)
@@ -394,7 +400,7 @@ function rowEl(x){
   const pk = d.querySelector(".pk"); d.classList.toggle("picked", picked.has(x.id));
   pk.addEventListener("change", () => { pk.checked ? picked.add(x.id) : picked.delete(x.id); d.classList.toggle("picked", pk.checked); savePicked(); updExpCount(); });
   d.querySelector(".loc a").textContent = x.location || "Αττική";
-  const spec = [x.type && x.sqm ? `${x.type} ${x.sqm} τ.μ.` : x.type, x.beds ? `${x.beds} υ/δ` : "", x.floor ? `όροφος ${x.floor}` : "", x.year ? `έτος ${x.year}` : ""].filter(Boolean);
+  const spec = [x.type && x.sqm ? `${x.type} ${x.sqm} τ.μ.` : x.type, bedsOf(x) ? `${bedsOf(x)} υ/δ` : "", x.floor ? `όροφος ${x.floor}` : "", x.year ? `έτος ${x.year}` : ""].filter(Boolean);
   spec.forEach(t => { const s = document.createElement("span"); s.textContent = t; d.querySelector(".spec").appendChild(s); });
   const meta = d.querySelector(".meta");
   meta.insertAdjacentHTML("beforeend", `<span class="pill site">${SITE[srcOf(x)]}</span>`);
@@ -413,6 +419,8 @@ function rowEl(x){
     tile("Διεύθυνση", dt.address, "full");
     tile("Δημοσίευση", dt.published); tile("Ενημέρωση", dt.updated);
     (dt.facts || []).filter(([k]) => MAIN.includes(k)).sort((p, q) => MAIN.indexOf(p[0]) - MAIN.indexOf(q[0])).forEach(([k, v]) => tile(k === "Σύστημα θέρμανσης" ? "Θέρμανση" : k, v, v.length > 20));
+    (dt.facts || []).filter(a => Array.isArray(a) && !MAIN.includes(a[0])).slice(0, 12).forEach(([k, v]) => tile(k, String(v), String(v).length > 20));   // the rest of the ad's own characteristics
+    if ((dt.extras || []).length) tile("Χαρακτηριστικά", dt.extras.slice(0, 20).join(" · "), "full");
   }
   const ag = d.querySelector(".agent");
   const line = (k, v, cls) => { const e = document.createElement("div"); e.className = "ag" + (cls ? " " + cls : ""); const a = document.createElement("span"); a.textContent = k; const b = document.createElement("b"); b.textContent = v; e.append(a, b); ag.appendChild(e); };
@@ -456,10 +464,10 @@ function updateMode(){
   document.querySelectorAll("[data-seller]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.seller === sellerSel)));
   document.querySelectorAll("[data-cat]").forEach(b => { b.setAttribute("aria-pressed", String(b.dataset.cat === catSel));
     const n = counts[sellerSel + "/" + b.dataset.cat] ?? 0; b.querySelector("small").textContent = n.toLocaleString("el-GR"); });
-  document.querySelector(".floorbox")?.classList.toggle("off", catSel !== "home");
+  document.querySelectorAll(".floorbox").forEach(e => e.classList.toggle("off", catSel !== "home"));
 }
 function setMode(seller, cat){
-  if (seller) sellerSel = seller; if (cat) catSel = cat; shown = PAGE; muniSel.clear(); floorSel.clear(); floorLabel(); muniLabel();
+  if (seller) sellerSel = seller; if (cat) catSel = cat; shown = PAGE; muniSel.clear(); floorSel.clear(); bedSel.clear(); document.querySelectorAll("#bedList input").forEach(c => c.checked = false); floorLabel(); bedLabel(); muniLabel();
   document.querySelectorAll("#floorList input").forEach(c => c.checked = false);
   fillMuni([...new Set(rows.filter(inMode).map(r => muniOf(r.location)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"el")));
   fillSelect(els.type, [...new Set(rows.filter(inMode).map(r => r.type).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"el")));
@@ -483,6 +491,24 @@ function setupFloors(){
   $("#floorClose").addEventListener("click", () => { pop.hidden = true; });
   $("#floorClear").addEventListener("click", () => { floorSel.clear(); pop.querySelectorAll("input").forEach(c => c.checked = false); floorLabel(); shown = PAGE; savePrefs(); render(); });
   document.addEventListener("click", e => { if (!pop.hidden && !$("#floorBox").contains(e.target)) pop.hidden = true; });
+}
+
+// ---- multi-select bedrooms (from the list page, or from the ad's own details when the list page has none)
+const BEDS = [[0, "Studio"], [1, "1"], [2, "2"], [3, "3"], [4, "4"], [5, "5+"]];
+function bedsOf(x){ if (x.beds != null) return +x.beds; const f = ((x.details || {}).facts || []).find(a => Array.isArray(a) && a[0] === "Υπνοδωμάτια"); const n = f ? parseInt(f[1], 10) : NaN;
+  if (!isNaN(n)) return n; return /^(Studio|Γκαρσονιέρα)/i.test(x.type || "") ? 0 : null; }
+function bedKey(x){ const n = bedsOf(x); return n == null ? null : Math.min(5, n); }
+function bedLabel(){ $("#bedBtn").textContent = !bedSel.size ? "Όλα" : BEDS.filter(([v]) => bedSel.has(v)).map(([, t]) => t).join(", ") + " υ/δ"; }
+function setupBeds(){
+  const box = $("#bedList"), pop = $("#bedPop");
+  BEDS.forEach(([v, t]) => { const l = document.createElement("label"); const c = document.createElement("input"); c.type = "checkbox"; c.checked = bedSel.has(v);
+    c.addEventListener("change", () => { c.checked ? bedSel.add(v) : bedSel.delete(v); bedLabel(); shown = PAGE; savePrefs(); render(); });
+    l.append(c, document.createTextNode(" " + (!v ? t : v === 1 ? "1 υπνοδωμάτιο" : t + " υπνοδωμάτια"))); box.appendChild(l); });
+  bedLabel();
+  $("#bedBtn").addEventListener("click", () => { pop.hidden = !pop.hidden; });
+  $("#bedClose").addEventListener("click", () => { pop.hidden = true; });
+  $("#bedClear").addEventListener("click", () => { bedSel.clear(); pop.querySelectorAll("input").forEach(c => c.checked = false); bedLabel(); shown = PAGE; savePrefs(); render(); });
+  document.addEventListener("click", e => { if (!pop.hidden && !$("#bedBox").contains(e.target)) pop.hidden = true; });
 }
 
 // ---- export of the currently filtered list
@@ -566,7 +592,7 @@ function setupMuni(){
 }
 
 function boot(){
-  prefs(); setupMuni(); setupFloors(); setupExport(); setupMode();
+  prefs(); setupMuni(); setupFloors(); setupBeds(); setupExport(); setupMode();
   document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
   ["q","type","pmin","pmax","smin","smax","src","sort"].forEach(k => els[k].addEventListener("input", () => { shown = PAGE; savePrefs(); render(); }));
   els.more.addEventListener("click", () => { shown += PAGE; render(); });
@@ -602,4 +628,4 @@ async function load(){
 load(); setInterval(load, 60000);
 fetch("/api/me").then(r => r.json()).then(m => { const a = document.getElementById("acct"); if (m.admin) { a.textContent = "Διαχείριση"; a.href = "/admin"; } else a.textContent = m.org + " · Λογαριασμός"; }).catch(() => {});
 </script>
-<script src="/i18n.js?v=5" defer></script></body></html>
+<script src="/i18n.js?v=6" defer></script></body></html>

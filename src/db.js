@@ -46,6 +46,13 @@ export async function fixXe1() {
   await kvSet("fixXe1", true);
 }
 
+// one-time: xe.gr ads are read again with the fuller details reader (all characteristics, bedrooms, bathrooms)
+export async function fixXe2() {
+  if (await kvGet("fixXe2")) return;
+  await pool.query("UPDATE listings SET details_checked=NULL WHERE source='xe' AND category='home' AND gone_at IS NULL");
+  await kvSet("fixXe2", true);
+}
+
 // one-time: re-read the price from the ad page of every home whose price looks truncated (< 500 €/m²)
 export async function fixPrice1() {
   if (await kvGet("fixPrice1")) return;

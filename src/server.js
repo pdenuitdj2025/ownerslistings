@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { makeZip } from "./zip.js";
 import { collectGalleries } from "./gallery.js";
-import { init, fixXe1, fixPrice1, fixPrice2, fixHotel1, pool, kvGet, kvSet, toApi } from "./db.js";
+import { init, fixXe1, fixXe2, fixPrice1, fixPrice2, fixHotel1, pool, kvGet, kvSet, toApi } from "./db.js";
 import { mergeAds } from "./merge.js";
 import { runAll, runSweep, isRunning, debugPage } from "./runner.js";
 import { initSaas, mountSaas } from "./saas.js";
@@ -119,6 +119,7 @@ app.post("/api/import", async (req, res) => {
 await init();
 await initSaas();
 await fixXe1().catch((e) => console.error(e));
+await fixXe2().catch((e) => console.error(e));
 await fixPrice1().catch((e) => console.error(e));
 await fixPrice2().catch((e) => console.error(e));
 await fixHotel1().catch((e) => console.error(e));

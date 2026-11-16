@@ -72,11 +72,14 @@ export async function phoneSite(page, key, { limit = 60, maxMs = 0 } = {}) {
       blocks = 0;
       if (key === "xe") await dismissConsent(page).catch(() => {});
       const det = await extractDetails(page, key).catch(() => null);
-      await pool.query("UPDATE listings SET details=$2, details_checked=now() WHERE id=$1", [r.id, det ? JSON.stringify(det) : null]);
+      const fact = (k) => +((det?.facts || []).find((f) => f[0] === k) || [])[1] || null;
+      const beds = fact("Υπνοδωμάτια");
+      await pool.query("UPDATE listings SET details=COALESCE($2::jsonb, details), details_checked=now(), beds=COALESCE(beds,$3) WHERE id=$1", [r.id, det ? JSON.stringify(det) : null, beds && beds <= 100 ? beds : null]);
+      if (det) found++;
       checked++;   // details only: phone numbers are no longer collected
     } catch { /* try again next run */ }
     await sleep(1500 + Math.random() * 1500);
   }
-  console.log(`[phones ${key}] checked ${checked}, found ${found}`);
+  console.log(`[details ${key}] opened ${checked}, details read ${found}`);
   return { checked, found };
 }

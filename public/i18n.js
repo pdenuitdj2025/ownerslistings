@@ -113,7 +113,7 @@
     "π.χ. Γλυφάδα, Βούλα, Βάρη, Κυψέλη": "e.g. Glyfada, Voula, Vari, Kypseli",
     "Δήμος": "Municipality", "Δήμοι:": "Municipalities:", "Όλη η Αττική": "All of Attica", "Καθαρισμός": "Clear", "Κλείσιμο": "Close",
     "Τύπος": "Type", "Τύπος:": "Type:", "Όλοι": "All", "Ελάχ. τιμή €": "Min. price €", "Μέγ. τιμή €": "Max. price €",
-    "Ελάχ. τ.μ.": "Min. sqm", "Μέγ. τ.μ.": "Max. sqm", "χωρίς όριο": "no limit", "Όροφοι": "Floors", "Όλοι οι όροφοι": "All floors",
+    "Ελάχ. τ.μ.": "Min. sqm", "Μέγ. τ.μ.": "Max. sqm", "χωρίς όριο": "no limit", "Όροφοι": "Floors", "Όλα": "All", "υπνοδωμάτια": "bedrooms", "υπνοδωμάτιο": "bedroom", "Όλοι οι όροφοι": "All floors",
     "Ιστότοπος": "Website", "Ιστότοπος:": "Website:", "Όλοι οι ιστότοποι": "All websites", "Ταξινόμηση": "Sort", "Νεότερες πρώτα": "Newest first",
     "Τιμή ↑": "Price ↑", "Τιμή ↓": "Price ↓", "€/τ.μ. ↑": "€/sqm ↑", "Φίλτρα": "Filters", "Κατάσταση": "Status",
     "Προς έλεγχο": "To review", "Επικοινωνήσαμε": "Contacted", "Δεν ενδιαφέρει": "Not interested", "Όλες": "All",
