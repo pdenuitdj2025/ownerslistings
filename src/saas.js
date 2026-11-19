@@ -152,7 +152,7 @@ code{background:var(--soft);padding:4px 8px;border-radius:8px;word-break:break-a
 
 const NOTE_OFF = "Η σύνδεση ενεργοποιείται σύντομα.";
 const GBTN = `<img src="/icon-google.png?v=1" alt=""><span>Συνέχεια με Google</span>`;
-const ABTN = `<img src="/icon-apple.png?v=1" alt=""><span>Συνέχεια με Apple</span>`;
+const ABTN = `<img src="/icon-apple.png?v=2" alt=""><span>Συνέχεια με Apple</span>`;
 const socialButtons = (q = "") => `<a class="sbtn g" href="/auth/google${q}">${GBTN}</a>` + (SOCIAL.apple ? `<a class="sbtn g" href="/auth/apple${q}">${ABTN}</a>` : "");
 const loginPage = (msg = "", email = "") => shell("Σύνδεση", `<main><div class="card"><h1>Σύνδεση</h1><p class="mut">${SOCIAL.apple ? "Συνδεθείτε με τον λογαριασμό Google ή Apple σας." : "Συνδεθείτε με τον λογαριασμό Google σας."}</p>${socialButtons()}
 <p class="mut" style="margin:18px 0 0;text-align:center">ή με email και κωδικό</p>
