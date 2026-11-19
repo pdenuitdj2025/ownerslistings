@@ -8,7 +8,7 @@
 
   var D = {
     /* ---- shared / navigation ---- */
-    "Αρχική": "Home", "Συνδεθείτε με τον λογαριασμό Google σας.": "Sign in with your Google account.", "ή με email και κωδικό": "or with email and password", "Email (όνομα χρήστη)": "Email (username)", "Ή εγγραφή με email και κωδικό": "Or sign up with email and password", "Διαχείριση": "Admin", "Άνοιγμα εργαλείου": "Open the tool",  "Συνέχεια με Google": "Continue with Google", "Συνέχεια με Apple": "Continue with Apple", "Συνδεθείτε με τον λογαριασμό Google ή Apple σας.": "Sign in with your Google or Apple account.", "Σύνδεση": "Log in", "Εγγραφή γραφείου": "Register your office", "Επικοινωνία": "Contact",
+    "Αρχική": "Home", "Συνδεθείτε με τον λογαριασμό Google σας.": "Sign in with your Google account.", "ή με email και κωδικό": "or with email and password", "Email (όνομα χρήστη)": "Email (username)", "Ή εγγραφή με email και κωδικό": "Or sign up with email and password", "Διαχείριση": "Admin", "Άνοιγμα εργαλείου": "Open the tool",  "Συνέχεια με Google": "Continue with Google", "Ο διαχειριστής συνδέεται μόνο με Google.": "The admin signs in with Google only.", "Συνέχεια με Apple": "Continue with Apple", "Συνδεθείτε με τον λογαριασμό Google ή Apple σας.": "Sign in with your Google or Apple account.", "Σύνδεση": "Log in", "Εγγραφή γραφείου": "Register your office", "Επικοινωνία": "Contact",
     "Όροι": "Terms", "Απόρρητο": "Privacy", "Αποσύνδεση": "Log out", "Λογαριασμός": "Account", "Άνοιγμα εργαλείου": "Open the tool",
     "Κύρια πλοήγηση": "Main navigation", "Τι κάνει": "Features", "Πώς λειτουργεί": "How it works", "Τιμή": "Price",
     "Νομικές πληροφορίες & όροι": "Legal information & terms", "Πολιτική απορρήτου": "Privacy policy",
@@ -156,7 +156,7 @@
     "Συνδεθείτε στον λογαριασμό σας.": "Log in to your account.", "Κωδικός": "Password", "Λάθος email ή κωδικός.": "Wrong email or password.",
     "Είστε μεσιτικό γραφείο χωρίς λογαριασμό;": "A real estate office without an account?", "Είστε συνεργάτης; Ζητήστε τον σύνδεσμο πρόσκλησης από το γραφείο σας.": "Are you an agent? Ask your office for the invitation link.",
     "Ξεχάσατε τον κωδικό; Γράψτε μας από τη": "Forgot your password? Write to us through the", "ή με email": "or with email",
-    "Συνέχεια με Google": "Continue with Google", "Συνέχεια με Apple": "Continue with Apple", "Είσοδος ομάδας": "Team login", "Κωδικός ομάδας": "Team password", "Λάθος κωδικός": "Wrong password",
+    "Συνέχεια με Google": "Continue with Google", "Ο διαχειριστής συνδέεται μόνο με Google.": "The admin signs in with Google only.", "Συνέχεια με Apple": "Continue with Apple", "Είσοδος ομάδας": "Team login", "Κωδικός ομάδας": "Team password", "Λάθος κωδικός": "Wrong password",
     "Έχετε ήδη λογαριασμό;": "Already have an account?", "Όνομα γραφείου": "Office name", "Επωνυμία γραφείου": "Office name", "Επωνυμία": "Business name",
     "Ονοματεπώνυμο": "Full name", "Κωδικός (τουλάχιστον 8 χαρακτήρες)": "Password (at least 8 characters)", "Νέος κωδικός": "New password", "Νέος κωδικός (τουλάχιστον 8 χαρακτήρες)": "New password (at least 8 characters)",
     "Αποδέχομαι τους": "I accept the", "Με τη σύνδεση αποδέχεστε τους": "By logging in you accept the", "Χρειάζεται η αποδοχή των όρων.": "You need to accept the terms.",

@@ -152,8 +152,9 @@ code{background:var(--soft);padding:4px 8px;border-radius:8px;word-break:break-a
 
 const NOTE_OFF = "Η σύνδεση ενεργοποιείται σύντομα.";
 const GBTN = `<img src="/icon-google.png?v=1" alt=""><span>Συνέχεια με Google</span>`;
-const socialButtons = (q = "") => `<a class="sbtn g" href="/auth/google${q}">${GBTN}</a>`;
-const loginPage = (msg = "", email = "") => shell("Σύνδεση", `<main><div class="card"><h1>Σύνδεση</h1><p class="mut">Συνδεθείτε με τον λογαριασμό Google σας.</p>${socialButtons()}
+const ABTN = `<img src="/icon-apple.png?v=1" alt=""><span>Συνέχεια με Apple</span>`;
+const socialButtons = (q = "") => `<a class="sbtn g" href="/auth/google${q}">${GBTN}</a>` + (SOCIAL.apple ? `<a class="sbtn g" href="/auth/apple${q}">${ABTN}</a>` : "");
+const loginPage = (msg = "", email = "") => shell("Σύνδεση", `<main><div class="card"><h1>Σύνδεση</h1><p class="mut">${SOCIAL.apple ? "Συνδεθείτε με τον λογαριασμό Google ή Apple σας." : "Συνδεθείτε με τον λογαριασμό Google σας."}</p>${socialButtons()}
 <p class="mut" style="margin:18px 0 0;text-align:center">ή με email και κωδικό</p>
 <form method="post" action="/login"><label for="e">Email (όνομα χρήστη)</label><input id="e" type="email" name="email" value="${esc(email)}" autocomplete="username" required>
 <label for="p">Κωδικός</label><input id="p" type="password" name="password" autocomplete="current-password" required>${msg ? `<p class="err" role="alert">${esc(msg)}</p>` : ""}
@@ -167,7 +168,7 @@ ${full ? `<p class="err" role="alert">Το γραφείο δεν έχει ελε
 <form method="get" action="/auth/google"><input type="hidden" name="invite" value="${esc(invite)}"><input type="hidden" name="plan" value="${esc(plan)}">
 ${orgName ? "" : `<label for="o">Επωνυμία γραφείου</label><input id="o" type="text" name="office" maxlength="120" autocomplete="organization" required>`}
 <label class="chk"><input type="checkbox" name="terms" value="1" required><span>Αποδέχομαι τους <a href="/terms" target="_blank" rel="noopener">όρους χρήσης</a> και την <a href="/privacy" target="_blank" rel="noopener">πολιτική απορρήτου</a>.</span></label>
-<button type="submit" class="sbtn g">${GBTN}</button></form>
+<button type="submit" class="sbtn g">${GBTN}</button>${SOCIAL.apple ? `<button type="submit" formaction="/auth/apple" class="sbtn g">${ABTN}</button>` : ""}</form>
 <details style="margin-top:18px"${msg ? " open" : ""}><summary class="mut" style="cursor:pointer">Ή εγγραφή με email και κωδικό</summary>
 <form method="post" action="/signup"><input type="hidden" name="invite" value="${esc(invite)}"><input type="hidden" name="plan" value="${esc(plan)}">
 ${orgName ? "" : `<label for="o2">Επωνυμία γραφείου</label><input id="o2" type="text" name="office" value="${esc(v.office)}" maxlength="120" autocomplete="organization" required>`}
@@ -322,6 +323,7 @@ if(j.ok){f.reset();say("ok","Το μήνυμά σας στάλθηκε. Θα σ�
       try { const t = await tokenExchange("https://appleid.apple.com/auth/token", { code: String(req.body.code), client_id: APPLE.id, client_secret: appleSecret(), redirect_uri: origin(req) + "/auth/apple/callback", grant_type: "authorization_code" });
         if (!t.sub) throw new Error("no subject");
         let name = ""; try { const u = JSON.parse(req.body.user || "{}"); name = [u.name?.firstName, u.name?.lastName].filter(Boolean).join(" "); } catch {}
+        if (t.email && ADMIN_EMAILS.has(String(t.email).toLowerCase())) return res.status(403).send(loginPage("Ο διαχειριστής συνδέεται μόνο με Google."));   // the admin console stays Google-only
         await socialLogin(res, "apple_sub", { sub: t.sub, email: t.email ? String(t.email).toLowerCase() : "", name }, st);
       } catch (e) { console.error("apple sign-in", e.message); res.status(400).send(loginPage("Η σύνδεση με Apple απέτυχε. Δοκιμάστε ξανά.")); }
     });
