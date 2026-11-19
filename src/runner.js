@@ -139,10 +139,10 @@ export async function runSweep() {
     await ensureLogin(page, context, { site: s.key, label: s.label, ...s.login });
     await saveState("spitogatos", context);
     while (st.ai < SG_AREAS.length) {
-      const r = await page.evaluate(readPages, { area: SG_AREAS[st.ai], filter: "", from: st.page, to: st.page + 19, delay: 1400, prevIds: st.prev });
-      if (r.blocked) { st.note = `blocked with ${r.status}, will resume`; await kvSet("sweep", st); console.error("[sweep]", st.note); return { paused: true }; }
+      const r = await page.evaluate(readPages, { area: SG_AREAS[st.ai], filter: "", from: st.page, to: st.page + 9, delay: 4000, prevIds: st.prev });
+      if (r.blocked) { st.note = `blocked with ${r.status}, resumes next Sunday`; st.blockedAt = new Date().toISOString(); await kvSet("sweep", st); console.error("[sweep]", st.note); return { paused: true }; }
       const { created } = await mergeAds(r.out);
-      st.ads += r.out.length; st.created += created; st.prev = r.lastIds; st.page += r.read; st.note = "";
+      st.ads += r.out.length; st.created += created; st.prev = r.lastIds; st.page += r.read; st.note = ""; delete st.blockedAt;
       if (r.ended || st.page > 2500) { console.log(`[sweep] ${SG_AREAS[st.ai]} done at page ${st.page}`); st.ai++; st.page = 1; st.prev = ""; }
       await kvSet("sweep", st);
     }

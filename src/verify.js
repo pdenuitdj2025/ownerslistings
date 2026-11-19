@@ -111,7 +111,7 @@ export async function verifySite(page, key, { mode, since, maxMs = 0 } = {}) {
       if (PHOTO[key].test(v.og || "")) photoUrl[r.id] = v.og.replace(/^http:/, "https:");   // only judged when the ad page really loaded
     }
     if (alive.length >= 15) { total += alive.length; totalNoPhoto += noPhoto.length; await flush(); console.log(`[verify ${key}] progress: ${total} of ${rows.length} checked`); }
-    await sleep(1200 + Math.random() * 1400);
+    await sleep(3000 + Math.random() * 3000);   // slow on purpose
   }
   total += alive.length; totalNoPhoto += noPhoto.length;
   const checked = total + gone.length + goneDeleted + promote.length;

@@ -1,6 +1,6 @@
 // Reads the owner's phone number from an ad page, the way a visitor would: press "Εμφάνιση τηλεφώνου" and read what appears.
 // Spitogatos and Spiti24 only (xe.gr has no reveal button).
-import { pool } from "./db.js";
+import { pool, kvGet, kvSet } from "./db.js";
 import { extractDetails } from "./details.js";
 import { dismissConsent } from "./scrapers/xe.js";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -56,6 +56,9 @@ export async function revealPhone(page, key) {
 // Fill in numbers for listed ads that have none yet. Gentle: small pauses, capped per run.
 export async function phoneSite(page, key, { limit = 60, maxMs = 0 } = {}) {
   const t0 = Date.now();
+  const pausedTill = await kvGet("detailsPause:" + key);
+  if (pausedTill && Date.parse(pausedTill) > Date.now()) { console.log(`[details ${key}] paused after a block until ${pausedTill}`); return { checked: 0, found: 0, paused: true }; }
+  const pause = async (why) => { const till = new Date(Date.now() + 3 * 36e5).toISOString(); await kvSet("detailsPause:" + key, till); console.log(`[details ${key}] ${why}: pausing this site's detail reading for 3 hours`); };
   const { rows } = await pool.query(
     `SELECT id, url, phone FROM listings WHERE source=$1 AND gone_at IS NULL AND img IS NOT FALSE AND details_checked IS NULL
       ORDER BY (seller='owner' AND category='home') DESC, first_seen DESC LIMIT $2`, [key, limit]);
@@ -66,9 +69,10 @@ export async function phoneSite(page, key, { limit = 60, maxMs = 0 } = {}) {
       const resp = await page.goto(r.url, { waitUntil: "domcontentloaded", timeout: 30000 });
       const st = resp ? resp.status() : 0;
       if (st === 404 || st === 410) { checked++; await pool.query("UPDATE listings SET phone_checked=now(), details_checked=now() WHERE id=$1", [r.id]); continue; }   // the ad is gone
-      if (st !== 200) { if (++blocks >= 5) { console.log(`[phones ${key}] blocked (${st}), stopping this pass`); break; } await sleep(4000); continue; }   // blocked or temporary error: leave the ad unread so it is tried again
+      if (st === 403 || st === 429) { await pause(`blocked (${st})`); break; }   // the site is refusing us: stop at once and leave it alone for a while
+      if (st !== 200) { if (++blocks >= 5) { await pause(`answered ${st} five times`); break; } await sleep(8000); continue; }   // blocked or temporary error: leave the ad unread so it is tried again
       await page.waitForTimeout(1500);
-      if (/pardon our interruption|access denied|just a moment|blocked/i.test(await page.title().catch(() => ""))) { if (++blocks >= 5) { console.log(`[phones ${key}] bot check, stopping this pass`); break; } await sleep(4000); continue; }
+      if (/pardon our interruption|access denied|just a moment|blocked/i.test(await page.title().catch(() => ""))) { await pause("bot check page"); break; }
       blocks = 0;
       if (key === "xe") await dismissConsent(page).catch(() => {});
       const det = await extractDetails(page, key).catch(() => null);
@@ -78,7 +82,7 @@ export async function phoneSite(page, key, { limit = 60, maxMs = 0 } = {}) {
       if (det) found++;
       checked++;   // details only: phone numbers are no longer collected
     } catch { /* try again next run */ }
-    await sleep(1500 + Math.random() * 1500);
+    await sleep(4000 + Math.random() * 4000);   // slow on purpose: one ad every 4-8 s
   }
   console.log(`[details ${key}] opened ${checked}, details read ${found}`);
   return { checked, found };

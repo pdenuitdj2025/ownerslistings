@@ -218,7 +218,9 @@ setInterval(async () => {
     const sw = await kvGet("sweep");
     const sunday = new Date().toLocaleDateString("en-US", { timeZone: "Europe/Athens", weekday: "short" }) === "Sun";
     const unfinished = sw && sw.startedAt && !sw.done;
-    if (unfinished && (hour >= 3 && hour < 9)) { console.log("resuming sweep"); runSweep().catch((e) => console.error(e)); return; }
+    const blockedDay = sw?.blockedAt ? new Date(sw.blockedAt).toLocaleDateString("sv-SE", { timeZone: "Europe/Athens" }) : "";
+    const mayResume = !sw?.blockedAt || (sunday && blockedDay !== day);   // after a block: leave Spitogatos alone until the next Sunday, one try that day
+    if (unfinished && mayResume && (hour >= 3 && hour < 9)) { console.log("resuming sweep"); runSweep().catch((e) => console.error(e)); return; }
     if (sunday && hour >= 4 && hour < 9 && (await kvGet("lastSweepDay")) !== day && !unfinished) {
       await kvSet("lastSweepDay", day);
       console.log("starting weekly sweep", k);
