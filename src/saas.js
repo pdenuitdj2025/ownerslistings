@@ -133,7 +133,7 @@ async function startSession(res, userId) { await pool.query("UPDATE users SET la
 
 // ---- pages ----
 const shell = (title, body) => `<!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)} · ${esc(BRAND)}</title>
-<link rel="icon" href="/favicon.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="icon" href="/favicon.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png?v=1"><link rel="manifest" href="/site.webmanifest"><meta name="apple-mobile-web-app-title" content="vresakinita"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
 <style>:root{--bg:#F3F6FA;--ink:#0C2C52;--mut:#566884;--line:#D9E2EE;--card:#fff;--blue:#0B5C9B;--sky:#3FA0DC;--soft:#E6F1FA;--err:#a3261c}
 *{box-sizing:border-box}body{margin:0;font-family:Manrope,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
 a{color:var(--blue)}.top{display:flex;justify-content:space-between;align-items:center;padding:18px 24px;max-width:1040px;margin:0 auto}.logo{display:flex;align-items:center;gap:10px;font-weight:800;text-decoration:none;font-size:1.25rem;color:var(--ink);letter-spacing:-.01em}.logo img{height:38px;width:auto}
@@ -233,7 +233,7 @@ export function mountSaas(app, { appFile, publicDir }) {
   app.get("/terms", page("terms.html"));
   app.get("/privacy", page("privacy.html"));
   app.get("/i18n.js", (_q, res) => res.sendFile("i18n.js", { root: publicDir, maxAge: "5m" }));
-  for (const f of ["logo.png", "logo-white.png", "favicon.png", "icon-google.png", "icon-apple.png"]) app.get("/" + f, (_q, res) => res.sendFile(f, { root: publicDir, maxAge: "7d" }));
+  for (const f of ["logo.png", "logo-white.png", "favicon.png", "icon-google.png", "icon-apple.png", "apple-touch-icon.png", "icon-192.png", "icon-512.png", "site.webmanifest"]) app.get("/" + f, (_q, res) => res.sendFile(f, { root: publicDir, maxAge: "7d" }));
   // ---- contact form: every message is kept, then forwarded to the owner's inbox ----
   const sentBy = new Map();
   async function forward(m, site) {
