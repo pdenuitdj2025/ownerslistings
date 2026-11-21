@@ -61,6 +61,7 @@ export async function phoneSite(page, key, { limit = 60, maxMs = 0 } = {}) {
   const pause = async (why) => { const till = new Date(Date.now() + 3 * 36e5).toISOString(); await kvSet("detailsPause:" + key, till); console.log(`[details ${key}] ${why}: pausing this site's detail reading for 3 hours`); };
   const { rows } = await pool.query(
     `SELECT id, url, phone FROM listings WHERE source=$1 AND gone_at IS NULL AND img IS NOT FALSE AND details_checked IS NULL
+      AND (seller='owner' OR first_seen > now() - interval '3 days')   -- agency ads: only freshly found ones (Spiti24 resurfaces old stock as 'last updated')
       ORDER BY (seller='owner' AND category='home') DESC, first_seen DESC LIMIT $2`, [key, limit]);
   let found = 0, checked = 0, misses = 0, blocks = 0;
   for (const r of rows) {

@@ -356,7 +356,7 @@ function render(){
   const all = rows.filter(x => inMode(x) && !x.multi);
   updateMode();
   const c = s => all.filter(x => (x.status||"new") === s).length;
-  const fresh = all.filter(x => (x.status||"new")==="new" && x.firstSeen && Date.now()-Date.parse(x.firstSeen) < 864e5).length;
+  const fresh = all.filter(x => (x.status||"new")==="new" && isFresh(x)).length;
   els.counts.innerHTML = `<span class="count"><b>${fresh}</b>νέες σήμερα</span><span class="count"><b>${c("new")}</b>προς έλεγχο</span><span class="count"><b>${c("contacted")}</b>επικοινωνήσαμε</span>`;
   const r = filtered();
   els.list.querySelectorAll(".row").forEach(n => n.remove());
@@ -374,7 +374,7 @@ function render(){
 function rowEl(x){
   const st = x.status || "new";
   const d = document.createElement("article");
-  d.className = "row" + (st === "new" && x.firstSeen && Date.now()-Date.parse(x.firstSeen) < 864e5 ? " is-new" : "");
+  d.className = "row" + (st === "new" && isFresh(x) ? " is-new" : "");
   const img = x.photo
     ? `<a class="thumb has-photo" href="${x.url}" target="_blank" rel="noopener" aria-label="Άνοιγμα αγγελίας"><img src="${x.photo}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.className='thumb';this.parentNode.innerHTML='<b>${x.sqm ?? "–"}</b><span>τ.μ.</span>'"><span class="sq">${x.sqm ?? "–"} τ.μ.</span></a>`
     : `<div class="thumb" aria-hidden="true"><b>${x.sqm ?? "–"}</b><span>τ.μ.</span></div>`;
@@ -492,6 +492,12 @@ function setupFloors(){
   $("#floorClear").addEventListener("click", () => { floorSel.clear(); pop.querySelectorAll("input").forEach(c => c.checked = false); floorLabel(); shown = PAGE; savePrefs(); render(); });
   document.addEventListener("click", e => { if (!pop.hidden && !$("#floorBox").contains(e.target)) pop.hidden = true; });
 }
+
+// "new" = found in the last 24 h, unless the ad's own page says it was published more than 30 days ago
+// (Spiti24 only sorts by "last updated", so agencies' refreshed old ads are found for the first time long after they went up).
+function pubDate(x){ const d = (x.details || {}).published || ""; const m = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); return m ? Date.UTC(+m[3], +m[2] - 1, +m[1]) : null; }
+function isOld(x){ const p = pubDate(x); return p != null && Date.now() - p > 30 * 864e5; }
+function isFresh(x){ return !!x.firstSeen && Date.now() - Date.parse(x.firstSeen) < 864e5 && !isOld(x); }
 
 // ---- multi-select bedrooms (from the list page, or from the ad's own details when the list page has none)
 const BEDS = [[0, "Studio"], [1, "1"], [2, "2"], [3, "3"], [4, "4"], [5, "5+"]];

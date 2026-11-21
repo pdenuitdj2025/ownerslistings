@@ -94,7 +94,7 @@ export async function runAll({ verify = true, enrich = false, phones = false, sc
         } catch (e) { console.error(`[${s.label}] agency ${cat} failed: ${e.message}`); }
         if (s.landAgency) for (const cat of ["land", "home"]) try {   // agency ads: resumable backfill (a region cursor is kept), then only the newest pages
           const key = `agencyCursor:${s.key}:${cat}`, cur = (await kvGet(key)) ?? 0, back = cur !== "done";
-          const ag = await s.landAgency(page, { cat, maxPages: back ? 40 : 3, start: back ? cur : 0 });
+          const ag = await s.landAgency(page, { cat, maxPages: back ? 40 : 1, start: back ? cur : 0 });
           const am = await mergeAds(ag);
           if (back) await kvSet(key, ag.complete ? "done" : ag.next);
           sites[`${s.key}_agency_${cat}`] = { at: new Date().toISOString(), scraped: ag.length, created: am.created, merged: am.merged, cursor: back ? (ag.complete ? "done" : ag.next) : "done" };

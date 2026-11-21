@@ -151,7 +151,7 @@ setInterval(async () => {
     { const due = dueSlot(); if (due && (await kvGet("lastScheduledSlot")) !== due) return; }   // a scheduled run is waiting: let it go first
     const last = await kvGet("lastPhonePass");
     if (last && Date.now() - Date.parse(last) < 10 * 60 * 1000) return;
-    const { rows } = await pool.query(`SELECT count(*)::int AS n FROM listings WHERE gone_at IS NULL AND img IS NOT FALSE AND details_checked IS NULL`);
+    const { rows } = await pool.query(`SELECT count(*)::int AS n FROM listings WHERE gone_at IS NULL AND img IS NOT FALSE AND details_checked IS NULL AND (seller='owner' OR first_seen > now() - interval '3 days')`);
     if (!rows[0].n) {   // nothing left to read: if a full scan is waiting, run it now (dead ads + ads without a photo)
       if (await kvGet("scanPending")) {
         await kvSet("lastPhonePass", new Date().toISOString());
